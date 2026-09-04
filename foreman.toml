@@ -1,0 +1,4 @@
+[tools]
+rojo = { github = "rojo-rbx/rojo", version = "7.7.0" }
+wally = { github = "UpliftGames/wally", version = "0.3.2" }
+wally-package-types = { github = "johnnymorganz/wally-package-types", version = "1.6.2" }

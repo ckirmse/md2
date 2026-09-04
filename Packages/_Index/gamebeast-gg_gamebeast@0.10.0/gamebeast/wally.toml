@@ -1,0 +1,7 @@
+[package]
+name     = "gamebeast-gg/gamebeast"
+description = "Roblox SDK for the Gamebeast analytics platform"
+version  = "0.10.0"
+realm    = "shared"               
+license = "SEE LICENSE IN LICENSE"
+registry = "https://github.com/upliftgames/wally-index"

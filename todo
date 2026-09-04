@@ -1,0 +1,1533 @@
+--[[
+todos:
+
+save/load debug / test with json.lua (with dev tool)
+make one attribute of itemname and use for merging and picking up
+add global wind effect (affecting physics) when wind is on
+tweak rain effect (direction) if rain and wind are both on
+change buy data to go through SplendidData (include a timestamp or something)
+add tooltip to weather icons
+make studio plugin to edit code
+add client-equivalent game data
+add dismount/error if fly into sun (or if player hits sun)
+move weather data store into game data
+make ambient sounds overridable by weather
+add weather background music/effects
+start dragon hitching
+create hitching post class
+save/load hitching posts--or maybe just the dragons store the data? Yeah save # of hitching posts
+add ability to hitch up a dragon, new state for it
+if a player is hit by a dragon-open-crystal beam, make it jump
+prevent game controller from bringing up backpack when backpack is hidden/disablbed
+make modifications controllable by GameData
+add dev tool enumeration of global save names
+add dev tool deleting named save slot
+* add dev tool ability to teleport to a player
+add dev tool ability to do stuff to an online person GetPlayerPlaceInstanceAsync
+redo buying to be a list of things in GameData
+redo gem particle effects to be more "standard" in code
+replace some utils functions with QueryDescendants
+fix gamepad getting in virtual mouse mode or something
+fade in and move up tween billboards and vice versa
+add attribute for getting surface mapper (or NOT getting them), undoing hack in client dragon manager
+add heuristics to dragon if wall in front of them, but not above, turn up, and if not above, turn down, and if nether, stop
+add coloring of modification text in inventory (satchel truncating text makes this not possible yet)
+change leaderboard to social modifications added?
+harvest modification animation--test getting gems and play mod on summon
+add restock buy store for robux
+autodetection of prompt for potato mode?
+make more fully custom backpack display and track order
+change starteroffer updateAndGetStarterOfferData to split into update and get
+add 2d particle effect for equipping ability, completing trade
+* move AND turn dragon at same time moves too far
+in prod, big merge making lots of level 1 dragons they're on top of each other (level 2 sometimes too) (only when 2400+ islands?!?)
+fix crop begin getting eaten when already in that state--don't let it be possible
+teleporting from dragon riding doesn't always work
+get gems when flames added
+add sounds to first session offer
+better solution for player logging on with 21240 red gems, 56598 green gems, 22364 blue gems
+look into harvest times being off by up to 20ish seconds (seems to be 20-25s low right after eating)
+hook up ftue specially in analytics, and send to roblox funnel too
+add serialized saving per player, and save after purchases and trades
+add event on client when options loaded
+make own version of backpack
+add validation for control files
+add customer tool to show their trades
+add item function to return singular value, roughly
+add function to calculate value of a player's stuff
+move tween library in shared to a LibsShared directory
+vanity main tabs fade in? not straightforward
+* locked gnome only added post-ftue (not critical)
+* tutorial arrow when holding first blueprint
+unlock inner plot, move highlight when new thing shows up
+fewer physical gems on load, or dialog? welcomeback dialog
+remove packs from store?
+plugin loot table roller
+
+
+perf doc:
+https://devforum.roblox.com/t/real-world-building-and-scripting-optimization-for-roblox/3127146
+
+done:
+when stepping on an ItemPlate, create a tool with the mesh as a child (either add Handle or call it Handle?)
+when stepping on an ItemPlate, set tool's parent to player
+when stepping on an ItemPlate, set tool's GripPos (configurable by item maybe?)
+add proximity prompt to itemplates
+handle Tool Activated event to put it on the ground
+when stepping on an ItemPlate, make tool droppable
+add some buttons to get a dragon or egg held by the player
+when holding an item and walking near one on the ground, make the ground one glow/etc
+only highlight matching object types on the ground when walking near it
+make items on the ground able to be picked up
+split up ItemCreator to make other files for non-item-creator stuff
+remove manually created item plates; generate from data
+get flycheck (syntax checking) working in emacs (eglot mode needed to run)
+move plate creation into ItemCreator
+add labels to top of admin tools
+move item creation into manager
+add plant creation admin tools
+keep items pointed up at all times
+when holding an item and getting very close to one on the ground, make them merge somehow
+create leveled-up item when merge happens
+add a better admin item creator model (sign)
+create the concept of a player's plot that is created/configured on startup and some items put in it
+clear out plot1 area
+put a few seeds in plot on startup
+add concept of object scaling by default
+get combining/etc. to work on server
+fix egg dropping/picking up tool problems
+add basic coin model
+when some dragons spawned, create coins around them
+add invisible block to prop up a coin
+fix bug that eggs of different sizes can be merged right now
+add coin ui
+add store
+send down player data on startup
+add server tracking of per-player data, including coin count
+add concept of money
+hook up store purchasing
+add some dragons having hunger
+add some dragons feeding
+add plants having food amounts and going away when zero
+add crops changing visuals based on amount of food
+fix duplicate billboard creation
+fix eating as food is picked up / dropped
+fix plants regrowing when being held
+fix newts not being able to be picked up
+fix player spinning when picking up a previously dropped item (make massless when picked up)
+add some dragons moving to food
+make Dragon, Crop both derive from same Item class
+move billboard into item class
+centralize attribute names
+remove ObjectReference, using ItemIds instead
+get idle dragons using itemManager
+get idle crops using itemManager
+vget dragons eating a food using itemManager
+find available food using itemManager
+move "get xxx eating this" into ItemManager
+move state change code into dragon, crop classes
+move some logic into GameController--for trying to find food to start?
+fix when dragon placed, always goes to try to eat
+add item tracking and lookup by id
+move crop attributes into properties on the object
+move dragon attributes into properties on the object
+remove tags in itemManager
+mark start point in plot in roblox studio
+make moving a dragon event driven
+fix dragon getting in moving_to_eat state when it failed to find a path
+when pick up an eating dragon, everything needs to stop getting eaten
+when going to idle state, dragon should pick a random spot and go to it
+face dragons in direction they're moving
+add combining dragons making gems
+add selling gems for coins
+handle dragons falling to their death, roughly
+rename combinableItemData to ItemData
+unify definition of tags across client/server (TAG_COMBINABLE)
+dragons should emit gems as they eat
+add reset-plot dev tool
+add dev tools for coin management
+centralize saving/loading player state
+add admin tool to erase save data
+include json.lua
+while saving, build up map of old itemids to saved itemid so they can reference each other
+load items in item manager
+save out obj properties we need to save, and then load them
+fix reset plot dev tool--it doesn't clear items from backpack properly
+add dev tool to save data NOW
+add dev tool to stop saving data at exit
+save backpack in playerdata
+save plot state in playerdata
+abstract out combinableitemmanager to be plugin for item manager
+abstract out Obj creation to be reusable from loading
+merge all item tables in itemManager
+after loading items, dragons and plants need some state checks (wyrmling not doing anything)
+add client animation / excitement around getting coins
+hook up stores
+add server-sent-message UI
+support merge 3
+clean up checks for merge 3, add feedback of errors
+animate moving of circle so it doesn't teleport
+rename lowercase client files properly
+support merge 5
+set character to proper location on startup sooner
+vacuum up gems
+add roblox iris library to show some client state
+make gems not able to be picked up
+make picking up items a mixin
+add tool to make a pile of gems
+put createTool stuff into item class itself
+rename createTool to something more helpful
+create a dev tool to test combo merges
+always put circle/glow on the ground
+make combo merges possible (trigger new merge after previous merge completes)
+integrate new sell ui
+fix actually buying items
+add server validation of buying items
+make ridable dragons
+make dragons face towards where they are moving
+fix dragon loading model not being visible
+fix things being put partially embedded into the ground - was Anchored not being set properly
+make a segmented dragon that can move-- BallSocket constraints look useful
+more proper state machine for dragons
+make crops go idle when eating of it stops
+when riding a dragon, make the player control it
+don't let player equip when riding--or at least fix the tilt changing
+anchor plants when they're put down
+server send client a message when plant is harvestable
+client add arrow on top of harvestable plant
+client send message to server when client says feed on a plant
+server choose a dragon to go eat when requested
+remove arrow when picking up a crop
+arrow should be added immediately on filling up crop
+change Item.new(), spawnGems, reduceHunger etc. to use UserId, not player
+handle sending messages to client when client may not have the object yet--pass item ids and have client look them up or wait (can use CollectionService:GetInstanceAddedSignal())
+rename eventhandlers to clientEventHandlers
+change feeding to be summoning dragon from a plant on the plot that becomes fully fruited
+remove crop and dragon getState()
+when dragon is dismounted, set to move to idle
+think through and improve when dragons are anchored or not (always anchored)
+add 2d ui teleports for buy, sell, plot
+dragons need to be non-anchored when first put in player's hand because it teleports the player incorrectly
+when dragon's target crop moves out of workspace, set to move to idle
+change selling code to work with number items
+change most server -> client messages to pass item ids
+fix crops not going all the way to the ground when placed
+when dragon finishes moving to eat (or starts eating?) confirm that the crop is right there to eat
+move all dev tools to iris
+fix big dragon not floating
+make dragon head lead movement on riding
+add randomness-based inventory of items in store
+add store restocking every 5 minutes
+add updating client when store restocks
+add rarity enums
+add affinity enums
+fix hitting 'plot' needs to undo any seat/riding
+add buy store restock countdown display
+add server enforcement of inventory limits
+tell client new inventory after purchase
+add a couple more fire plants to store
+add restock text message
+fix after loading sometimes a merge 2 can happen, and then 'cannot find item to destroy'
+rename ClientItemManager to ClientMergeManager
+fix most of a big dragon zooming in to attach to the head after load
+rename buystore, sellstore to client...
+fix when placing arrow, it doesn't always stick with the plant
+when store or other 2D UI is up, hide teleporters
+don't allow multiple dialogs up at the same time (force close previous)
+fix when reset all items, green dragon eggs don't show mutation / modifications / state (was missing update call)
+create dev tool to set mutations
+add mutation enums, existence to crops and dragons
+add modification enums, existence to crops and dragons
+create dev tool to toggle modifications
+number items--don't show (1)
+fix bug where number items sometimes don't stack
+create concept of weather and have it apply some modifications
+fix dragons disappearing on load sometimes
+fix on load many existing objects are placed incorrectly compared to where they were saved (offset?) sometimes
+add new dragon idling motion
+preserve mutations / modifications in merges
+use Satchel library (via wally https://satchel.luau.page/1.x/installation/ ) and Topbar Plus
+move system message code into its own handler with state management etc.
+abstract out dragon motion to a separate class
+implement simple direct flight
+create a moveitem using dubins path algorithm
+fix moveitem using dubins path algorithm
+move dragon up/down while flying to idle
+fix gems not getting picked up (sometimes)
+turn off default backpack gui
+make dragons fly, not crawl
+idled dragons move lower when player walks under them (use Model:GetBoundingBox())
+make dragons not lower when you fly OVER them
+make gem debugging logspam and make dev tool to turn it on/off
+change upandoveritemmover and dragon to level head at the end
+save/load cframes, not just position
+allow item to override saving cframe
+fix dragon level 3 getPart() nil in console
+when dragon is idle nudge it to be parallel to ground even if player is close
+change dragon idling to not point up/down at the player, just left/right
+remove core gui backpack changes while riding dragon
+fix gem vacuuming not working (sometimes)
+fix idle dragons not aiming towards player (sometimes)
+fix picking up items not working (sometimes)
+does game not really know where player is sometimes? after stopping riding, client and server have different view of player
+maybe disable/enable satchel while riding dragon
+add land for other 5 plots
+add dev tool to fake create another player on a plot
+add dev tool to teleport to each plot
+fix error trying to pick up someone else's stuff
+pickupMixin needs to actually just set attributes and the client needs to implement picking up (and server verify)
+show playername or userid in billboards
+rename riding/ride mixin/controller to match
+rename clientmergemanager to something
+stack items in inventory (for stackable ones... gems I guess at this point)
+fix dragon pathing often not working (maybe y axis problems?)
+don't let player put stuff down on other people's plots
+make things on ground NOT in your plot not combinable (or maybe can't drop stuff when not in your plot?)
+add dev tool to disable billboards
+"ride nearest dragon" dev tool needs to filter by player
+remove coin remoteevent
+remove coin handler manager on server
+add XP tracking
+show player name
+rename ridemixin to match client better (or ridingcontroller maybe)
+make a client screengui singleton to handle coins, etc. and move clientsystemmessages into it
+add XP display
+add level display
+have dragons lower themselves "better" when idle
+fix what's wrong with dragon level 1--holding a model doesn't really work
+when ending riding a dragon, if in your plot, leave them there
+fix merging dragon eggs causing "item in backpack cannot be found in itemManager nil"
+client dev data show pickupable count
+don't allow dragon in inventory to try to eat
+pick better idle locations for dragon
+add merging from flying dragons
+allow dragon 5 merges to work
+fix server calculation of riding dragon position not the same as client (vector magnitude vs xz magnitude)
+hook up gem level display
+add tool to gain a bunch of XP
+fix no merging of dragon level 1 (due to part/model nonsense for holding in a tool)
+add dragons level 9 and 10
+fix dragons moving somewhere super far away at times (often y of -math.huge) (math error was taking arc-cosine of 1.000000111 getting nan)
+filter mergeable items by player id on client
+handle player falling far
+fix name sign not working
+convert data about what is sellable to playerui data
+add player devtool security chokepoint
+convert dev tool data to playerui data
+move itemDataStore to server-only
+split out model loading from other data on server
+experiment with sending per-client data to playergui
+dragon animate something when they start going to eat (server-side)
+if dragon very close to end position, shouldn't move so high vertically when doing up-and-over to eat
+improve plot element initialization/copying for plot 1
+duplicate terrain at server startup, not per-player join
+fix merging up to level 2 dragon
+rename endCframe to endCFrame everywhere
+move affinitydisplay to server side
+add devtool to turn on/off weather
+integrate some real weather effects
+add dragon idle-circle option
+fix throwing a gem causing an error
+add transparency fade in/out option for some weather stuff?
+test out rain plugin (using code instead in our repo)
+make tap/click to pickup, not proximity prompt
+remove old "fully grown" message
+show arrow properly when proximity prompt is active
+change summoning to eat to be proximity prompt interaction
+fix name in dragon summoning prompt
+fix arrow being clickable when it should not be
+load/save item orientations, not just position (probably save whole cframe)
+disable prompt/hide arrow when dragon has been summoned
+fix dragons getting stuck when picking up a crop it is eating
+enable eating/harvesting while riding
+when dragon is moving to eat and changes state (riding?), tell client... something
+fix throwing away gems
+fix not being able to pick up level 1 dragon sometimes (seems to be after creation)
+arrow shouldn't show up when dragon is eating
+remove background of proximity prompts
+reduce throwing momentum
+make gems move faster and accelerate faster
+massively increase vacuum effect while riding
+on harvest, dragon should stop just before it gets to plant, rotate left/right around forward facing axis
+figure out display of crop names somewhere
+add particle effect on plant getting eaten
+add impact particle when gem vacuumed up
+add particle effect to merging
+fix no backpack UI in topbar (it fixed itself... hmm)
+fix dragons going somewhere stupid when you stop flying them far from your plot
+fix saving when server exits sometimes saving empty data
+make a make-a-merge dev tool
+make particle ender that sets Enabled false, waits, THEN destroys it
+holding a model needs to weld everything to the primary part, and unweld properly
+re-hookup coins
+show some outlines/text colors based on item rarity color
+buy store show item rarity in rarity color
+make buying items work again
+improve ui in sell store
+fix riding a dragon to very low z teleporting back with just seat
+client shouldn't highlight/outline an item for pickup if holding something
+fix plant names not disappearing when you pick them up
+remove dragon glowing, emitter parts
+set dragon heights
+fix plants sometimes not getting to full growth
+figure out display of dragon names somewhere
+placing a dragon (or stop riding) needs to pick a Y and move to it
+when walk in merge circle, make proximity prompt
+calculate circle for merging better when player in the circle (using centroid)
+hook up weather icons
+hook up riding dragon stats
+test out and fix merging while riding
+sell dialog make it sell, sell all (remove word "for")
+in sell store when no gems left, close the dialog
+blur effect when 2d dialog up https://devforum.roblox.com/t/ui-blurred-background/1088080
+calculate something to do merge 5s or something
+when pick up item, it belongs in hand
+add ability for dragon to do idle circle in either direction
+integrate new red plants
+integrate new rest of plants
+show how many will be merged
+when start riding, unequip item if equipped
+on save, take any riding dragons and calculate their idle spot to save
+fix merges leaving some nameplates on the screen
+on load, set Y of every dragon to be reasonable
+on load check for horrible coordinates of dragons and replace them
+improve location of dragons when they feed--should be near the plant and not in the plant
+add modification effect to plants
+idle pickup-able dragons shouldn't do a circle if player holding same level dragon (or maybe any pickup ones)
+make sure no effects ever double-destroyed
+when you unequip item, hide name label
+add border highlight to npc when interactable
+try to make wings flap
+control minimum turning radius per dragon
+add wings flapping to other states
+control wing flapping speed per dragon
+don't show nameplate of dragon you are riding
+fix welds on purple plants disappearing when holding it
+move playerData to be replicated using PlayerGui
+eggs and plants--move away from each other and move until on ground, then lock
+evaluate each heartbeat user if it should be PreSimulation or PostSimulation instead, https://devforum.roblox.com/t/renderstepped-stepped-or-heartbeat/647269/6
+make better item system with one item type per file
+move gems into new item system
+cleanup new item system
+improve flying UX--pointing down too much
+use object's Hold child as its grip position
+improve billboard Y calculation
+on load, do sanity check of item positions
+change item data store to use a table lookup by item name
+make some of the dragon idle constants per-dragon-type
+don't let items in the workspace adjust on load
+adjust camera after any teleport
+low level dragon flapping amplitude doesn't look right (seems lower than numbers)
+move dragon, crop part/model validation into datastore/itemtype
+dragon playerNearAdjustmentY make the * 5 configurable
+dragon moving down when idle & player near add half of dragon head height
+when hit merge, set trigger item go to 100% during duration of the other items flying in
+particle effect (sucking effect)should be centered on trigger item
+make it impossible to pick up an item in middle of merging
+post-merge flash and shooting out maybe last longer? (similar to harvest while flying)
+only ridable dragons should lower when you get close
+post-merge particles should be on the item, not player
+fix held egg moving to wrong spot for merge
+mergeable dragons should all highlight, not just the head
+fix can't fly dragons up/down
+add anti-grav to every dragon part all the time
+dragons should not circle to location on load
+placed dragons level 1-3 need to move to proper height
+disable antigravity when not in workspace
+dragons should go back to previous location after being summoned to eat
+fix plants not getting anchored on load
+on merge of item into hand, flash it white and fade within about 1s
+add solid center to merge circle
+make dragon-summoning type of eating pretty fast
+make eating take about 3s, burst each second
+update eating system to fully eat a plant when feeding from ground
+update eating system to not pull a dragon away when currently eating
+put in new regen times for plants
+update xp, gems on merge for dragons
+update xp, gems on merge for crops
+put new restock data in the store
+fade out highlight circle on merge (and fade in on showing up)
+add store affinity unlocks
+add minElementLevel for all crops in the buy store
+implement proper max xp per level
+display needed xp for next level in client
+add gems with 10 or 100 power
+make picking up a larger gem become small gem in inventory
+fix gems on harvesting should actually be affinity of the dragon
+remove denominationBaseItemName entirely
+incorporate new larger gems
+support larger vacuum absorbtion distance based on size of gem
+buy store requirements should update when player's level changes (client wasn't receiving updates to level or xp)
+add initial state to configurable data
+add full player state reset
+fix buying fast got player to -25 coins (including on server!)
+fix crops auto-regrowing to full on load
+add display of how much time till plant is done growing
+fix all seeds being harvestable--they should not be
+fix merging an item while it's being eaten -- dragon gets stuck eating
+add some safety mechanism for gems getting stuck underground
+fix gems pushing player around--always absorb them
+add display of xp grant
+when doing multi-merge, put additional items in workspace
+add approaching animation to buy npc
+add animations to sell npc
+order stuff better in sell store
+order stuff better in buy store
+fix when holding an item, player should stop moving--sometimes you rotate--player idle animation seems to trigger this
+fix putting item in hand causes a big pause -- it was constraints
+fix taking out an item after riding dragon does crazy stuff
+add concept of a primaryElement being locked/unlocked
+hide affinity crystals of locked elements
+fix xp animation
+when xp grant given, add invisible part for parent so it can't move around
+plant modification put on each fruit instead of the plant
+change gem store to use standard color function
+add some dragon stamina/endurance
+improve item placement on ground--not settling near edges
+improve item placement on ground--not spread out well
+fix items embedded in ground after falling off edge
+put in priority of dragon to harvest from ground
+look into where gems spawn from when harvest while riding
+add client display of dragon fatigue
+tell player when dragon kicks them off
+handle this better https://devforum.roblox.com/t/the-correct-way-to-do-characteradded-and-playeradded/3343708
+when PlayerAttribute changes, inside PlayerAttributeManager send change to client
+rename PlayerDataKeys to PlayerAttributeKeys
+move dragon sweat into ParticleEffects properly
+add dev tool to delete item being held
+add dev tool to delete item player is riding
+abstract out validation code and use in dev tools
+implement capacity system
+add display of overall capacity
+make per-player live data manager
+sort items in dev tool creator
+hook up buy and sell store sounds
+hook up merge sounds
+hook up dragon sounds
+hook up teleport sound
+hook up harvesting sounds
+hook up pickup sounds
+add configuration for adjustments to audio for eating by various dragon levels
+fix gem collectiong moving player vertically (was audio parent objects cancollide)
+update harvest gem creation calculation to gdd
+put in new table of items from Dan
+if move far away from buy or sell store, auto-close it
+display modifications on crops
+show crop modifications in inventory
+backpack make crops stackable--first should use its harvest time, rest should go out zero
+on teleport do a camera animation or something like plants vs brainrots (maybe it's player slightly above/below ground?)
+when hiding/showing 2d ui, do it with an animation
+backpack make dragons stackable
+improve item spacing
+fix merging an item and addXpDisplay getting nil passed in
+fix bug with merging stacked items, they all go away
+don't try to move item on ground when it's merging
+pop message you don't have enough money to buy when it happens
+make duplicate sounds when buying stuff fast (or selling maybe)
+add sound when player fails to start a harvest
+handle cage of items causing newly placed item to continuously move
+fix merging when holding > 1 of an item leaving the rest of the stack in the hand
+add item indicator when near on ground
+fix eggs not being anchored on ground
+if harvesting from ground and player is holding a dragon, use that one
+when plant starts merging, remove its arrow
+hook up options dialog
+test when you pickup a number item you already have, it gets equipped
+test when you place an item and it's split off, rest get unequipped
+hide satchel when overlay is up
+add way to pop up options dialog
+test only allowing closest item to be picked up
+undo when you place an item and it's split off, rest get unequipped
+undo hide satchel when overlay is up
+show pickup indicator when within pickup distance
+show MergeBillboard on merges > 5
+add concept of board spacing per item
+when huge item dropped in recovery spot, make sure it's high enough (plant 10 is not)
+fix huge plant not being harvestable
+fix gems can be created inside of larger crops
+adjust dragon position when eating larger plants to not ever be too low
+add big banner when player levels up
+hook up options
+add mutation to visible name of dragons
+display mutations on dragons
+add logic to create mutated dragons
+fix if placing a pickupable dragon aimed poorly, it doesn't level out (ServerKeepHeadFlat not working?!?) -- problem was when too close to ground it wasn't trying to level it
+clamp math.acos in some calculations
+fix pickup hand / calculation sometimes being rejected by the server
+add dev tool save slots
+add dev tool to force all plants fully grown
+when get same system message in a row, change existing one to have " (x2)" suffix
+consider clamping math.acos input in dubins -- not needed, already range checked
+fix model (dragon level 1) can get into the workspace without its body parts (level 3 too)--this might be the main dragon problem--fixed with atomic streaming
+try putting pre-merge particle on client, while charging to merge
+test out disabling collisions for dragons
+move dragon antigravity constraints to DragonItemType.processObj
+fix moving forward while placing dragon on ground (split off from a stack) their wings keep going -- really cloning is messed up
+gems need CanCollide = true when parent changes
+figure out/fix dragon wings moving off a dragon
+fix items sometimes stop in mid-air (crops)--got this to happen with initial map. Is it the circle being on ground? no, it was a client/server anchor physics bug
+fix arrow3d not being above entire model
+fix harvest proximityprompt with model plants
+fix dragons going too low on the big plants
+look at outline or something around custom proximityprompt to make them more readable
+big dragon merges should spread out the extra ones a bit
+reduce impulse given to extra crop items on merge
+fix holding big tree getting item id nil
+separate options (settings) from player attributes
+hook up more options
+try make items massless BEFORE you try to pick them up--actually needed CanCollide=false on whole model properly
+improve dragon eating point calculation--go to a fruit maybe?
+add highlight to held item if merge circle is up
+fix gems not being CanCollide=true on creation
+test out draw a highlight / blend towards white while holding button to merge
+client-side pre-eating merge animations etc.
+fix eating particles now that plants are models and clean them up using utils func
+server-side block picking up while dragonback
+server-side block merging while dragonback
+client-side block picking up while dragonback
+fix merging crop while on dragonback items disappear -- don't allow picking up from dragon
+merge highlights both on client and server are only getting the primary part when player is holding the item--should get whole tree
+fix newly merged item not getting highlight if equivalent already in inventory
+hide nameplates of merging-activating items
+making riding dragons up/down better
+fix splitting a stack makes items without a nameplate or with outdated name
+fix throwing/pushing level 10 tree off the side and getting model has no primary part (also some lower levels)
+fix impulses given to settling objects not on ground
+create concept of crystals
+fix missing obj updates of muts and mods when cloned
+put 3 crystals on islets in startup data
+make crystals pickupable
+make dev tool to make crystals
+ensure crystals can merge
+make crystals have a nameplate
+add concept of opening a crystal
+add message from client to open a crystal
+add dragon state to move to open a crystal
+add dragon state to open a crystal
+when opening crystal, move dragon to better place
+when opening crystal, turn on/off dragon breathing effect
+stop dragon opening a crystal if crystal is picked up
+pass item id map from loading/saving
+when opening crystal while loading game, setup dragon properly
+when opening crystal while loading game, setup crystal properly
+add exclamation point to claimable crystals
+add crystal breaking effect when claiming a crystal
+add concept of loot table
+add ability to claim a crystal and get item from loot table
+allow dev tools to get multiple arguments
+add levels to crystals
+disallow unlocked crystals from being picked up or merged
+add time-remaining billboard, use for crystal being opened
+remove legacy save keys
+make seats only work for the proper player--see brooke's answer here: https://devforum.roblox.com/t/certain-user-only-seat/245033/8
+make a custom seat
+fix if player buys a ridable dragon it needs to go straight to the plot
+fix teleporting/falling when equipping a plant (level 5+?) after riding a dragon (happened once with a devtool-created egg)
+make exclamation point on top of crystals stay in place
+add faster crystal opening for higher-level dragons
+anchor crystals while being opened
+when dragon stops opening a crystal, crystal needs to go back to idle
+fix logging in to game with crystal being opened, it could be picked up
+tilt head slightly up and down while opening crystal
+fix aborting a crystal open leaves it marked unopenable by client until app restart
+refactor item data store into handling non-items too
+fix names in nameplates including modifications that shouldn't be there
+when dragon is in opening state, have it higher angle to get it out of the way of the board more
+game controller support when riding
+some buy/sell support for dpad
+support pickup/dropping of items with gamepad y
+hook up open now in countdownbillboard
+add node class to handle some state; initialize it on player join, maybe referenced from PlayerData
+add crystal node mining capability
+add system-wide node replenish
+add dev tool to node replenish now
+add saving/loading player node state
+add ability to place island in the world
+add system nodes on islands
+add dev tool to teleport to nearest player node
+add dev tool to teleport to nearest social node
+fix ride nearest dragon dev tool
+add ability for player to harvest a system node
+make object ids unique in a server
+add social islands and nodes
+add data structure for plot locations of each level of social island -- min/max x, y, and z!
+add loot table for islands to make
+add dev tool to refill all social nodes
+add dev tool to randomize social nodes
+don't create islands when too close to each other
+fix crystals not stacking
+place nodes on ground, not embedded in them
+add a haptic thing on merging items
+fix picking up 2 eggs, first one put down has invalid enum nil
+handle roblox menu respawn character - mostly via disabling and also manually loading character
+handle player dying--character restart stuff isn't right
+maybe don't auto-load characters, and wait for server to be all initialized--this is doable in serverscriptservice scripts apparently
+add ability to mine node from dragonback
+modify dpad input to follow https://create.roblox.com/docs/input a bit better--using wrong button to pickup/drop at least
+ensure dragon is at intended angle when opening crystal--may not be right when close
+update merging, placing area to just be the main plot, no islands etc
+add loot table per level for the node to make on it
+move count into the result part of loot tables
+make one folder with all loot tables, make them reference-able
+sell store wasd going into 2d controller ui
+prevent harvesting prompt when holding an item
+prevent riding prompt when holding an item
+connect attachment for spawning nodes
+restructure clientbuy dialog to not recreate every time
+make deterministic island tool
+redo player start points as attachments
+dragon stamina changes - pauses over main rectangle, tracked by server
+get dragon stamina data down to client
+add display of dragon stamina
+hide claim crystal prompt when holding an item
+make claimable prompt, exclamation point parented to something other than the crystal since it's moving
+put the crack animation always
+add crystalbreak particle effect on open
+claimable nodes need to be anchored
+make exclamation point move up and down
+look into loot table multi-item bug
+disable 'open' button on crystals while player holding an item
+add remaining island types
+add end-cap islands
+safely call core config in client
+look into crystals falling into islands - fixed by using attachment point, not raycast
+make crystals anchored when on ground
+make infinite-fly dev tool
+update affinity crystal ui
+claiming crystals--reduce distance of jumping maybe as much as a quarter
+rotate islands random 90
+test out crystal claiming particles--call Emit on it?
+disable player nodes and their creation
+dragon idle--pivot to player--remove
+claiming crystals--put items on ground same as post-merge
+claiming crystals--not-white to white while holding, jumping around the whole time.
+create virtual dpad on mobile when riding
+properly launch items from crystal same as post-merge
+mining node should put items right in inventory, not on ground (after animation)
+mining from ground should summon a dragon
+polish up dev up text around social islands/nodes
+prevent a player who summoned a dragon to mine from summoning another
+add ability to mine crystal node from dragonback
+enforce mergeability on server
+make different rarities merge together
+enforce/check max distance for mining nodes
+rename all ItemType classes to ObjectType
+look into BurstRing and if it really plays or not
+add support for "pack" items
+make sell mixin
+make primaryElement optional on packs in the store
+add ability to buy packs
+add white glow/power going up when opening a pack
+fix newly merged crystal not getting anchored in workspace
+dragon stamina UX--highlight of blinking red
+show dragon riding stamina in client stats
+implement combos
+unlock affinity when you claim a crystal
+handle simultaneous x and y changes while dragonback better--worst problem was listening to touches on right side of screen
+properly implement penalty in crystal opening time for dragon affinity not matching
+add bonuses for combos
+polish dragon stamina blinking
+implement mutation merging logic
+implement mutation name/color somewhere
+implement mutmod text for riding dragons
+implement mutation UI on dragons
+launch player when dragon out of stamina?
+make rainbow, celestial actually change colors
+fix selling gems as a mixin
+fix rejecting rides too far away -- needed to measure distance from seat on server
+open/claim crystal--lots more animations here
+fix merging while riding leaving stamina problem afterwards
+fix merging button not working on first press on touch devices
+implement mutation bonus on merging
+implement mutation bonus on harvesting
+fix camera doesn't always get placed right after teleporting on mobile
+implement colors for particle effects
+mined crystal nodes should make the crystals not climbable
+don't check player distance when dragon shows up to mine node
+add message to client saying dragon is coming to mine node
+add audio to harvesting nodes
+add audio to breaking crystals
+implement new mutation system in dragon models--SurfaceMapper
+implement mutation effect in merge -- any time there's a mutation output
+move merge proximityprompt lower to ground
+fix merging of crystals errors out
+make the "rainbow" text actually rainbow (celestial too)
+add dev tool to make eating super fast
+fix crystals either don't settle or aren't openable upon first placement, usually (was checking angular velocity)
+mutations don't use green dragon texture for anything except green dragon
+make crystal claim faster, 1s not 2s or whatever
+node break when crystals get to player, play crystalhits particles
+set the fireball to element color too
+fix dragon moving to mine going too low Y (also moving to open crystal and eating!)
+node mining particle while holding down to prep to mine
+fix blue level 1 dragon eating level 7 blue plant making green gems - blue gems grouped 10x incorrectly
+node mining crystals--away from breaking point, then towards player
+node mining crystal break on the node - ring flash shatter piece
+make dragons not adjust height all the time when riding
+adjust dragon riding to boost you up on ride start, then no serious limits
+make dragons try to move above ground when riding
+fix nodes not becoming minable when refilled
+node mining mining from ground: dragon should aim at a visible spot, power up, shoot fireball
+add sound effects for crystal stuff
+change calculations for merge > 5
+node mining use trailer from gem - adam setting this up
+fix items can settle on ground outside of plot
+fix plant falling and teleporting losing its top
+check into plants mutations - fruits should glow and don't require SurfaceAppearance--also held items need to go through part, not obj
+integrate per-color fireballs
+add ability to store & use CanCollide from Studio when item in workspace
+fix don't allow try to move dragon when player anchored
+setup choke point for knowing when player moves into their plot
+add naming to save slots and make them shareable
+merge 4 with a mutation isn't setting the right one mutated
+add total levels as player leaderboard score
+when riding dragon, adjust minY dynamically
+when riding dragon, do raycast up to get ground-above height
+try flying away, see stores, teleport to them
+don't let players harvest from underground
+use viewportframes for items in sell dialog
+figure out how to get 3d models drawn on top of 2d gui - viewportframes
+animate the 3d items for sale in the buy store
+implement mutation UI on crops
+add crystal-going-white/cracks particles to mining
+reset unlocked primaryElements when resetting player in dev tool
+add support for selling junk
+add ability for junk buy to not buy something
+add buy store rotation of item when not level locked
+add buy store per-item configuration of model size in store
+add buy store per-item configuration of where camera is
+add coin sound to junk sale
+make crystal opening billboard based on player distance, not camera
+PackOpen effect when opened (like merge post)
+fix layout issues in buy store--off-by-one on right side and also above list view
+setup central analytics piece on the server
+support game controller fully in buying/selling dialogs dpad up not working, though analog joystick is
+support game controller hotkeys - kind of works now but not great
+fix dpad up issue from topbar --  / GamepadService
+setup some economy analytics
+implement chest opening animation (packs in general)
+when dragon un-riding, if not over plot, stay there until player goes back to plot
+fix pack lid opening not moving up enough
+anchor egg packs at rest
+restructure how parts fly out from spawnItemsAtPosition to actually look and feel good
+hook up riding dragon 2d display of mutations--maybe carried item too?
+add highlight to items coming out of a pack
+move open-now billboard higher when crystal is big
+track merges, other stuff in some global stats (AnalyticsService?)
+add 'R' to un-hold item
+change dragon 2d data display to cover item-in-hand too
+integrate per-color eating particle
+need sounds to open packs
+riding dragons shouldn't be a separate state, but just a situation
+if stop eating while riding, dragon should keep eating
+make mining from dragonback have no hold time
+when riding and eating, turn towards the plant
+figure out and fix up proximity prompt timing while dragonback
+fix some dragons not getting noticed on client
+don't let player start eating from a new plant while eating from old plant
+update modifier calculations for xp, gems, and logic
+look at seed packs being backwards in the store -- put item in ViewportFrame using Rotation from the template
+when merge a flying dragon, use that spawn location as its idle spot
+move message to open pack to the 0.8s mark (animation-wise)
+check if box/lid packs should have a weld instead of hinge (yes)
+add concept of server controlling dragon when riding
+change riding to jump-to-ride
+when dragon runs out of stamina off-plot, it should fly home
+when merge a flying dragon, add +y impulse to player
+fix packs (small only maybe?) losing weld sometimes
+if too close to a node when riding to mine, have dragon move-to-mine
+change jump-to-ride to try-jump-to-ride
+update modifier merges
+dragon mining near plot flew home (moving to idle)--DON"T do that--it's ok if they have no stamina
+jump-to-ride billboard
+improve display of modifications in the 2d bottom-right area
+improve display of number items in the 2d bottom-right area
+update eating durations to vary by level diff
+change dragon eating data to be a multiplier
+fix client crop tracking not working with streaming out
+add outline to 2d display of current item
+add capacity entry to items
+animate dragon wings purely on client
+fix jumping off on an island, summon dragon to mine node, jump on its back, you get stuck
+don't lower dragon/count as near if it's not MY dragon
+make dragon near check for pulse lowering the same as jump to ride being enabled
+add client listening for shadow objects
+add client creating a specific model on top of shadow objects
+add pulsing to shadow dragons
+add flapping wings to shadow dragons
+tell server when begin/end riding a dragon
+add ability to ride to shadow dragons
+add outside mode support to shadow dragons
+add opening crystal support to shadow dragons
+add support to mine nodes while riding
+add summon-to-mine node support to shadow dragons
+fix destroying shadow dragon you're riding on causing lots of errors
+when teleporting away from riding dragon, handle shadows
+add support for pickupable shadow dragons--client needs to fake this too
+take grip fram dragons and put on shadow on server
+make DragonEgg class
+support picking up of shadow items (optionally)
+fix low-level shadow dragons just going to ground
+don't do the auto-lowering of non-ridable dragons
+make the ObjectType obj functions (processObj etc.) not take an obj argument--they can get it from their rawdata, process all instance stuff
+test merging of shadow dragon, will upgrade go in hand?
+rename validateObj to validateTemplate (or Instances)
+add nameplates to dragon eggs
+fix merging of shadow dragons (they need to move)
+dragon idling up/down purely on client
+move all other dragons to ShadowDragon
+fix can't eat while riding
+make merging of riding dragons work again
+fix after a riding-dragon-merge, rides getting rejected by server
+fix most of your own dragon moving down when merging-while-riding
+fix no highlights on other two dragons when merging-while-riding
+fix wings not existing on merging dragons
+add nameplates to shadow dragons
+fix dragon spinning when riding and it's opening a crystal
+crystal error message "there are no dragons available to open this" should specify min dragon level
+fix unable to summon dragon to mine
+fix shadow dragons saved opening aren't going back to opening on load
+minor cleanup some references to dragons in generic shadow code
+add antigravity to dragon parts
+fix dragon jumpiness when riding and server in control (even when player not welded) (dragon wasn't anchored)
+anchor shadow dragon or whatever when it's opening and client starts riding (weld head to ride part) (nope that wasn't the problem)
+setup second machine for network testing
+add sparkley and fireball to mining a node
+add audio to shoot fireball
+add charge-up to shoot fireball
+add client eat animation when shadow dragon is eating
+fix eating second time doesn't work
+fix dragon caster moving to idle is jumpy
+dragon head should be in proper place for eating
+find missing audio in shadow dragons and re-add
+fix player isn't moving with shadow dragon when server moves it
+add client dev tool to show shadows for other players or not
+add dragon riding sit animation
+fix client riding dragon puts dragon it slightly wrong place (locally only?)
+add real sitting animation to shadow dragons
+fix dragon riding sit animation
+once old dragons totally gone, remove DRAGON tag
+once old dragons totally gone, remove seat from riding system
+fix mutations on shadow dragons
+fix missing nameplates on held dragons placed down from stack
+rename merge to fuse
+add mutation support to shadow dragons
+fix client animation when kicked off of riding
+fix workspace getting highlight in merge when riding dragon
+update analytics
+disable dev tools
+get if player is in a group and their role, use that to control dev tools
+dragon idle--circles--remove
+try preloading animation - fixed problem with dragon riding going back to standing
+make harvesting from dragon work same as from ground
+update client dragon opening code, test multiplayer
+take another pass at analytics
+when sitting on dragon, do calculation of direction relative to seat location (noticeable when angled)
+merge 10 dragons from ground highlighting workspace (maybe shine) (crystals don't trigger it, or maybe just small merges don't)
+you can see gems (highlights) through ground
+eating sound doesn't go away
+when jumping on dragon opening crystal, other player seems them in wrong place
+mutation manager missing a primary part at times
+add client dev tool turn on off shadow display (default off)
+big merge, little dragons can end up off side of plot
+add ability to enable/disable shadow transparency
+fix dragons getting stuck eating sometimes
+revamp rideMixin, add distance check
+better fix for double-eating in client dragon manager
+node getting mined needs to be an attribute, not server triggered
+add support for other players' shadow dragons
+move eating particle effect to client
+move crystal claiming to client
+move pack opening animation to client
+track online time
+track number of sessions
+track total merges of... things?
+move dragon nameplates to... head? seat location if there is one?
+fix dragon riding, mining node that's out of range, dragon moves to mine, then then flies home
+add dev tool reset should reset stats
+add player stat tracking system
+implement "offline" crystal opening progress
+crystal-begin-opening audio should be on client
+add crystal effects to other people
+add pulsing to outside state
+store--common, rare, uncommon words should be in rarity color
+store--line around item should be in rarity color
+"requires elemental level blah" message should be in element color
+first merge into plant doesn't get billboard
+add safety to dragons opening on load
+don't make spawned post-merge blobs of dragons so spread out
+fix while riding, merging dragons is messed up
+add a config somewhere to turn on/off iris -- should come down from server in init
+add custom nameplatename
+redo mining nodes crystals flying towards player so that we don't need to anchor player
+crystals finishing opening offline often abandon dragon (timer on crystal went off before dragon could be told)
+rename NAME_PLATE_NAME to DISPLAY_NAME
+harvesting primaryElement node should unlock the affinity
+add dev tool support for eggs
+look into setting color of text based on rarity in backpack
+add mutation support to blue, red dragons
+implement "offline" harvesting logic
+implement "offline" harvesting ui
+track how much time went by offline for a player
+fix red gem in store is wrong, it's green (wrong asset id in data)
+holding a gem causes "cannot find model for part Handle" in ScreenGuiManager
+test if mutations are bugged (they were, dereferenced wrong)
+move fewer gems at a time
+fix "claim crystal" audio not going away after claiming
+do mutation cloud if ANY mutations
+fix green dragon level 1 with mutation not showing eyes
+add table of crystal timing opening
+add text billboard for mutation on merge
+when merge mutation happens, freeze items, don't let them go backt
+weak merge mutation text, show up later
+disable autojump
+check shadows on crystal anchor parts
+reduce heat sun power
+hack new entries in backpack to set RichText=true
+fix holding a plant and merging not highlighting whole plant (just primary part)
+silver plant moving from plot <-> hand loses mutation view
+click jump billboard should jump onto dragon
+disable haptics
+new options button
+fix blue, red unlocked in store even if not unlocked by player
+look into dragons exploding--removed AlignPosition, regularly bleed velocity from all the assemblies
+"bad data to merge with held item", items aren't close enough together to merge -- should merge what we can maybe?--or log when plant settled, send to client, look for discrepancies
+hack around client crop/anchor bug in roblox
+don't let people summon high-stamina dragons to mine (lose stamina outside safe zone)
+improve placement of return-to-backpack button
+increase junk price of early items (based on store price) so no one gets stuck
+add 'r' taking last item from your hand back into hand
+shadow dragon is not a shadow can happen on startup
+if riding a dragon and activating a crystal, should use the riding dragon if possible
+junk dealer shouldn't talk to you if you have < 10 items
+change plant fruits not to round up always, looks weird after being eaten
+change harvest to not require hold
+plants don't always get vertical--getting anchored too fast, check angular velocity
+mining node from ground should be zero holdduration
+fix junked account
+allow some picking up of same item when holding an item
+gems larger vacuum distance, don't collide with crops (or player hopefully)
+fix click on backpack while holding item places item, it shouldn't
+remove last seat part of old dragon riding system
+fix player being embedded in ground sometimes
+fix plant models not being atomic
+back to old system of picking up/placing items
+merging held dragon not highlighting properly (plants work, eggs work, flying dragons work)... only sometimes?!? (after a merge) (wasn't clearing highlight reference)
+fix crystals don't highlight white when mergin
+store--not level locked stuff should come first
+add version display somewhere--last commit hash from git?
+remove old Dragon class
+new "fire" type of harvesting nodes from air
+centralizing dragon powering up / shooting fireball code
+implement gems on HUD
+make gems not take up plot capacity
+fix plot capacity getting messed up on merge
+implement robux in buy store
+implement robux infrastructure
+fix gem display not clearing when unlocking
+hide gems 2d ui when in a dialog
+hook up robux purchases to gamebeast/etc. (sendnewpurchasegrantedmarker https://docs.gamebeast.gg/Roblox/API/Markers )
+store all purchase history as gamebeast docs show
+make click-on-dragon ride work
+fix saving when flying a dragon outside the plot
+fix moving to safe spot inside plot is too low--happens when saving while riding dragon out in the world
+add firing on someone else's crop
+slow down leveling of dragon while flying (and don't level while firing)
+make fireball move faster
+make fireball powering up faster
+make shooting a fireball take a gem
+fix if sun is out, player 2 starts on sun
+begin-fireball-charge needs to be triggered from server so others can see it too
+add latest audio sfx
+fix fireball not showing up when firing on a crop
+when riding a dragon and activating crystal, dragon should go to IDLE state, not MOVING_TO_IDLE
+flash node and crystal white very briefly after interact prompt is complete
+need sounds to continue during mutation
+don't send system message about adding modification if it was already there
+modularize code for target base
+add target base for fireballs
+try coloring fireball targeting by riding dragon
+add new modifications for social fireballs
+add particles when crop hit by fireball
+call emit on the flames of a fireball
+fix 6 rare blue egg pack
+add coloring of modification text
+close 2d dialogs on start for dev purposes
+add ability to pickup dragon while riding (maybe only over safe zone?)
+put away/take out level 4+ dragon from backpack
+fix trying to take dragon out on an island and the caster shows up even though item is in backpack
+need some sort of explosion when fireball hits
+large merge or something server errors
+mining large nodes is hard to get to the prompt--look into that
+add target-size control in game data for nodes
+fix target not going away when ending riding
+investigate not being able to ride dragons from islands (stamina was going down even not riding)
+show stamina in UI somewhere
+activating dragon should go into settling
+fix claimable crystals moving around in ugly ways
+change item placement algorithm
+fix pulling dragon from backpack is flickery
+fix dragons going to ground when placed on ground, instead of more like destination y
+make better pivottotween with independent tweeninfo per axis
+fix dragon running out of stamina and sitting in Outside mode--should go home
+move more animation / sounds with xxx to clients
+fix picking up an un-settled crop gives "consumable crop is a model with no primary part" and anchors you in place (disallow pickup while settling)
+dragon idle--add dragon head rotate back and forth around y axis a little
+when dragons placed in workspace they should not bounce (also not double settle)
+add jump animation when getting off dragon
+and falling animation? when?
+add display of size of client data structures
+crystal-done-opening audio should be on client
+cleanup ride targets when not riding
+claimable crystals should hover on other people's clients--move into ClientCrystal
+make high-level dragons stack
+fix level 4+ dragons don't use item spacing (do a bunch of special stuff)
+change board spacing to use 3d distances
+fix wings flapping too fast when jumping off/on dragon
+fix stamina: 0 stuck on screen when holding item
+add server-side list of abilities per element
+add server-side tracking of abilities per player
+add unlocking of abilities when you get to the proper level
+show pop up when click on unlocked ability
+add feature to equip abilities
+add feature to unequip abilities
+update ability display when equip/unequip
+show equipped abilities properly
+make class to trigger event when two parts are close (to use by both stores and new store)
+make gems go off screen to the left
+hook up locked levels for ability dialog
+fix when stamina is red then go back over plot, it stays red as it climbs
+use ProximityThresholdTracker in buy, sell stores
+change buy, sell stores to be client-side only, same as dragon master
+change junk store to be client-side only, same as dragon master
+change junk store to use proximitythreshold
+fix junk store not working at all (won't buy anything)
+make dragon master hover
+make squares circle dragon master
+make circle calculations much faster in ready-to-merge state
+move gems only on client (vacuum)
+add ability to put-back-in-backpack with keyboard (and maybe NOT put away outside safe zone)
+add dev tool to get gems
+move harvest prompts to mid-height on the plant, with no offset
+make new mutation textures
+change targeting of fireballs (prompt) to target
+close dialogs when click/tap outside https://devforum.roblox.com/t/closing-gui-when-pressing-outside-of-frame/1256642
+"option 2" - upgrading existing functionality ability replaces it if equipped
+implement ability: merge crop get seed
+implement ability harvest crop get seed
+implement ability harvest crop more gems
+implement ability longer offline harvesting
+implement ability faster crop regrowing
+implement ability crystal break speed
+implement ability get crystal back when opening
+implement ability faster dragon flying for first few seconds
+implement ability longer fireball range
+implement ability merge dragon get egg
+implement ability harvesting get egg
+implement ability harvest xp increase
+implement ability wider cone angle
+implement ability more crystal shards from nodes (what does this mean)
+implement cap on abilities equipped, make it per-player
+add extra equip slots at level 50 of each color
+update green abilities to dan's plans
+update blue abilities to dan's plans
+update red abilities to dan's plans
+add bronze mutation
+make locked abilities clickable to open dialog
+implement updated harvest seed/egg ability
+make player stop running when merging
+clientDragonManager rename instance member to shadow
+add tracking of fireball -> modifications applied
+fix adding green flame to a plant doesn't get added to each fruit when it grows
+implement abilities
+ability detail dialog locked state
+add ability to turn off sound effects
+add disabling sound effects--can disable audio things and listen for newly created ones
+add particle effect when harvesting crops with modifications
+fix getting stuck in falling animation--even after seeing "bottom of fall reached, enabling built in animations"
+reduce body craziness when ending riding
+reset all dev tool resets abilities
+add display of "uncommon" or "rare" _somewhere_
+add potato mode (flapping, pulsing disabling options for low-end devices)
+support new ability locked level icons
+support not-enough-money button in abilities
+fix bug with dragon trails being on
+fix getting to level 5 isn't unlocking ability
+check if crystals get Anchored and un-anchored properly (they weren't due to settling when spawned from a node)
+fix stage 2+ abilities always say "upgrade" even if it should say equip
+look for "mutation manager could not find part" when player merging plants (delay finding part till needed; even then it might not be there)
+update ability prices
+other players see me while riding dragon sometimes in wrong place/orientation (this still happens)
+add message from client -> server to update player relative position to the dragon
+fix one click on the store trying to buy MANY times
+fix gem count can get negative / off by one (multiple NumberLabelAnimators running at a time)
+connect purchasing items in buy store via robux
+change store async robux lookups to fix race condition
+add ability slots in dialog to be unlocked later
+add details popup of locked ability slots
+add details popup od empty ability slots
+add dev tool ability to load a person's save game by playername or userid
+replace "not enough coins" with "out of stock" when appropriate
+change walking sound while flying
+update sound effects
+add notifyabilityequipstatus
+make opening a crystal speedup be a buyable robux thing
+add dev tool for instant open crystals
+make unlocking ability slot robux purchaseable
+configure which 2d ui disappears in each pop up dialog
+fix falling off dragons -> should jump
+in ability detail dialog show when no free slots
+dragon master animation when new thing unlocked 118547860722887
+dragon master when new thing unlocked add exclamation point
+fix eating dragon can merge while riding? try to reproduce
+better hotbar
+add mutation sound effect
+try to save and load order of backpack -- but rearranging with satchel does NOT change order
+fix taking high-level dragon out of backpack goes angled up
+fix potato mode using current location of dragon, not base
+add starter offer
+set starter offer to happen after 15 min OR second+ session
+load save slot 1 from wolfsplendid--abilities aren't unlocked, coins 0 instead of 997300
+check turning on/off potato mode dragons go too high
+fix told parent changed to workspace when already settling into that, how does that happen? ignoring it safely Shadow  -  Server
+fix level 4+ dragons don't count against capacity constraint when released from backpack
+set game to be landscape only
+investigate performance when potentially merging 40+ items
+prevent xp accrual beyond level 100
+add sanity check on client uploading riding position
+change crystal stuff to break
+update ability names and descriptions
+check system messages getting truncated (textlabel now wraps)
+investigate "Error executing call Cannot find executable" (roblox logspam)
+ftuemanager module
+saving ftue state in player data
+clientftuemanager module
+add ability to progress through ftue
+get one pass through of ftue basically working
+add arrow to ftue
+admin ability to reset ftue
+add billboards to ftue
+remove obj1 from beam ftue configs
+add messages to ftue
+add waiting for dragon to eat to ftue
+remove old starter items
+ftue wait to get enough coins
+ftue wait for buying TWO seeds, not just 1
+ftue support animate prompts
+ftue drop items from air
+ftue
+hook up next step dev tool ftue
+update some analytics
+hook up ftue to analytics (including roblox)
+remove ftue text when billboard there
+trouble picking up seed (in ftue) (maybe beam is taking clicks) (nope it was the invisible anchor)
+item dropping--pick up item, pause, then thing drops (delay start of tween)
+white flash tween--when item spawned
+tween prompt larger background
+mobile client controls no jump (app only)
+delete Control.Start script
+add gainitem analytics
+allow nodes without ground below it to be target (clientridecontroller line 593)
+GreenNodeZ4Mega add a rotation part and speed thing
+new ability icons with transparency problems
+don't let server-controlled dragons get picked up
+update ftue -- move text up
+update ftue--hide text when going into a store
+mutation analytics message
+infinite yield possible (humanoid root part for dan) playermanager line 54 notifyuserridingstatus / clienteventhandlers line 305 (just don't wait for humanoidrootpart, bail)
+ftue last seed should just be placed
+fix loading with ftue state not being consistent
+add dev tool ability to save TO a player's save game
+ability to load cs backup saves
+test forcing a merge to fail on server, see if client recovers (can't get it to fail...)
+shouldn't be able to summon a dragon to mine a node and then ride it (only summon the most-recently-ridden draggon)
+add per-modification-type multiplier
+change default save slot
+color maps not loading or working sometimes? seeing black mutated dragons on mobile disable for now
+spread out / test performance of destroying, creating a lot of node islands
+disallow pocketing dragon you're riding if you couldn't place it
+eating particles getting stuck playing even when plant moved, eating over
+metrics use strings for primaryElement
+metrics use strings for ability name
+metrics use strings for rarity
+target from dragon based on best angle, not closest
+check if FtueComplete fires (it does)
+in prod, loading sometimes hangs in clientcropmanager init -- perhaps waiting to calculate a primarypart? maybe WaitForCharacter?
+figure out how to copy saves to different environment
+fix not being able to pick up items in first-person mode
+send joinDate with every single event to gamebeast
+add primaryelement on harvest
+add loseitem event
+disable custom pickup button in ftue
+look into ftue preventing picking up
+measure response to server functions with os.time and make visible in dev tool
+add netops window
+fix locale passed in to format time
+disable sending analytics to roblox
+server rejected dragon rides need to send to client and have client get fixed
+fix crystals coming out of nodes being activatable while flying
+touch devices have interact prompt on right hand side
+disable premium purchasing in ftue
+add logging to rejected pickup
+PivotTo*Tween destroy the nv when complete
+countdown timer for starter offer include days beyond hours
+change first step in ftue to put egg in inventory
+add support in ftue to point to backpack UI
+change buy step in ftue to require buying 3 eggs, 3 seeds
+improve selling gems UX -- up/down do 10% at a time
+don't let items settle just off the edge of the plot
+fix highlightcircle nil while merging (still not sure how possible)
+when highlight circle is up and equipping ability to change radius, circle radius should change
+enable all welds in shadow dragons on creation
+remove gem cost for fireballs
+remove junk store
+aim from camera when riding dragon
+don't aim at pre-modded items when riding dragon
+move ftue text while in buy store
+add branching capability in ftue
+client ftue beam go to ground of item
+separate buying step into 2 steps
+don't let scroll store
+map save states when logging off during ftue
+fix jumping on dragon "moving way too far" warning
+when server throws away big move, tell the client
+fix hit red level 51 and told unlocked new slot for abilities (check was off by 1)
+ftue add pulsing to buy/sell prompts
+ftue split selling into 2 steps
+ftue split buying into 2 steps
+add 15-min offer feature 12, -113 plot coords
+ftue split home into 2 steps
+ftue disable teleporters until sell step
+ftue disable wrong store prompts
+add crystalclaim acquisitionsource suffix of the level of the crystal
+add animations to first session offer
+add first session offer analytics
+cleanup first session offer location code
+investigate ftue "buy 3 seeds" text going to the wrong place sometimes
+investigate bugs dropping item in middle of fusing
+change first-session-offer-text to "Keep playing until time runs out and you'll get a level 4 dragon to ride and fly!"
+change "open" to "hold to open"
+change "activate" to "hold to activate"
+change "break" to "hold to break crystal"
+remove green stroke in partner/player trays when overlay not there
+add analytics event for opening buy store ui (and maybe buying 1st, 2nd seed in ftue)
+add code redemption system
+trading - green overlay put in the player name
+trading - hook up cancel trade button to tell server about killing pending trade
+trading - cancel trade should remove request window if in that state on client
+trading - add server tracking of pending trades
+trading - when can accept go back, check
+trading - implement dumpState()
+trading - tap text should be tap or click based on device
+trading - no "tap to add 1 to your offer" if you have nothing
+trading - when editing, set other player unconfirmed too
+trading - set other player waiting to confirm message, not trade
+trading - have server time out a trade request
+trading - have server time out long trades
+trading - respect receive trade requests option on server
+trading - hook up disable receive trade requests in receive request ui
+update playergui data for all players when level changes
+update playergui data for all players when receive trade request option changes
+trading - send disabled receiving requests option down to clients
+trading - show disabled people in list
+trading - add trade request option
+trading - hide trading button during ftue
+trading - add analytics
+ftue--beam doesn't work if item not there yet. Maybe wait and look for it?
+trade - hide trade button when dialogs up
+trading - add persistent log somewhere
+trading - packs don't have mutations/modifications etc
+trading - waiting for other player to accept at times when it shouldn't
+trading - canceling with outstanding request doesn't clear it-- check server too
+trading - rate limit trade requests
+trading - don't allow while riding
+trading - don't allow begin-riding while trade dialog open
+fix very short crystal opening was priced at R$900 - sort was too early, then added in order based on async call
+trading - offers made, one person accepts, other reopens, first person is stuck in wrong state
+change datatype validation to use Validate
+remove old validation system entirely for datatypes
+add more specific table types to most objecttypes
+validation system--add enum support
+add better validation (nested) in DataType
+validation system--add ability to not allow extra fields
+fix save-as-global name and load too
+maybe ftue add ability to flash gui elements
+when tap to add to tray, (or removed), zap to white and fade back
+tap-to-add on open should pulse--once first tap, stop pulsing
+create game config system
+trading - add global flag to disable
+implement session locking / profile service
+add ability to load/save using ProfileStore
+add migration from existing save data to ProfileStore
+add dev tool support to load from someone else's profile save
+add callback to overlays when click outside
+add cancel are-you-sure to trading
+trade complete fanfare? copy partner trap into middle of screen
+save data every 30 min? (profile system actually saves every 5)
+add edit button when locked
+fix trading window invisible on second time (after successful trade)
+player item button background getting stuck in flash, also has "Button" text on it when removing from offer quickly
+add ability to recreate caster
+add detection of dragon exploding, recreate caster
+add dev tool to recreate all casters
+improve validation in trySellGems
+test particle effect in 2d
+try to maintain empty hotbar slots on exit/restart
+fix trading when player goes offline
+backpack - make search exact subset
+backpack - preserve order
+look into recreating casters when potato mode on
+wolf in trade request to lizard, sending request to wolf should fail
+wide window tradeopenframe overlaps options button
+receive trade request needs to hide tradeplayerlist
+fix decline trade with player list up, trade button disappearing
+lock multiple simultaneous plays--memory data store?
+fix trading item list unsorted
+fix trading missing unequippable dragons
+trading fix hovering text moving too far up
+add dev tool to show trading states
+make backpack scrollbar wider
+starter offer lock premium stuff better on player join
+trading fix background of item in player tray getting too gray -> white
+unlock colors when receiving item in a trade
+after trade in execution phase, click-outside-to-cancel shouldn't happen
+delay opening trading dialog until server allows send
+disable receiving trades when in ftue
+add verdant, azure, crimson mutations
+make sure islands stay further part in y-coord so crystals don't impale in islands
+remove metatype and typename from objectdatastore system
+fix claimable crystal audio parent
+add filtering of loot tables by config flags
+add some metrics tracking of mutations
+restore plot to normal on player logoff
+add dev tool to set vanity unlocked
+call playerData:updateVanityDataInGuiData every time blueprint parent changes
+add unlocked client vanity manager
+add outer plot ui vanity client
+add outer plot ui vanity server
+vanity dev tool clean up
+add unlocking of vanity client
+add unlocking of vanity server
+add dev tool reset of unlocked vanity
+add equipping of vanity client
+add equipping of vanity server
+add unequipping of vanity client
+add unequipping of vanity server
+move unlocking of vanity into preview
+equip vanity on player join
+fix multiple vanity previews in a row failing
+setup all 6 gnome locations
+lock and animate camera when previewing vanity
+create vanity placements
+hook up dev tool for fence equipping
+hook up fence ui
+hook up fence creation
+add core support for vanity expansions
+add dev tool support for vanity expansions
+add client ui for vanity expansions
+fix vanity main inner 2d ui not showing current selection
+add server interface for vanity expansions
+add server-side saving of lockable/unlockable vanity areas
+put vanity area states in playergui data
+use playergui data to show state in main vanity dialog on client
+add ability to unlock vanity area on client
+add ability to unlock vanity area on server
+make vanity expansions have both inner and outer or neither (default template)
+when unlock expansion, set both to default; also use on login
+top level vanity menu handle dynamic updates
+main plot vanity handle dynamic updates
+fence vanity handle dynamic updates
+client vanity modules need to listen for changes
+expansion vanity handle dynamic updates
+loading/resetting/etc dev tools need to reset/load vanity
+add dev tool customizable xp gain
+fix order of vanity main menu sometimes being wrong
+add ability to unlock vanity area using robux
+add critter crates as pack items
+create crystal critters
+track crystal critters on client
+make crystal critters move
+make crystal critters targetable
+make crystal critters get destroyed on server and give out loot
+make critter fireball go to where it's _going_, not where it is now
+add customization of critter radius, period
+ensure critters don't collide with anything
+make IslandCrystalCritter transparent
+add highlight to the vanity component in preview, color the outlined based on its rarity
+color of the vanity thing should be colored by its rarity
+use display names of vanity items in UI
+hide/pop-out gnome when close to the hole / tween
+make sure using display names of vanity components
+when unlock, flash item white, play particle effect
+move preview camera higher, looking down
+move camera on menu selection; closing it goes back to the menu you were at
+copy main plot vanity buttons to fences, expansions
+opening chests needs to be cooler
+unlock gnome system on first key acquisition
+when other player opens chest, show it open
+animate chest open for other players
+fix dev tool button text spilling beyond button size
+add server support to expansions acting as usable territory
+fix camera when getting stuck from vanity main menu
+critters should give crates
+node burst particle effect sound, etc all same for critter
+main vanity--move camera PRE-blur
+add particles or something to crystal critter getting destroyed
+expansions need to increase overall plot capacity
+rename critter crates to be small, medium, large
+vanity store server data
+get vanity store data to client
+use vanity store data in client
+get vanity store percents to client
+add percents on chest surface guis for vanity gacha
+use proximity threshold tracker in vanity store
+other tabs should NOT move camera
+going into preview, slide ui on bottom up from below screen
+balloons move gacha sign up and down
+add proper items coming from a crystal critter
+open chest success maybe flash or something?
+unlock player vanity if player gets a blueprint
+key glow when use it
+add vanity sound effects
+vanity dialogs should go back to tabs
+order vanity components--default, then rarity, then alphabetical
+put in blueprint/scrolls for vanity buttons
+if get new blueprint that don't currently hold and is locked, NewBlueprintFanFare
+size scale tween when you get a new blueprint (y size start at 0, then go to full y size [what's in template]), shake blueprint if time
+blueprint start white? or chest? and have it inflate xxx no
+no hold to open key, 200ms flap open USE KEY, not hold
+when holding key, stroke or underlay on chest
+fix leds on critter crates not opening correctly
+gacha first-purchase discount sign move in circle
+implement first-purchase gacha discount system
+update gacha first-purchase text
+animate purchased blueprints from vanity gacha
+fix nested vanity dialog issue--unlock blueprint, then equip or preview another one (or just select a few)
+fix arrow sometimes way above plants on expansions
+luck system
+add white flash and particle effect burst to unlock vanity area
+add validation of vanity
+fix location of target prox prompt for critters -- use primary part, not model
+add gacha sound effects
+animate crates opening and item coming out for gacha purchasing
+when opening chest with a key, make the key disappear early
+replace numbervalue/booleanvalue stuff with attributes in playerguidata
+try 2d particle effect for luck boost
+similar to new blueprint, display of what you got (MutationGachaFanfare)
+boost luck based on friends in server
+animate stuff in the tube
+mutation particle in tube
+fix mutation in buy display
+add luck when joining community / liking game
+prompt to like game / join community sometimes
+add merge all UI, disablable
+add merge all feature
+add merge all client logic
+add merge all server logic
+add merge all animations just right
+merge all should only work in plot
+system message and animate fuse-all button when it unlocks at first
+numeric digit separator or shortcut
+arrow above gnome when first blueprint or something
+
+]]
