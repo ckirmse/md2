@@ -1,0 +1,16 @@
+# Project place file
+md.rbxlx
+mdPlugin.rbxm
+
+# Roblox Studio lock files
+/*.rbxlx.lock
+/*.rbxl.lock
+
+Packages
+
+# version tracker
+src/client/Version.luau
+
+# other
+.DS_Store
+sourcemap.json

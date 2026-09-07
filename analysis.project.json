@@ -1,0 +1,36 @@
+{
+  "name": "md2",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server",
+        "Libs": {
+          "$path": "ServerLibs"
+        }
+      },
+      "GameData": {
+        "$path": "src/GameData"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "Client": {
+          "$path": "src/client",
+          "Packages": {
+            "$path": "Packages"
+          },
+          "Libs": {
+            "$path": "ClientLibs"
+          }
+        }
+      }
+    }
+  }
+}

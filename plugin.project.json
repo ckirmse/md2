@@ -1,0 +1,15 @@
+{
+  "name": "Fuse Dragons 2",
+  "tree": {
+    "$className": "Folder",
+    "Shared": {
+      "$path": "src/shared"
+    },
+    "PluginScript": {
+      "$path": "src/plugin/main.server.luau",
+      "Packages": {
+	"$path": "Packages"
+      }
+    }
+  }
+}
