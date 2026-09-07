@@ -40,6 +40,9 @@ module = {
 	DRAGON_PULSE_DATA = "DragonPulseData",
 	DRAGON_RIDER = "DragonRider",
 
+	DRAGON_POWER = "DragonPower",
+	DRAGON_SLOT_INDEX = "DragonSlotIndex",
+
 	OPEN_COMPLETE_TIME = "OpenCompleteTime",
 
 	-- sellable items need this so client knows what it is

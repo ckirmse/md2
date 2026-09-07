@@ -19,6 +19,8 @@ module = {
 
 	SHADOW_DRAGON = "ShadowDragon",
 
+	EQUIPPED_DRAGON = "EquippedDragon",
+
 	GEM = "Gem",
 
 	CRYSTAL = "Crystal",
