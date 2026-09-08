@@ -26,11 +26,14 @@ local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
+local DragonPower = require("@game/ReplicatedStorage/Shared/DragonPower")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PivotToIndependentTween = require("@game/ReplicatedStorage/Shared/PivotToIndependentTween")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
+
+local dragonPowerValues = require("@game/ServerScriptService/GameData/Control/DragonPowerValues")
 
 local analyticsManager = require("./AnalyticsManager")
 
@@ -1619,6 +1622,38 @@ function ShadowDragon.destroy(self: ShadowDragon)
 	super.destroy(self)
 end
 
+function ShadowDragon.recomputePower(self: ShadowDragon)
+	local itemData = self:getItemData()
+
+	local tierIndex = itemData.rarity - enums.Rarity.COMMON
+	local rarityBase = DragonPower.rarityBase(dragonPowerValues.rarityStep, tierIndex)
+	local base = DragonPower.basePower(rarityBase, dragonPowerValues.levelMult, itemData.level)
+
+	local mutationBonus = MItem.getMutationBonus(self.mutation)
+
+	-- weather traits and mastery aren't in the game yet
+	local traitBonus = 0
+	local masteryMult = DragonPower.masteryMult(dragonPowerValues.masteryPerLevel, 0)
+
+	self.power = DragonPower.compute(base, mutationBonus, traitBonus, masteryMult)
+
+	self:getObj():SetAttribute(Attributes.DRAGON_POWER, self.power)
+end
+
+function ShadowDragon.getPower(self: ShadowDragon): number
+	if self.power == nil then
+		self:recomputePower()
+	end
+
+	return self.power :: number
+end
+
+function ShadowDragon.processMutationChanged(self: ShadowDragon)
+	super.processMutationChanged(self)
+
+	self:recomputePower()
+end
+
 function ShadowDragon.init(self: ShadowDragon)
 	local itemData = self:getItemData()
 
@@ -1658,6 +1693,8 @@ function ShadowDragon.init(self: ShadowDragon)
 
 	collectionService:AddTag(self:getObj(), Tags.SHADOW)
 	collectionService:AddTag(self:getObj(), Tags.SHADOW_DRAGON)
+
+	self:recomputePower()
 end
 
 function ShadowDragon.notifyNewClone(self: ShadowDragon)

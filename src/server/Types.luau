@@ -282,6 +282,7 @@ export type DragonEgg = MItem & {
 export type ShadowDragonFields = MItemFields & {
 	state: number?,
 	doPreventSettling: boolean?,
+	power: number?,
 	random: Random,
 	stamina: any,
 	overrideMaxStamina: number?,
@@ -304,6 +305,7 @@ export type ShadowDragonFields = MItemFields & {
 -- inherited and overridden members come from MItem; only members new to ShadowDragon are listed here
 export type ShadowDragon = MItem & {
 	doPreventSettling: boolean?,
+	power: number?,
 	eating: any,
 	isRiding: boolean?,
 	lastKnownGoodIdleLocation: Vector3?,
@@ -356,6 +358,7 @@ export type ShadowDragon = MItem & {
 	getMaxStamina: (self: ShadowDragon) -> number,
 	getMovingToEatItemId: (self: ShadowDragon) -> any,
 	getMovingToOpenItemId: (self: ShadowDragon) -> any,
+	getPower: (self: ShadowDragon) -> number,
 	isAvailableToEat: (self: ShadowDragon) -> boolean,
 	isAvailableToMine: (self: ShadowDragon) -> boolean,
 	isAvailableToOpen: (self: ShadowDragon) -> boolean,
@@ -382,6 +385,7 @@ export type ShadowDragon = MItem & {
 	notifyShouldShootFireballAtCritter: (self: ShadowDragon, critter: any) -> (),
 	notifyShouldShootFireballAtCrop: (self: ShadowDragon, crop: any) -> (),
 	notifyUnequippableEquipped: (self: ShadowDragon) -> (),
+	recomputePower: (self: ShadowDragon) -> (),
 	setClientControlMotion: (self: ShadowDragon) -> (),
 	setFlapData: (self: ShadowDragon, periodDivisor: number, amplitudeMultiplier: number) -> (),
 	setOverrideMaxStamina: (self: ShadowDragon, stamina: number?) -> (),

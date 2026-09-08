@@ -251,6 +251,43 @@ function DevTools.dumpGems(self: DevTools, player: Player)
 	end
 end
 
+function DevTools.dumpDragonPower(self: DevTools, player: Player)
+	print("Dragon Power for", player)
+
+	local total = 0
+
+	local allItems = itemManager:getItemsOnGroundByUserId(player.UserId)
+	for _, item in itemManager:getItemsNotOnGroundByUserId(player.UserId) do
+		table.insert(allItems, item)
+	end
+
+	for _, item in allItems do
+		if item:getType() ~= "shadowDragon" then
+			continue
+		end
+
+		local dragon = item :: Types.ShadowDragon
+		local itemData = dragon:getItemData()
+		local power = dragon:getPower()
+		total += power
+
+		print(
+			" ",
+			dragon:getItemName(),
+			"rarity",
+			enums.getName(enums.Rarity, itemData.rarity),
+			"level",
+			itemData.level,
+			"mutation",
+			enums.getName(enums.Mutations, dragon:getMutation()),
+			"DP",
+			power
+		)
+	end
+
+	print("  total (all owned dragons):", total)
+end
+
 function DevTools.resetPrimaryElementProgress(self: DevTools, player: Player)
 	local playerData = gameController:getPlayerData(player)
 
