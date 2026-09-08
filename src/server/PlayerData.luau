@@ -75,6 +75,8 @@ type PlayerDataFields = {
 	friendUserIds: any,
 	instantOpenCrystalItemIds: any,
 	abilityStatuses: any,
+	equippedSlots: any,
+	totalDragonPower: number,
 	ftueProgress: any,
 	contextualFtueState: any,
 	firstSessionOfferState: any,
@@ -1000,6 +1002,44 @@ function PlayerData.getItemForPlayer(self: PlayerData, itemName: any): Types.Ite
 	end
 
 	return nil
+end
+
+function PlayerData.getEquippedSlots(self: PlayerData): any
+	return self.equippedSlots
+end
+
+function PlayerData.getEquippedDragonInSlot(self: PlayerData, slotIndex: number): number?
+	return self.equippedSlots[slotIndex]
+end
+
+function PlayerData.getTotalDragonPower(self: PlayerData): number
+	return self.totalDragonPower
+end
+
+function PlayerData.recomputeTotalDragonPower(self: PlayerData)
+	local total = 0
+
+	for _, itemId in self.equippedSlots do
+		local item = itemManager:getItemById(itemId)
+		if not item or item:getType() ~= "shadowDragon" then
+			continue
+		end
+
+		total += (item :: Types.ShadowDragon):getPower()
+	end
+
+	self.totalDragonPower = total
+	playerAttributesManager:set(self.player, PlayerAttributeKeys.TOTAL_DRAGON_POWER, total)
+end
+
+function PlayerData.setEquippedDragonInSlot(self: PlayerData, slotIndex: number, itemId: number)
+	self.equippedSlots[slotIndex] = itemId
+	self:recomputeTotalDragonPower()
+end
+
+function PlayerData.clearEquippedSlot(self: PlayerData, slotIndex: number)
+	self.equippedSlots[slotIndex] = nil
+	self:recomputeTotalDragonPower()
 end
 
 function PlayerData.getAbilityStatuses(self: PlayerData)
@@ -3185,6 +3225,9 @@ function PlayerData.new(player: Player?): PlayerData
 
 	self.stats = {}
 	self.abilityStatuses = {}
+
+	self.equippedSlots = {}
+	self.totalDragonPower = 0
 
 	self.purchasedSlotUnlocks = {}
 

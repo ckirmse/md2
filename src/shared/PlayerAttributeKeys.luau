@@ -2,6 +2,7 @@
 
 local PlayerAttributeKeys = {
 	COINS = "coins",
+	TOTAL_DRAGON_POWER = "totalDragonPower",
 	IS_UNLOCKED_FIRE = "isUnlockedFire",
 	IS_UNLOCKED_NATURE = "isUnlockedNature",
 	IS_UNLOCKED_AIR = "isUnlockedAir",

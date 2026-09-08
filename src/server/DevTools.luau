@@ -288,6 +288,43 @@ function DevTools.dumpDragonPower(self: DevTools, player: Player)
 	print("  total (all owned dragons):", total)
 end
 
+function DevTools.equipAllDragons(self: DevTools, player: Player)
+	local playerData = gameController:getPlayerData(player)
+
+	local allItems = itemManager:getItemsOnGroundByUserId(player.UserId)
+	for _, item in itemManager:getItemsNotOnGroundByUserId(player.UserId) do
+		table.insert(allItems, item)
+	end
+
+	local slotIndex = 0
+	for _, item in allItems do
+		if item:getType() ~= "shadowDragon" then
+			continue
+		end
+
+		slotIndex += 1
+		playerData:setEquippedDragonInSlot(slotIndex, item:getItemId())
+		print("  equipped", item:getItemName(), "in slot", slotIndex)
+	end
+
+	print("equipped", slotIndex, "dragons; TDP =", playerData:getTotalDragonPower())
+end
+
+function DevTools.unequipAllDragons(self: DevTools, player: Player)
+	local playerData = gameController:getPlayerData(player)
+
+	local slotIndices = {}
+	for slotIndex in playerData:getEquippedSlots() do
+		table.insert(slotIndices, slotIndex)
+	end
+
+	for _, slotIndex in slotIndices do
+		playerData:clearEquippedSlot(slotIndex)
+	end
+
+	print("unequipped all dragons; TDP =", playerData:getTotalDragonPower())
+end
+
 function DevTools.resetPrimaryElementProgress(self: DevTools, player: Player)
 	local playerData = gameController:getPlayerData(player)
 
