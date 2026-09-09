@@ -24,6 +24,7 @@ local ftueManager = require("./FtueManager")
 local gameDataVerifier = require("./GameDataVerifier")
 local Gem = require("./Gem")
 local Crate = require("./Crate")
+local incomeManager = require("./IncomeManager")
 local indexManager = require("./IndexManager")
 local Item = require("./Item")
 local objectDataStore = require("./ObjectDataStore")
@@ -1543,6 +1544,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 
 	mutationStoreManager:notifyAddPlayer(player)
 	vanityStoreManager:notifyAddPlayer(player)
+	incomeManager:notifyAddPlayer(player)
 
 	playerData:initFriendUserIds()
 
@@ -1580,6 +1582,7 @@ function GameController.processPlayerRemove(self: GameController, player: Player
 	tradeManager:notifyRemovePlayer(player)
 	itemManager:notifyRemovePlayer(player)
 	plotsManager:notifyRemovePlayer(player)
+	incomeManager:notifyRemovePlayer(player)
 
 	for otherPlayer, otherPlayerData in self.playerDatas do
 		otherPlayerData:notifyOtherPlayerRemoved(player)
@@ -3325,6 +3328,8 @@ function GameController.processPollTimer(self: GameController): ()
 		end
 
 		playerData:updatePlayerIsInPlot()
+
+		incomeManager:tickPlayer(player, playerData, elapsedSec)
 
 		if doResetTradeRequestCount then
 			playerData:resetTradeRequestCount()
