@@ -46,6 +46,7 @@ local clientPlayerAnimationManager = require("./ClientPlayerAnimationManager")
 local clientPremiumStore = require("./ClientPremiumStore")
 local clientPromptGroupManager = require("./ClientPromptGroupManager")
 local clientShadowManager = require("./ClientShadowManager")
+local clientStablesManager = require("./ClientStablesManager")
 local clientSellStore = require("./ClientSellStore")
 local clientTradePlayerList = require("./ClientTradePlayerList")
 local clientTradeRequestedOverlay = require("./ClientTradeRequestedOverlay")
@@ -194,6 +195,7 @@ local function init()
 	clientExpansionTeleporter:init()
 
 	clientShadowManager:init()
+	clientStablesManager:init()
 
 	clientNamePlateManager:init()
 

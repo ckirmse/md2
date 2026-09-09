@@ -14,6 +14,7 @@ local Types = require("./Types")
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local plotsManager = require("./PlotsManager")
+local rideMixin = require("./RideMixin")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
@@ -37,10 +38,16 @@ function StableManager.getStableSlotAnchorCFrame(self: StableManager, userId: nu
 		return nil
 	end
 
-	local anchor =
+	local slotModel =
 		utils.findFirstDescendantWithNameAndAttribute(Level, "StableSlot" .. stableSlotIndex, Attributes.INDEX, plotIndex)
+	if not slotModel then
+		warn("missing stable slot", userId, plotIndex, stableSlotIndex)
+		return nil
+	end
+
+	local anchor = slotModel:FindFirstChild("Anchor")
 	if not anchor then
-		warn("missing stable slot anchor", userId, plotIndex, stableSlotIndex)
+		warn("stable slot missing Anchor part", userId, plotIndex, stableSlotIndex)
 		return nil
 	end
 
@@ -99,7 +106,13 @@ function StableManager.tryEquipDragon(self: StableManager, player: Player, itemI
 	dragon:setStableSlotIndex(stableSlotIndex)
 	collectionService:AddTag(dragon:getObj(), Tags.EQUIPPED_DRAGON)
 	dragon:getObj():SetAttribute(Attributes.DRAGON_SLOT_INDEX, stableSlotIndex)
-	dragon:parkInStableSlot(anchorCFrame :: CFrame)
+
+	if dragon.isRiding then
+		-- ridden to the slot: end the ride, notifyRideEnd flies it to the perch
+		rideMixin:stopPlayerRiding(player)
+	else
+		dragon:parkInStableSlot(anchorCFrame :: CFrame)
+	end
 
 	playerData:setStableDragonInSlot(stableSlotIndex, dragon:getItemId())
 
