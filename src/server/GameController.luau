@@ -45,6 +45,7 @@ local rideMixin = require("./RideMixin")
 local sellMixin = require("./SellMixin")
 local serverListener = require("./ServerListener")
 local ShadowDragon = require("./ShadowDragon")
+local stableManager = require("./StableManager")
 local starterOfferManager = require("./StarterOfferManager")
 local storageManager = require("./StorageManager")
 local Timer = require("./Timer")
@@ -2576,6 +2577,29 @@ function GameController.tryUnequipAbility(self: GameController, player: Player, 
 	RemoteEvents.NotifyAbilityStatuses:FireClient(player, playerData:getAbilityStatuses())
 end
 
+function GameController.tryEquipDragon(self: GameController, player: Player, itemId: any, stableSlotIndex: any): ()
+	if not Validate.isItemIdForPlayer(player, itemId) then
+		print("invalid itemId for equip dragon", player, itemId)
+		return
+	end
+
+	if not Validate.isInteger(stableSlotIndex) then
+		print("invalid stable slot index for equip dragon", player, stableSlotIndex)
+		return
+	end
+
+	stableManager:tryEquipDragon(player, itemId, stableSlotIndex)
+end
+
+function GameController.tryUnequipDragon(self: GameController, player: Player, stableSlotIndex: any): ()
+	if not Validate.isInteger(stableSlotIndex) then
+		print("invalid stable slot index for unequip dragon", player, stableSlotIndex)
+		return
+	end
+
+	stableManager:tryUnequipDragon(player, stableSlotIndex)
+end
+
 function GameController.trySetFtueStep(self: GameController, player: Player, stepName: any): ()
 	--print("got try set ftue next step for player", player)
 
@@ -3227,6 +3251,8 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryPutAwayRidingDragon", "tryPutAwayRidingDragon")
 	self:addRemoteEventHandler("TryEquipAbility", "tryEquipAbility")
 	self:addRemoteEventHandler("TryUnequipAbility", "tryUnequipAbility")
+	self:addRemoteEventHandler("TryEquipDragon", "tryEquipDragon")
+	self:addRemoteEventHandler("TryUnequipDragon", "tryUnequipDragon")
 	self:addRemoteEventHandler("TrySetFtueStep", "trySetFtueStep")
 	self:addRemoteEventHandler("TryTriggerContextualFtue", "tryTriggerContextualFtue")
 	self:addRemoteEventHandler("TryRedeemFirstSessionOffer", "tryRedeemFirstSessionOffer")
@@ -3464,6 +3490,7 @@ function GameController.init(self: GameController): ()
 	mutationStoreManager:init()
 	vanityStoreManager:init()
 	islandManager:init()
+	stableManager:init()
 
 	processReceipt:init()
 	serverListener:init()
@@ -3539,6 +3566,7 @@ local function initClasses(gameController: GameController): ()
 
 	ItemMover.initClass(deps)
 	PlayerData.initClass(deps)
+	stableManager.initClass(deps)
 	starterOfferManager.initClass(deps)
 	ftueManager.initClass(deps)
 	contextualFtueManager.initClass(deps)

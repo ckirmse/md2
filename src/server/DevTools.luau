@@ -15,6 +15,7 @@ local mergeMixin = require("./MergeMixin")
 local playerAttributesManager = require("./PlayerAttributesManager")
 local plotsManager = require("./PlotsManager")
 local rideMixin = require("./RideMixin")
+local stableManager = require("./StableManager")
 local starterOfferManager = require("./StarterOfferManager")
 local storageManager = require("./StorageManager")
 local tradeManager = require("./TradeManager")
@@ -296,30 +297,41 @@ function DevTools.equipAllDragons(self: DevTools, player: Player)
 		table.insert(allItems, item)
 	end
 
-	local slotIndex = 0
+	local stableSlotIndex = 0
 	for _, item in allItems do
 		if item:getType() ~= "shadowDragon" then
 			continue
 		end
+		if (item :: Types.ShadowDragon):getStableSlotIndex() ~= nil then
+			continue
+		end
 
-		slotIndex += 1
-		playerData:setEquippedDragonInSlot(slotIndex, item:getItemId())
-		print("  equipped", item:getItemName(), "in slot", slotIndex)
+		stableSlotIndex += 1
+		if stableSlotIndex > stableManager:getStableSlotCount() then
+			break
+		end
+
+		if stableManager:tryEquipDragon(player, item:getItemId(), stableSlotIndex) then
+			print("  equipped", item:getItemName(), "in stable slot", stableSlotIndex)
+		else
+			print("  failed to equip", item:getItemName(), "in stable slot", stableSlotIndex)
+			stableSlotIndex -= 1
+		end
 	end
 
-	print("equipped", slotIndex, "dragons; TDP =", playerData:getTotalDragonPower())
+	print("TDP =", playerData:getTotalDragonPower())
 end
 
 function DevTools.unequipAllDragons(self: DevTools, player: Player)
 	local playerData = gameController:getPlayerData(player)
 
-	local slotIndices = {}
-	for slotIndex in playerData:getEquippedSlots() do
-		table.insert(slotIndices, slotIndex)
+	local stableSlotIndices = {}
+	for stableSlotIndex in playerData:getStableSlots() do
+		table.insert(stableSlotIndices, stableSlotIndex)
 	end
 
-	for _, slotIndex in slotIndices do
-		playerData:clearEquippedSlot(slotIndex)
+	for _, stableSlotIndex in stableSlotIndices do
+		stableManager:tryUnequipDragon(player, stableSlotIndex)
 	end
 
 	print("unequipped all dragons; TDP =", playerData:getTotalDragonPower())

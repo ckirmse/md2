@@ -18,6 +18,7 @@ local islandManager = require("./IslandManager")
 local playerAttributesManager = require("./PlayerAttributesManager")
 local plotsManager = require("./PlotsManager")
 local rideMixin = require("./RideMixin")
+local stableManager = require("./StableManager")
 local UpAndOverItemMover = require("./UpAndOverItemMover")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -90,6 +91,35 @@ function ShadowDragon.notifyItemMoverDone(self: ShadowDragon)
 	--print("shadow dragon item mover done")
 
 	if self.state == enums.DragonState.MOVING_TO_IDLE then
+		if self.movingToIdle.isStableSlotReturn then
+			local destCFrame = self.movingToIdle.destCFrame
+
+			if self.movingToIdle.needsExactApproach then
+				-- ease the last gap into the exact pose
+				self.movingToIdle.needsExactApproach = false
+				if self.movingToIdle.itemMover then
+					self.movingToIdle.itemMover:destroy()
+					self.movingToIdle.itemMover = nil
+				end
+
+				local tween = self:createSettleTween(0.8, destCFrame)
+				self.movingToIdle.approachTween = tween
+				tween.Completed:Once(function()
+					self:notifyItemMoverDone()
+				end)
+				tween:Play()
+				return
+			end
+
+			self:setPreventSettling()
+			self:endState()
+			self:getObj():PivotTo(destCFrame)
+			self:beginState(enums.DragonState.IDLE)
+			local periodDivisor, amplitudeMultiplier = self:getFlapDataForCurrentState()
+			self:setFlapData(periodDivisor, amplitudeMultiplier)
+			return
+		end
+
 		self:setState(enums.DragonState.IDLE)
 	elseif self.state == enums.DragonState.MOVING_TO_EAT then
 		local crop = itemManager:getItemById(self.movingToEat.cropItemId)
@@ -145,6 +175,14 @@ end
 
 function ShadowDragon.setupIdleInWorkspace(self: ShadowDragon)
 	local itemData = self:getItemData()
+
+	if self.stableSlotIndex ~= nil then
+		-- parked: server-controlled and static, no hover
+		self:setServerControlMotion()
+		self:getObj():SetAttribute(Attributes.DRAGON_PULSE_DATA, nil)
+		self:setVenueWorkspaceAvailable()
+		return
+	end
 
 	self:setClientControlMotion()
 
@@ -271,6 +309,37 @@ function ShadowDragon.beginMovingToIdleWithPosition(self: ShadowDragon, position
     end
 end
 
+-- fly to an exact CFrame: dubins to a point in front of it (facing it, so no orbit), then
+-- a short tween lands the exact pose (see notifyItemMoverDone)
+function ShadowDragon.beginMovingToIdleWithCFrame(self: ShadowDragon, destCFrame: CFrame)
+	self:setServerControlMotion()
+
+	self.movingToIdle.destCFrame = destCFrame
+	self.movingToIdle.isStableSlotReturn = true
+
+	local toDest = destCFrame.Position - self:getPart().Position
+	local flatToDest = Vector3.new(toDest.X, 0, toDest.Z)
+
+	if flatToDest.Magnitude < 8 then
+		self.movingToIdle.needsExactApproach = true
+		self:notifyItemMoverDone()
+		return
+	end
+
+	local approachDir = flatToDest.Unit
+	local approachPos = destCFrame.Position - approachDir * 6
+	local dubinsTarget = CFrame.lookAt(approachPos, approachPos + approachDir)
+
+	local minRadius = self:getItemData().movement.minRadius
+	self.movingToIdle.itemMover = DubinsItemMover.new(self:getItemId(), dubinsTarget, minRadius)
+	self.movingToIdle.needsExactApproach = true
+
+	if not self.movingToIdle.itemMover:tryBegin() then
+		self:setState(enums.DragonState.IDLE)
+		return
+	end
+end
+
 -- location is a Vector3 where the X and Z are definitive, and we should calculate a Y
 function ShadowDragon.beginMovingToIdleWithLocation(self: ShadowDragon, location: Vector3)
 	--print("moving to idle with location", self:getPart().Position, location)
@@ -303,6 +372,11 @@ function ShadowDragon.cleanupMovingToIdle(self: ShadowDragon)
 	if self.movingToIdle.itemMover then
 		self.movingToIdle.itemMover:destroy()
 		self.movingToIdle.itemMover = nil
+	end
+
+	if self.movingToIdle.approachTween then
+		self.movingToIdle.approachTween:Cancel()
+		self.movingToIdle.approachTween = nil
 	end
 
 	self.movingToIdle = {}
@@ -1006,6 +1080,10 @@ function ShadowDragon.notifyRideBegin(self: ShadowDragon)
 		self:setState(enums.DragonState.IDLE)
 	end
 
+	if self.stableSlotIndex ~= nil then
+		self:setClientControlMotion()
+	end
+
 	self:getObj():SetAttribute(Attributes.DRAGON_RIDER, true)
 
 	self.isRiding = true
@@ -1056,6 +1134,17 @@ function ShadowDragon.notifyRideEnd(self: ShadowDragon)
 
 	self.ridingBeginTime = nil
 	self.lastRidingUpdateTime = nil
+
+	if self.stableSlotIndex ~= nil then
+		-- fly back to the exact stable slot pose; notifyItemMoverDone finishes it on arrival
+		local slotCFrame = stableManager:getStableSlotAnchorCFrame(self:getUserId(), self.stableSlotIndex)
+		if slotCFrame then
+			self:setState(enums.DragonState.MOVING_TO_IDLE, slotCFrame)
+		else
+			self:setState(enums.DragonState.IDLE)
+		end
+		return
+	end
 
 	if self:isInFreeFlyZone() or gameController:getPlayerData(self:getPlayer()):getIsInPlot() or self.stamina <= 0 then
 		--print("end riding, moving dragon to idle", self:isInFreeFlyZone(), gameController:getPlayerData(self:getPlayer()):getIsInPlot(), self.stamina)
@@ -1416,6 +1505,7 @@ function ShadowDragon.getSaveData(self: ShadowDragon, itemIdMap: any): any
 	local retval = super.getSaveData(self, itemIdMap)
 
 	retval.state = self.state
+	retval.stableSlotIndex = self.stableSlotIndex
 	if self.state == enums.DragonState.OPENING then
 		--print("saving data remapping an item id for dragon target", self.opening.crystalItemId, itemIdMap[self.opening.crystalItemId])
 		retval.opening = {}
@@ -1441,9 +1531,12 @@ end
 function ShadowDragon.loadSaveData(self: ShadowDragon, itemSaveData: any, itemIdMap: any)
 	super.loadSaveData(self, itemSaveData, itemIdMap)
 
+	self.stableSlotIndex = itemSaveData.stableSlotIndex
+
 	-- saved in this state: itemSaveData.state but we put every dragon in idle to start with; they were saved with idle locations
 
 	-- processLoadComplete will handle OPENING state dragons which need to resume their OPENING on load
+	-- notifyLoadComplete re-parks a dragon that was saved in a stable slot
 end
 
 function ShadowDragon.notifyLoadComplete(self: ShadowDragon, itemSaveData: any, itemIdMap: any, offlineElapsedSec: number?)
@@ -1465,6 +1558,10 @@ function ShadowDragon.notifyLoadComplete(self: ShadowDragon, itemSaveData: any, 
 
 	else
 		--print("loading dragon is already idle, leaving it alone", enums.getName(enums.DragonState, self.state))
+	end
+
+	if self.stableSlotIndex ~= nil then
+		stableManager:equipDragonOnLoad(self)
 	end
 end
 
@@ -1567,7 +1664,9 @@ function ShadowDragon.beginState(self: ShadowDragon, state: number?, data: any)
 	elseif self.state == enums.DragonState.EATING then
 		self:beginEating(data)
 	elseif self.state == enums.DragonState.MOVING_TO_IDLE then
-		if data then
+		if typeof(data) == "CFrame" then
+			self:beginMovingToIdleWithCFrame(data)
+		elseif data then
 			--print("moving to idle with location", data)
 			self:beginMovingToIdleWithLocation(data)
 		else
@@ -1654,6 +1753,57 @@ function ShadowDragon.processMutationChanged(self: ShadowDragon)
 	self:recomputePower()
 end
 
+function ShadowDragon.getStableSlotIndex(self: ShadowDragon): number?
+	return self.stableSlotIndex
+end
+
+function ShadowDragon.setStableSlotIndex(self: ShadowDragon, stableSlotIndex: number?)
+	self.stableSlotIndex = stableSlotIndex
+end
+
+-- park the dragon at its stable slot anchor: prevent settling, keep it IDLE but server-held and
+-- static, never move it until unequipped
+function ShadowDragon.parkInStableSlot(self: ShadowDragon, slotCFrame: CFrame)
+	self:setPreventSettling()
+
+	if self:getObj().Parent ~= workspace then
+		-- from a backpack tool (or a fresh split clone with no parent): drop the hold weld,
+		-- do the parent nil -> workspace dance, kill the empty tool
+		local tool = self:getObj().Parent
+		if tool then
+			utils.destroyDescendantsByName(tool, Constants.ITEM_TOOL_WELD_NAME)
+		end
+
+		self:getObj().Parent = nil
+		self:getObj():PivotTo(slotCFrame)
+		task.wait()
+		self:moveFromPlayerToWorkspace()
+
+		if tool and tool:IsA("Tool") then
+			tool:Destroy()
+		end
+
+		-- re-assert once the client ghost-follow handler is live
+		task.wait()
+		self:getObj():PivotTo(slotCFrame)
+	else
+		-- in the world: end current state, hand motion to the server so the ghost tracks the shadow, then move
+		self:endState()
+		self:setServerControlMotion()
+		task.wait()
+		self:getObj():PivotTo(slotCFrame)
+		self:beginState(enums.DragonState.IDLE)
+		local periodDivisor, amplitudeMultiplier = self:getFlapDataForCurrentState()
+		self:setFlapData(periodDivisor, amplitudeMultiplier)
+	end
+end
+
+function ShadowDragon.returnToBackpackFromStableSlot(self: ShadowDragon)
+	-- Item.equip puts the model back into a backpack tool; the parent change fires
+	-- notifyParentPlayer which resets the dragon to a normal held IDLE state
+	self:equip()
+end
+
 function ShadowDragon.init(self: ShadowDragon)
 	local itemData = self:getItemData()
 
@@ -1680,6 +1830,8 @@ function ShadowDragon.init(self: ShadowDragon)
 
 	self.lastKnownGoodIdleLocation = nil
 	self.lastKnownGoodOutsidePosition = nil
+
+	self.stableSlotIndex = nil
 
 	local periodDivisor, amplitudeMultiplier = self:getFlapDataForCurrentState()
 	self:setFlapData(periodDivisor, amplitudeMultiplier)

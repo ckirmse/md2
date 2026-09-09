@@ -75,7 +75,7 @@ type PlayerDataFields = {
 	friendUserIds: any,
 	instantOpenCrystalItemIds: any,
 	abilityStatuses: any,
-	equippedSlots: any,
+	stableSlots: any,
 	totalDragonPower: number,
 	ftueProgress: any,
 	contextualFtueState: any,
@@ -1004,12 +1004,12 @@ function PlayerData.getItemForPlayer(self: PlayerData, itemName: any): Types.Ite
 	return nil
 end
 
-function PlayerData.getEquippedSlots(self: PlayerData): any
-	return self.equippedSlots
+function PlayerData.getStableSlots(self: PlayerData): any
+	return self.stableSlots
 end
 
-function PlayerData.getEquippedDragonInSlot(self: PlayerData, slotIndex: number): number?
-	return self.equippedSlots[slotIndex]
+function PlayerData.getStableDragonInSlot(self: PlayerData, stableSlotIndex: number): number?
+	return self.stableSlots[stableSlotIndex]
 end
 
 function PlayerData.getTotalDragonPower(self: PlayerData): number
@@ -1019,7 +1019,7 @@ end
 function PlayerData.recomputeTotalDragonPower(self: PlayerData)
 	local total = 0
 
-	for _, itemId in self.equippedSlots do
+	for _, itemId in self.stableSlots do
 		local item = itemManager:getItemById(itemId)
 		if not item or item:getType() ~= "shadowDragon" then
 			continue
@@ -1032,13 +1032,13 @@ function PlayerData.recomputeTotalDragonPower(self: PlayerData)
 	playerAttributesManager:set(self.player, PlayerAttributeKeys.TOTAL_DRAGON_POWER, total)
 end
 
-function PlayerData.setEquippedDragonInSlot(self: PlayerData, slotIndex: number, itemId: number)
-	self.equippedSlots[slotIndex] = itemId
+function PlayerData.setStableDragonInSlot(self: PlayerData, stableSlotIndex: number, itemId: number)
+	self.stableSlots[stableSlotIndex] = itemId
 	self:recomputeTotalDragonPower()
 end
 
-function PlayerData.clearEquippedSlot(self: PlayerData, slotIndex: number)
-	self.equippedSlots[slotIndex] = nil
+function PlayerData.clearStableSlot(self: PlayerData, stableSlotIndex: number)
+	self.stableSlots[stableSlotIndex] = nil
 	self:recomputeTotalDragonPower()
 end
 
@@ -3226,7 +3226,7 @@ function PlayerData.new(player: Player?): PlayerData
 	self.stats = {}
 	self.abilityStatuses = {}
 
-	self.equippedSlots = {}
+	self.stableSlots = {}
 	self.totalDragonPower = 0
 
 	self.purchasedSlotUnlocks = {}

@@ -105,6 +105,11 @@ function ClientDragonManager.cleanupRiding(self: ClientDragonManager, itemId: an
 	clientRideController:notifyEndSitting()
 
 	indicatorData.isRiding = false
+
+	-- rebuild an equipped dragon's ghost so it flies home from a clean pose, not the ride pose
+	if indicatorData.shadow:GetAttribute(Attributes.DRAGON_SLOT_INDEX) ~= nil then
+		clientShadowManager:recreateCaster(itemId)
+	end
 end
 
 function ClientDragonManager.findBodyParts(self: ClientDragonManager, itemId: any)
