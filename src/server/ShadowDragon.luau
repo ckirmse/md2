@@ -1146,21 +1146,8 @@ function ShadowDragon.notifyRideEnd(self: ShadowDragon)
 		return
 	end
 
-	if self:isInFreeFlyZone() or gameController:getPlayerData(self:getPlayer()):getIsInPlot() or self.stamina <= 0 then
-		--print("end riding, moving dragon to idle", self:isInFreeFlyZone(), gameController:getPlayerData(self:getPlayer()):getIsInPlot(), self.stamina)
-		if self.state == enums.DragonState.IDLE or self.state == enums.DragonState.OUTSIDE then
-			self:setState(enums.DragonState.MOVING_TO_IDLE)
-		else
-			-- keep doing what we were doing
-		end
-	else
-		--print("end riding, dragon staying outside", self)
-		self.lastKnownGoodOutsidePosition = self:getObj():GetPivot().Position
-
-		-- perhaps should go moving-to-outside and let it include a leveling step xxx
-		self:setState(enums.DragonState.OUTSIDE)
-	end
-
+	-- not equipped in a slot: dismounting returns the dragon to the backpack
+	self:equip()
 end
 
 function ShadowDragon.notifyEndEating(self: ShadowDragon)
