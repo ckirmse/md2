@@ -2476,32 +2476,12 @@ function GameController.tryChargeUpRidingDragon(self: GameController, player: Pl
 end
 
 function GameController.tryPutAwayRidingDragon(self: GameController, player: Player): ()
-	--print("got try put away riding dragon player", player)
-
-	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if not dragon then
-		print("cannot charge up dragon when not riding by", player)
-		return
-	end
-
-	if not dragon:getItemData().mixins.pickup then
-		print("cannot pick up dragon that is not configured to be picked up", player)
-		return
-	end
-
-	if not dragon:isClientControlling() then
-		--print("cannot pick up dragon that is server controlled", player)
-		return
-	end
-
-	if not dragon:isInFreeFlyZone() then
-		--print("cannot put away dragon outside free fly zone", player)
+	-- same as dismounting: notifyRideEnd returns the dragon to the backpack
+	if not rideMixin:isPlayerRiding(player) then
 		return
 	end
 
 	rideMixin:stopPlayerRiding(player)
-
-	dragon:putInBackpack()
 end
 
 function GameController.tryEquipAbility(self: GameController, player: Player, ability: any): ()

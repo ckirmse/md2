@@ -1074,9 +1074,13 @@ function ShadowDragon.notifyRideBegin(self: ShadowDragon)
 	self.ridingBeginTime = workspace:GetServerTimeNow()
 	self.lastRidingUpdateTime = self.ridingBeginTime
 
-	if self.state == enums.DragonState.MOVING_TO_IDLE then
-		self:setState(enums.DragonState.IDLE)
-	elseif self.state == enums.DragonState.MOVING_TO_OUTSIDE then
+	self:cleanupSettleOnGroundInWorkspace()
+
+	if
+		self.state == enums.DragonState.MOVING_TO_IDLE
+		or self.state == enums.DragonState.MOVING_TO_OUTSIDE
+		or self.state == enums.DragonState.SETTLING
+	then
 		self:setState(enums.DragonState.IDLE)
 	end
 

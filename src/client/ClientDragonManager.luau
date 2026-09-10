@@ -39,6 +39,7 @@ local clientTradingManager = require("./ClientTradingManager")
 
 -- this is to handle a ridiculous built-in roblox behavior around trying to jump
 local JUMP_COOLDOWN_SEC = 0.5
+local AUTO_RIDE_TIMEOUT_SEC = 3
 
 local PULSE_NEAR_MAX_DESCEND_PER_SEC = 3
 local PULSE_FAR_MAX_ASCEND_PER_SEC = 3
@@ -55,6 +56,8 @@ type ClientDragonManagerFields = {
 	flapSec: any,
 	indicatorMap: { [any]: any },
 	latestJumpRequestTime: any,
+	autoRidePending: boolean,
+	autoRideDeadline: number,
 }
 
 export type ClientDragonManager = typeof(setmetatable({} :: ClientDragonManagerFields, ClientDragonManager))
@@ -82,6 +85,38 @@ function ClientDragonManager.tryBeginRidingNearestDragon(self: ClientDragonManag
 	end
 
 	--print("trying to ride", bestItemId)
+	indicatorData.isRiding = true
+
+	indicatorData.caster.PrimaryPart.Anchored = not indicatorData.shadow:GetAttribute(Attributes.CLIENT_CONTROL)
+
+	clientRideController:notifyBeginSitting(indicatorData.shadow, indicatorData.caster)
+
+	return true
+end
+
+-- ride a specific dragon (used when it is selected from the backpack), not the nearest one
+function ClientDragonManager.tryBeginRidingDragonById(self: ClientDragonManager, itemId: any): boolean
+	if clientTradingManager:isTrading() then
+		return false
+	end
+
+	if clientRideController:isRiding() then
+		return false
+	end
+
+	local indicatorData = self.indicatorMap[itemId]
+	if not indicatorData then
+		return false
+	end
+
+	if indicatorData.shadow.Parent ~= workspace then
+		return false
+	end
+
+	if not indicatorData.caster or not indicatorData.caster.PrimaryPart then
+		return false
+	end
+
 	indicatorData.isRiding = true
 
 	indicatorData.caster.PrimaryPart.Anchored = not indicatorData.shadow:GetAttribute(Attributes.CLIENT_CONTROL)
@@ -1430,7 +1465,32 @@ function ClientDragonManager.getMapSize(self: ClientDragonManager): number
 	return utils.getTableSize(self.indicatorMap)
 end
 
+-- selecting a dragon Tool arms auto-ride; the per-frame loop mounts the released dragon
+function ClientDragonManager.hookCharacterForAutoRide(self: ClientDragonManager, character: Model)
+	character.ChildAdded:Connect(function(child)
+		if not child:IsA("Tool") then
+			return
+		end
+		if child:GetAttribute(Attributes.ITEM_TYPE) ~= "shadowDragon" then
+			return
+		end
+		if clientRideController:isRiding() then
+			return
+		end
+
+		self.autoRidePending = true
+		self.autoRideDeadline = workspace:GetServerTimeNow() + AUTO_RIDE_TIMEOUT_SEC
+	end)
+end
+
 function ClientDragonManager.init(self: ClientDragonManager)
+
+	if player.Character then
+		self:hookCharacterForAutoRide(player.Character)
+	end
+	player.CharacterAdded:Connect(function(character)
+		self:hookCharacterForAutoRide(character)
+	end)
 
 	collectionService:GetInstanceAddedSignal(Tags.SHADOW_DRAGON):Connect(
 		function(inst: any)
@@ -1502,6 +1562,29 @@ function ClientDragonManager.init(self: ClientDragonManager)
 			local isRiding = clientRideController:isRiding()
 			local bestItemId = nil
 			local bestDistance = nil
+
+			-- auto-ride: mount a selected backpack dragon once its shadow arrives in the world
+			if self.autoRidePending then
+				if isRiding or workspace:GetServerTimeNow() > self.autoRideDeadline then
+					self.autoRidePending = false
+				else
+					for itemId, indicatorData in self.indicatorMap do
+						if indicatorData.shadow.Parent ~= workspace then
+							continue
+						end
+						if indicatorData.shadow:GetAttribute(Attributes.USER_ID) ~= player.UserId then
+							continue
+						end
+						if indicatorData.shadow:GetAttribute(Attributes.DRAGON_SLOT_INDEX) ~= nil then
+							continue
+						end
+						if self:tryBeginRidingDragonById(itemId) then
+							self.autoRidePending = false
+						end
+						break
+					end
+				end
+			end
 
 			for itemId, indicatorData in self.indicatorMap do
 				if not indicatorData.seatLocation then
@@ -1603,6 +1686,9 @@ function ClientDragonManager.new(): ClientDragonManager
 	self.indicatorMap = {}
 
 	self.latestJumpRequestTime = workspace:GetServerTimeNow()
+
+	self.autoRidePending = false
+	self.autoRideDeadline = 0
 
 	return self
 end
