@@ -1750,12 +1750,14 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 		self.buyStorePurchases = { era = 0, counts = {} }
 	end
 
-	local ftueProgressSaveData = saveData and saveData.ftueProgress or nil
-	if ftueProgressSaveData then
-		self.ftueProgress = ftueManager:mapFtueProgressFromSaveData(ftueProgressSaveData)
-	else
-		self.ftueProgress = ftueManager:getDefaultFtueProgress()
-	end
+	-- intro FTUE is bypassed for now (old egg flow); restore this block once it's rewritten.
+	-- local ftueProgressSaveData = saveData and saveData.ftueProgress or nil
+	-- if ftueProgressSaveData then
+	-- 	self.ftueProgress = ftueManager:mapFtueProgressFromSaveData(ftueProgressSaveData)
+	-- else
+	-- 	self.ftueProgress = ftueManager:getDefaultFtueProgress()
+	-- end
+	self.ftueProgress = ftueManager:getDisabledFtueProgress()
 
 	local firstSessionOfferStateSaveData = saveData and saveData.firstSessionOfferState or nil
 	if firstSessionOfferStateSaveData then

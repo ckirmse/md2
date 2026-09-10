@@ -686,7 +686,9 @@ function DevTools.resetFullPlayerState(self: DevTools, player: Player)
 	self:resetPurchasedSlotUnlocks(player)
 	self:resetAllItems(player)
 	self:resetStarterOfferProgress(player)
-	self:restartFtueProgress(player)
+	-- intro FTUE is bypassed for now (old egg flow); restore restartFtueProgress here once it's rewritten
+	-- self:restartFtueProgress(player)
+	self:resetFtueProgress(player)
 	self:resetFirstSessionOfferState(player)
 	self:resetAllVanity(player)
 
