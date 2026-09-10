@@ -23,7 +23,7 @@ local teleporters = require("./Teleporters")
 
 local STABLE_SLOT_COUNT = 6
 local PROMPT_NAME = "StableSlotPrompt"
-local PROMPT_DISTANCE = 8
+local PROMPT_DISTANCE = 12
 local RESOLVE_ATTEMPTS = 40
 local RESOLVE_INTERVAL = 0.5
 
