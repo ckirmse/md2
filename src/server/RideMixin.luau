@@ -62,6 +62,11 @@ function RideMixin.canRideItem(self: RideMixin, player: Player, itemId: number):
 		return false
 	end
 
+	if item:getStableSlotIndex() ~= nil then
+		print("canRideItem false due to dragon being equipped in a stable slot", player, item)
+		return false
+	end
+
 	if self:isPlayerRiding(player) then
 		print("canRideItem false due to player already riding", player)
 		return false

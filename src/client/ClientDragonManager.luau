@@ -1510,6 +1510,10 @@ function ClientDragonManager.init(self: ClientDragonManager)
 				if indicatorData.shadow.Parent ~= workspace then
 					continue
 				end
+				if indicatorData.shadow:GetAttribute(Attributes.DRAGON_SLOT_INDEX) ~= nil then
+					-- equipped in a stable slot: inert, cannot be ridden (RideMixin.canRideItem)
+					continue
+				end
 
 				local playerPosition = (player.Character :: any).HumanoidRootPart.Position
 				local seatPosition = indicatorData.seatLocation.Position
