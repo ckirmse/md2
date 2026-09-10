@@ -40,8 +40,8 @@ local utils = require("@game/ReplicatedStorage/Shared/utils")
 local abilityValuesData = require("@game/ServerScriptService/GameData/Control/AbilityValues")
 local crystalTimeData = require("@game/ServerScriptService/GameData/Control/CrystalTime")
 local capacityData = require("@game/ServerScriptService/GameData/Control/Capacity")
+local incomeData = require("@game/ServerScriptService/GameData/Control/Income")
 local luckData = require("@game/ServerScriptService/GameData/Control/Luck")
-local offlineHarvestingData = require("@game/ServerScriptService/GameData/Control/OfflineHarvesting")
 local progressionData = require("@game/ServerScriptService/GameData/Control/Progression")
 local vanityAreasData = require("@game/ServerScriptService/GameData/Control/VanityAreas")
 
@@ -94,6 +94,7 @@ type PlayerDataFields = {
 	latestPromptGroupTime: number,
 	tradeRequestCount: number,
 	pendingWelcomeBackCoinCount: number,
+	lastLogoutIncomePerSecond: number,
 	purchasedSlotUnlocks: any,
 	vanityState: any,
 	vanityPlacements: any,
@@ -1557,8 +1558,6 @@ function PlayerData.tryDeliverDoubleWelcomeBackGift(self: PlayerData)
 end
 
 function PlayerData.processOfflineTime(self: PlayerData, durationSec: any)
-	--print("giving credit to player", self.player, "for offline seconds", durationSec)
-
 	-- give grow time credit
 	for _, crop in itemManager:getCropsOnGroundForUserId(self.player.UserId) do
 		if not crop:isGrowing() then
@@ -1567,95 +1566,19 @@ function PlayerData.processOfflineTime(self: PlayerData, durationSec: any)
 		crop:addGrowTime(durationSec)
 	end
 
-	local dragons = itemManager:getAvailableDragonsToEatForPlayer(self.player)
-	local crops = itemManager:getCropsOnGroundForUserId(self.player.UserId)
-
-	-- calculate offline harvesting, element by element
-
-	local totalGemCount = 0
-	for _, primaryElement in enums.getAllValues(enums.PrimaryElements) do
-		if primaryElement == enums.PrimaryElements.NONE then
-			continue
-		end
-
-		-- find highest level dragon and crop of the element; without both, player gets nothing in this element
-		local bestDragon = nil
-		for _, dragon in dragons do
-			local dragonItemData = dragon:getItemData()
-			if dragonItemData.primaryElement ~= primaryElement then
-				continue
-			end
-			if not dragonItemData.eat then
-				continue
-			end
-
-			if not bestDragon then
-				bestDragon = dragon
-				continue
-			end
-			if dragonItemData.level > bestDragon:getItemData().level then
-				bestDragon = dragon
-			end
-		end
-		if not bestDragon then
-			continue
-		end
-
-		local bestCrop = nil
-		for _, crop in crops do
-			local cropItemData = crop:getItemData()
-			if cropItemData.primaryElement ~= primaryElement then
-				continue
-			end
-			if not cropItemData.food then
-				continue
-			end
-			if not bestCrop then
-				bestCrop = crop
-				continue
-			end
-			if cropItemData.level > bestCrop:getItemData().level then
-				bestCrop = crop
-			end
-		end
-		if not bestCrop then
-			continue
-		end
-
-		local totalSteps, maxCountPerStep = gameController:calculateEatingSteps(bestDragon, bestCrop)
-		local eatingSec = totalSteps * maxCountPerStep
-		local growSec = bestCrop:getItemData().food.growMin * 60
-		local cycleSec = eatingSec + growSec
-
-		local singleEventGemCount = gameController:calculateGemsForHarvest(bestDragon, bestCrop)
-
-		local efficiencyRate = offlineHarvestingData.efficiencyRate
-		local maxDurationSec = self:getPlayerVariable(Attributes.OFFLINE_HARVESTING_MAX_DURATION)
-
-		local eventCount = math.floor((efficiencyRate * math.min(durationSec, maxDurationSec)) / cycleSec)
-
-		local gemCount = math.ceil(singleEventGemCount * eventCount)
-
-		--print("offline progression gems based on", enums.getName(enums.PrimaryElements, primaryElement), bestDragon:getItemName(), bestCrop:getItemName(), "offline time", durationSec)
-		--print("single event gem count", singleEventGemCount, "cycle sec", cycleSec, "event count", eventCount, "total gems", gemCount)
-
-		totalGemCount += gemCount
-
-		analyticsManager:logEvent(self.player, analyticsManager.Events.OfflineGems, {
-			primaryElement = enums.getPublicName(enums.PrimaryElements, primaryElement),
-			gemsSpawned = gemCount,
-		})
+	local rate = self.lastLogoutIncomePerSecond
+	if rate <= 0 or durationSec <= 0 then
+		return
 	end
 
-	if totalGemCount > 0 then
-		-- here we go:
-		-- save our pending coins
-		-- tell client about it
-		-- wait for client to tell us
-
-		self.pendingWelcomeBackCoinCount = totalGemCount * 10
-		RemoteEvents.NotifyWelcomeBackGift:FireClient(self.player, self.pendingWelcomeBackCoinCount)
+	local creditedSec = math.min(durationSec, incomeData.offlineMaxSeconds)
+	local coins = math.floor(rate * creditedSec * incomeData.offlineEfficiency)
+	if coins <= 0 then
+		return
 	end
+
+	self.pendingWelcomeBackCoinCount = coins
+	RemoteEvents.NotifyWelcomeBackGift:FireClient(self.player, self.pendingWelcomeBackCoinCount)
 end
 
 function PlayerData.loadOptions(self: PlayerData, options: any)
@@ -1697,6 +1620,8 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 
 	local playerSaveData = saveData and saveData.player or nil
 	playerAttributesManager:loadSaveData(self.player, playerSaveData)
+
+	self.lastLogoutIncomePerSecond = (playerSaveData and playerSaveData[PlayerAttributeKeys.INCOME_PER_SECOND]) or 0
 
 	local vanityStateSaveData = saveData and saveData.vanityState or nil
 	if vanityStateSaveData then
@@ -3265,6 +3190,7 @@ function PlayerData.new(player: Player?): PlayerData
 	self.friendUserIds = {}
 
 	self.pendingWelcomeBackCoinCount = 0
+	self.lastLogoutIncomePerSecond = 0
 
 	return self
 end
