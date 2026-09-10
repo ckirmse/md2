@@ -112,6 +112,9 @@ local defaultGameConfigSnapshot = {
 	indexEnabled = true,
 }
 
+-- keys missing from the snapshot; GetValue logs every call, so skip it once we know. cleared on (re)load/refresh.
+local configKnownMissingKeys: { [string]: boolean } = {}
+
 local mixinData = {
 	merge = mergeMixin,
 	pickup = pickupMixin,
@@ -3373,6 +3376,7 @@ end
 
 function GameController.refreshGameConfig(self: GameController): ()
 	self.gameConfigSnapshot:Refresh()
+	table.clear(configKnownMissingKeys)
 	self:notifyUpdateGameConfigSnapshot()
 end
 
@@ -3383,6 +3387,7 @@ function GameController.loadGameConfig(self: GameController): ()
 
 	if success and configSnapshot then
 		self.gameConfigSnapshot = configSnapshot
+		table.clear(configKnownMissingKeys)
 
 		configSnapshot.UpdateAvailable:Connect(function()
 			print("config update available, refreshing")
@@ -3406,14 +3411,18 @@ function GameController.getConfigValue(self: GameController, key: string): any
 	end
 
 	local value
-	if self.gameConfigSnapshot then
+	if self.gameConfigSnapshot and not configKnownMissingKeys[key] then
 		value = self.gameConfigSnapshot:GetValue(key)
 	end
 
 	if value == nil then
-		-- we have a config value setup, but it's not in the production config
-		warn("config key", key, "is missing in the config snapshot we have; using default value")
-		return defaultGameConfigSnapshot[key]
+		configKnownMissingKeys[key] = true
+		-- not in the published config; the default is the intended fallback, so only warn if there isn't one
+		local default = defaultGameConfigSnapshot[key]
+		if default == nil then
+			warn("config key", key, "missing from config snapshot and has no default value")
+		end
+		return default
 	end
 
 	return value
