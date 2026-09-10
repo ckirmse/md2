@@ -1108,20 +1108,6 @@ function ShadowDragon.notifyRideEnd(self: ShadowDragon)
 
 	self.isRiding = false
 
-	local playerData = self:getPlayerData()
-
-	if not self.wasRidingMaxDuration then
-		--print("ride was less than max duration")
-		if playerData:isLocationInPlotOrUnlockedExpansions(self.part.Position) then
-			--print("player stopped riding their dragon over their own plot--leave dragon here")
-			local currentPosition = self:getObj():GetPivot().Position
-			self.lastKnownGoodIdleLocation = Vector3.new(currentPosition.X, 0, currentPosition.Z)
-		else
-			--print("player stopped riding their dragon somewhere else around the world--move dragon to an idle spot")
-			self.lastKnownGoodIdleLocation = nil
-		end
-	end
-
 	local ridingBeginTime = self.ridingBeginTime
 	-- ridingBeginTime is always set while riding; report a zero duration if it somehow is not
 	local rideDuration = if ridingBeginTime then workspace:GetServerTimeNow() - ridingBeginTime else 0
