@@ -1,6 +1,7 @@
 {
   "attributes": {
-    "TrailKey": "VoUz4WyGmN4hjt7d4htJ14+DadJnVa1qha7WwraUras=",
-    "TrailKey_8013149740": "JkcKA+aFhJXp8Gwjf37wJ28AgY7vGp/34k8mKS+NYYY="
+    "_comment": "TrailKey disabled for md2 (fresh universe, keys 401). Restore by renaming _DISABLED_TrailKey* back to TrailKey* once a valid md2 key exists.",
+    "_DISABLED_TrailKey": "VoUz4WyGmN4hjt7d4htJ14+DadJnVa1qha7WwraUras=",
+    "_DISABLED_TrailKey_8013149740": "JkcKA+aFhJXp8Gwjf37wJ28AgY7vGp/34k8mKS+NYYY="
   }
 }
