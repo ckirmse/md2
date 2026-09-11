@@ -115,6 +115,13 @@ end
 function MergeMixin.canMergeItems(self: MergeMixin, player: Player, triggerItemId: number, itemIds: { number }, isMergeAll: boolean?): boolean
 	-- ids were validated by the remote handler; mergeable items stack, so they are NumberItems
 	local triggerItem = itemManager:getItemById(triggerItemId) :: Types.NumberItem
+
+	if triggerItem:getType() == "shadowDragon" then
+		-- dragons fuse exclusively through the backpack fuse-all action now (performFuseAllDragonsForPlayer)
+		print("canMergeItems false: dragons no longer merge via world/riding placement", player)
+		return false
+	end
+
 	local allMergingItems = {triggerItem}
 	for _, itemId in itemIds do
 		local item = itemManager:getItemById(itemId) :: Types.NumberItem
@@ -841,6 +848,144 @@ function MergeMixin.notifyMergeItemsWithRidingItem(self: MergeMixin, player: Pla
 	local destCFrame = triggerItem:getPart().CFrame
 
 	self:performMerge(player, triggerItemId, itemIds, destCFrame, isMergeAll)
+end
+
+-- Fuse-all: pairs backpack dragons 2:1 by exact name and cascades until nothing matches. The only
+-- fuse path for dragons now; canMergeItems blocks the old world/riding merge for them.
+function MergeMixin.getBackpackDragonGroups(self: MergeMixin, player: Player): { [string]: { Types.MItem } }
+	local groups: { [string]: { Types.MItem } } = {}
+	for _, item in itemManager:getItemsNotOnGroundByUserId(player.UserId) do
+		if item:getType() ~= "shadowDragon" then
+			continue
+		end
+		local mitem = item :: Types.MItem
+		local name = mitem:getItemName()
+		if not groups[name] then
+			groups[name] = {}
+		end
+		table.insert(groups[name], mitem)
+	end
+	return groups
+end
+
+function MergeMixin.performFuseAllRoundForGroup(self: MergeMixin, player: Player, stacks: { Types.MItem }): (string?, number)
+	local itemData = stacks[1]:getItemData()
+	local upgradeItemName = itemData.mixins.merge and itemData.mixins.merge.upgradeItemName
+	if not upgradeItemName then
+		-- at the top of its chain; nothing to fuse into
+		return nil, 0
+	end
+
+	local totalCount = 0
+	for _, stack in stacks do
+		totalCount += stack:getCount()
+	end
+
+	local pairsCount = totalCount // 2
+	if pairsCount < 1 then
+		return nil, 0
+	end
+
+	-- consume worst mutation first, so an odd leftover keeps the player's best copy of this dragon
+	table.sort(stacks, function(a, b)
+		return MItem.compareMutations(b:getMutation(), a:getMutation())
+	end)
+
+	local consumedEntries: { { stack: Types.MItem, consumedCount: number } } = {}
+	local remainingToConsume = pairsCount * 2
+	for _, stack in stacks do
+		if remainingToConsume <= 0 then
+			break
+		end
+		local consumedCount = math.min(stack:getCount(), remainingToConsume)
+		table.insert(consumedEntries, { stack = stack, consumedCount = consumedCount })
+		remainingToConsume -= consumedCount
+	end
+
+	local pseudoItems = {}
+	for _, entry in consumedEntries do
+		local stack = entry.stack
+		local consumedCount = entry.consumedCount
+		table.insert(pseudoItems, {
+			getCount = function() return consumedCount end,
+			getMutation = function() return stack:getMutation() end,
+			getModifications = function() return stack:getModifications() end,
+			getItemName = function() return stack:getItemName() end,
+			getItemData = function() return stack:getItemData() end,
+			getType = function() return stack:getType() end,
+		})
+	end
+
+	local mutations = self:calculateNewItemMutations(player, pairsCount, pseudoItems)
+	local modifications = self:calculateNewItemModifications(player, pairsCount, pseudoItems)
+
+	for _, entry in consumedEntries do
+		entry.stack:reduceCount(entry.consumedCount)
+	end
+
+	for i = 1, pairsCount do
+		local newItem = itemManager:createItem(upgradeItemName, player.UserId) :: Types.MItem?
+		if not newItem then
+			warn("fuse-all failed to create upgrade item", upgradeItemName)
+			continue
+		end
+
+		newItem:setMutation(mutations[i])
+		newItem:setModifications(modifications[i])
+		newItem:putInBackpack()
+
+		if mutations[i] ~= enums.Mutations.NORMAL then
+			analyticsManager:logEvent(player, analyticsManager.Events.GainMutation, {
+				objectName = newItem:getItemName(),
+				primaryElement = enums.getPublicName(enums.PrimaryElements, newItem:getItemData().primaryElement),
+				rarity = enums.getPublicName(enums.Rarity, newItem:getItemData().rarity),
+				itemType = newItem:getType(),
+				mutation = mutations[i],
+			})
+		end
+	end
+
+	analyticsManager:logEvent(player, analyticsManager.Events.Merge, {
+		objectName = itemData.name,
+		objectCount = pairsCount * 2,
+		primaryElement = enums.getPublicName(enums.PrimaryElements, itemData.primaryElement),
+		itemType = itemData.type,
+		isMergeAll = true,
+	})
+
+	return upgradeItemName, pairsCount
+end
+
+function MergeMixin.performFuseAllDragonsForPlayer(self: MergeMixin, player: Player): number
+	local totalPairsFused = 0
+
+	-- each round strictly reduces the player's total dragon count, so this always terminates;
+	-- the cap is only a defensive guard against a data/logic bug looping forever
+	for _ = 1, 1000 do
+		local groups = self:getBackpackDragonGroups(player)
+
+		local anyFusedThisRound = false
+		for _, stacks in groups do
+			local _, pairsFused = self:performFuseAllRoundForGroup(player, stacks)
+			if pairsFused > 0 then
+				totalPairsFused += pairsFused
+				anyFusedThisRound = true
+			end
+		end
+
+		if not anyFusedThisRound then
+			break
+		end
+	end
+
+	if totalPairsFused > 0 then
+		gameController:sendSystemMessageToPlayer(
+			player,
+			string.format("Fused %d pair%s of dragons", totalPairsFused, if totalPairsFused == 1 then "" else "s")
+		)
+	end
+
+	return totalPairsFused
 end
 
 function MergeMixin.new(): MergeMixin
