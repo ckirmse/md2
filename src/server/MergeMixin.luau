@@ -7,6 +7,7 @@ local collectionService = game:GetService("CollectionService")
 
 local Types = require("./Types")
 local itemManager = require("./ItemManager")
+local objectDataStore = require("./ObjectDataStore")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -880,6 +881,11 @@ function MergeMixin.performFuseAllRoundForGroup(self: MergeMixin, player: Player
 	local upgradeItemName = itemData.mixins.merge and itemData.mixins.merge.upgradeItemName
 	if not upgradeItemName then
 		-- at the top of its chain; nothing to fuse into
+		return nil, 0
+	end
+
+	if not objectDataStore:getObjectDataByName(upgradeItemName) then
+		warn("fuse-all: upgradeItemName does not resolve to a real item, refusing to consume sources", itemData.name, upgradeItemName)
 		return nil, 0
 	end
 
