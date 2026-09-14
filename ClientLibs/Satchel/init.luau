@@ -109,7 +109,7 @@ local SEARCH_IMAGE_X: string = "rbxasset://textures/ui/InspectMenu/x.png"
 local SEARCH_BUFFER_PIXELS: number = 5
 local SEARCH_WIDTH_PIXELS: number = 200
 local SIDEBAR_WIDTH_PIXELS: number = 70
-local FUSE_ALL_PANEL_WIDTH_PIXELS: number = 90
+local FUSE_ALL_PANEL_SIZE_PIXELS: number = 90
 
 -- Misc
 local FONT_FAMILY: Font = targetScript:GetAttribute("FontFace")
@@ -1846,12 +1846,8 @@ if CATEGORY_FILTER_TOP_LAYOUT then
 		categoryFilterButton.TextScaled = true
 		categoryFilterButton.Size =
 			UDim2.new(1 / CATEGORY_BUTTON_COUNT, -CATEGORY_BUTTON_GAP_PIXELS, 1, -2 * CATEGORY_BUTTON_PAD_PIXELS)
-		categoryFilterButton.Position = UDim2.new(
-			(i - 1) / CATEGORY_BUTTON_COUNT,
-			CATEGORY_BUTTON_PAD_PIXELS,
-			0,
-			CATEGORY_BUTTON_PAD_PIXELS
-		)
+		categoryFilterButton.Position =
+			UDim2.new((i - 1) / CATEGORY_BUTTON_COUNT, CATEGORY_BUTTON_PAD_PIXELS, 0, CATEGORY_BUTTON_PAD_PIXELS)
 		categoryFilterButton.BackgroundColor3 = BACKGROUND_COLOR
 		categoryFilterButton.BackgroundTransparency = CATEGORY_BUTTON_INACTIVE_TRANSPARENCY
 		categoryFilterButton.BorderSizePixel = 0
@@ -1883,9 +1879,8 @@ if CATEGORY_FILTER_TOP_LAYOUT then
 	local fuseAllPanel: Frame = Instance.new("Frame")
 	fuseAllPanel.Name = "FuseAllPanel"
 	fuseAllPanel.BackgroundTransparency = 1
-	fuseAllPanel.Size = UDim2.new(0, FUSE_ALL_PANEL_WIDTH_PIXELS, 0, INVENTORY_HEADER_SIZE)
-	fuseAllPanel.Position =
-		UDim2.new(1, CATEGORY_TOP_BAR_PANEL_GAP_PIXELS, 0, -INVENTORY_HEADER_SIZE - CATEGORY_TOP_BAR_PANEL_GAP_PIXELS)
+	fuseAllPanel.Size = UDim2.new(0, FUSE_ALL_PANEL_SIZE_PIXELS, 0, FUSE_ALL_PANEL_SIZE_PIXELS)
+	fuseAllPanel.Position = UDim2.new(1, 0, 0, 0)
 	fuseAllPanel.Parent = InventoryFrame
 
 	local fuseAllButton: TextButton = Instance.new("TextButton")
@@ -1907,7 +1902,7 @@ if CATEGORY_FILTER_TOP_LAYOUT then
 	fuseAllButtonCorner.Parent = fuseAllButton
 
 	local fuseAllButtonTextConstraint: UITextSizeConstraint = Instance.new("UITextSizeConstraint")
-	fuseAllButtonTextConstraint.MaxTextSize = FONT_SIZE + 2
+	fuseAllButtonTextConstraint.MaxTextSize = FONT_SIZE + 10
 	fuseAllButtonTextConstraint.Parent = fuseAllButton
 
 	fuseAllButton.MouseButton1Click:Connect(function(): ()
