@@ -169,7 +169,7 @@ function ClientShadowManager.testCasterIntegrityLoop(self: ClientShadowManager)
 				self:recreateCaster(itemId)
 				clientAnalyticsManager:logEvent(clientAnalyticsManager.Events.RecreateShadowCaster,
 					{
-						objectName = indicatorData.shadow:GetAttribute(Attributes.MERGE_NAME),
+						objectName = indicatorData.shadow:GetAttribute(Attributes.DISPLAY_NAME),
 					}
 				)
 			end
