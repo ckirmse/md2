@@ -25,6 +25,8 @@ local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
+local masteryData = require("@game/ServerScriptService/GameData/Control/Mastery")
+
 local analyticsManager = require("./AnalyticsManager")
 local contextualFtueManager = require("./ContextualFtueManager")
 local ftueManager = require("./FtueManager")
@@ -938,6 +940,8 @@ function MergeMixin.performFuseAllRoundForGroup(self: MergeMixin, player: Player
 		newItem:setMutation(mutations[i])
 		newItem:setModifications(modifications[i])
 		newItem:putInBackpack()
+
+		gameController:addPrimaryElementXpToPlayer(player, itemData.primaryElement, masteryData.fuseXpFlat, newItem:getPart())
 
 		if mutations[i] ~= enums.Mutations.NORMAL then
 			analyticsManager:logEvent(player, analyticsManager.Events.GainMutation, {
