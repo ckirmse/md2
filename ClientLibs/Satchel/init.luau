@@ -24,6 +24,8 @@ BackpackScript.StateChanged = Instance.new("BindableEvent") :: BindableEvent -- 
 --cmk
 BackpackScript.SlotFilled = Instance.new("BindableEvent") :: BindableEvent -- Fires after any slot filled
 
+BackpackScript.FuseAllClicked = Instance.new("BindableEvent") :: BindableEvent -- Fires when the fuse-all button is clicked
+
 BackpackScript.ModuleName = "Backpack" :: string
 BackpackScript.KeepVRTopbarOpen = true :: boolean
 BackpackScript.VRIsExclusive = true :: boolean
@@ -107,6 +109,7 @@ local SEARCH_IMAGE_X: string = "rbxasset://textures/ui/InspectMenu/x.png"
 local SEARCH_BUFFER_PIXELS: number = 5
 local SEARCH_WIDTH_PIXELS: number = 200
 local SIDEBAR_WIDTH_PIXELS: number = 70
+local FUSE_ALL_PANEL_WIDTH_PIXELS: number = 90
 
 -- Misc
 local FONT_FAMILY: Font = targetScript:GetAttribute("FontFace")
@@ -1875,6 +1878,41 @@ if CATEGORY_FILTER_TOP_LAYOUT then
 			onCategoryFilterButtonClicked(catName)
 		end)
 	end
+
+	-- Fuse-all button, in a flyout panel outside InventoryFrame's right edge (mirrors the sidebar on the left)
+	local fuseAllPanel: Frame = Instance.new("Frame")
+	fuseAllPanel.Name = "FuseAllPanel"
+	fuseAllPanel.BackgroundTransparency = 1
+	fuseAllPanel.Size = UDim2.new(0, FUSE_ALL_PANEL_WIDTH_PIXELS, 0, INVENTORY_HEADER_SIZE)
+	fuseAllPanel.Position =
+		UDim2.new(1, CATEGORY_TOP_BAR_PANEL_GAP_PIXELS, 0, -INVENTORY_HEADER_SIZE - CATEGORY_TOP_BAR_PANEL_GAP_PIXELS)
+	fuseAllPanel.Parent = InventoryFrame
+
+	local fuseAllButton: TextButton = Instance.new("TextButton")
+	fuseAllButton.Name = "FuseAllButton"
+	fuseAllButton.Text = "Fuse All"
+	fuseAllButton.TextColor3 = TEXT_COLOR
+	fuseAllButton.TextStrokeTransparency = TEXT_STROKE_TRANSPARENCY
+	fuseAllButton.TextStrokeColor3 = TEXT_STROKE_COLOR
+	fuseAllButton.FontFace = Font.new(FONT_FAMILY.Family, Enum.FontWeight.Medium, Enum.FontStyle.Normal)
+	fuseAllButton.TextScaled = true
+	fuseAllButton.Size = UDim2.fromScale(1, 1)
+	fuseAllButton.BackgroundColor3 = Color3.fromRGB(64, 168, 64)
+	fuseAllButton.BackgroundTransparency = CATEGORY_BUTTON_INACTIVE_TRANSPARENCY
+	fuseAllButton.BorderSizePixel = 0
+	fuseAllButton.Parent = fuseAllPanel
+
+	local fuseAllButtonCorner: UICorner = Instance.new("UICorner")
+	fuseAllButtonCorner.CornerRadius = SLOT_CORNER_RADIUS
+	fuseAllButtonCorner.Parent = fuseAllButton
+
+	local fuseAllButtonTextConstraint: UITextSizeConstraint = Instance.new("UITextSizeConstraint")
+	fuseAllButtonTextConstraint.MaxTextSize = FONT_SIZE + 2
+	fuseAllButtonTextConstraint.Parent = fuseAllButton
+
+	fuseAllButton.MouseButton1Click:Connect(function(): ()
+		BackpackScript.FuseAllClicked:Fire()
+	end)
 else
 	-- Left sidebar layout
 
@@ -2563,6 +2601,11 @@ end
 -- Returns the BindableEvent for when a slot is filled
 function BackpackScript:GetSlotFilledEvent(): BindableEvent
 	return BackpackScript.SlotFilled
+end
+
+-- Returns the BindableEvent for when the fuse-all button is clicked
+function BackpackScript:GetFuseAllClickedEvent(): BindableEvent
+	return BackpackScript.FuseAllClicked
 end
 
 -- Update every heartbeat the icon state
