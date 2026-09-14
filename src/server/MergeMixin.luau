@@ -40,6 +40,12 @@ type MergeMixinFields = {
 export type MergeMixin = typeof(setmetatable({} :: MergeMixinFields, MergeMixin))
 
 function MergeMixin.notifyItemCreated(self: MergeMixin, item: any)
+	if item:getType() == "shadowDragon" then
+		-- dragons fuse only through the backpack fuse-all action; skip Tags.MERGEABLE entirely so the
+		-- client never shows the old merge circle/pull for one (canMergeItems already rejects the attempt)
+		return
+	end
+
 	-- client depends on these attributes and tags for combining
 	local itemData = item:getItemData()
 	local obj = item:getObj()
