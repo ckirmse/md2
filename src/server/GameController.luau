@@ -110,6 +110,7 @@ local defaultGameConfigSnapshot = {
 	tradingEnabled = false,
 	chestIslandsEnabled = false,
 	indexEnabled = true,
+	proceduralIslandsEnabled = false,
 }
 
 -- keys missing from the snapshot; GetValue logs every call, so skip it once we know. cleared on (re)load/refresh.
@@ -3445,6 +3446,11 @@ function GameController.isIndexEnabled(self: GameController): boolean
 	-- indexEnabled is not yet registered in the remote ConfigService, so read the code-side
 	-- default directly to avoid spamming "config value not found" warnings.
 	return defaultGameConfigSnapshot[GameConfigKeys.indexEnabled]
+end
+
+function GameController.areProceduralIslandsEnabled(self: GameController): boolean
+	-- not yet registered in the remote ConfigService, so read the code-side default directly
+	return defaultGameConfigSnapshot[GameConfigKeys.proceduralIslandsEnabled]
 end
 
 function GameController.init(self: GameController): ()

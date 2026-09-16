@@ -654,6 +654,10 @@ function IslandManager.createPollTimer(self: IslandManager)
 end
 
 function IslandManager.init(self: IslandManager)
+	if not gameController:areProceduralIslandsEnabled() then
+		return
+	end
+
 	self:updateIslands()
 
 	self:createPollTimer()
