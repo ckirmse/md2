@@ -43,7 +43,18 @@ module = {
 	DRAGON_POWER = "DragonPower",
 	DRAGON_SLOT_INDEX = "DragonSlotIndex",
 
+	DRAGON_SPEED_STAT = "DragonSpeedStat",
+	RIDE_XP = "RideXp",
+	RIDE_LEVEL = "RideLevel",
+
+	IS_CARRYING = "IsCarrying",
+	CARRY_SPEED_MULT = "CarrySpeedMult",
+
+	GUARDIAN_STATE = "GuardianState",
+
 	OPEN_COMPLETE_TIME = "OpenCompleteTime",
+	NEST_RESPAWN_COMPLETE_TIME = "NestRespawnCompleteTime",
+	HATCH_COMPLETE_TIME = "HatchCompleteTime",
 
 	-- sellable items need this so client knows what it is
 	SELL_NAME = "SellName",

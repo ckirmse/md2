@@ -48,6 +48,10 @@ module = {
 
 	CRITTER = "Critter",
 	CRITTER_CASTER = "CritterCaster",
+
+	NEST = "Nest",
+
+	GUARDIAN = "Guardian",
 }
 
 return module
