@@ -69,6 +69,7 @@ local CrystalHits = ParticleEffects:WaitForChild("CrystalHits") :: Part
 
 local Abilities = require("@game/ReplicatedStorage/Shared/Abilities")
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local BiomeData = require("@game/ReplicatedStorage/Shared/BiomeData")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
@@ -477,6 +478,16 @@ local freeFlyCornerA = Vector3.new(-168.4, 0, 460.4)
 local freeFlyCornerB = Vector3.new(165.9, 0, 5.6)
 function GameController.isLocationInFreeFlyZone(self: GameController, location: Vector3): boolean
 	return utils.isLocationInRectangleXZ(location, freeFlyCornerA, freeFlyCornerB)
+end
+
+function GameController.tryEnforceBiomeGate(self: GameController, dragon: Types.ShadowDragon, cframe: CFrame): boolean
+	local gate = BiomeData.getGoverningGate(cframe.Position.Z)
+	if not gate then
+		return true
+	end
+
+	local speedStat = dragon:getObj():GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?
+	return speedStat ~= nil and speedStat >= gate.speedGate
 end
 
 function GameController.getCountEatingCrop(self: GameController, crop: any): number
@@ -2387,13 +2398,16 @@ function GameController.trySetRidingItemCFrame(self: GameController, player: Pla
 		return
 	end
 
+	local dragon = item :: Types.ShadowDragon
+	if not self:tryEnforceBiomeGate(dragon, cframe) then
+		return
+	end
+
 	-- assign player cframe, so server and other players know where they are
 	-- (when player is welded to a part and that part is moved, the client doesn't update the server if the server doesn't know about that part,
 	-- which is the case here with shadow dragons)
 	self:getPlayerData(player):notifyRidingItemCFrame(cframe, playerRelativeToDragonCFrame)
 
-	-- assign dragon cframe
-	local dragon = item :: Types.ShadowDragon
 	dragon:trySetRidingItemCFrame(time, cframe)
 end
 

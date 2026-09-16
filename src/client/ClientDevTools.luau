@@ -353,6 +353,15 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			if Iris.Button({ "Dump Dragon Power" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpDragonPower")
 			end
+
+			local rideLevel = Iris.State(1)
+			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = rideLevel })
+			Iris.SameLine()
+			if Iris.Button({ "Set Riding Dragon Ride Level" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("setRidingDragonRideLevel", rideLevel:get())
+			end
+			Iris.End()
+
 			if Iris.Button({ "Equip All Dragons" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("equipAllDragons")
 			end

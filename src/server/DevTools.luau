@@ -26,6 +26,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- the RemoteEvents children only exist in Studio, so they are untyped here
 local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
+local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
@@ -287,6 +288,32 @@ function DevTools.dumpDragonPower(self: DevTools, player: Player)
 	end
 
 	print("  total (all owned dragons):", total)
+end
+
+function DevTools.setRidingDragonRideLevel(self: DevTools, player: Player, level: any)
+	if not level or level < 1 then
+		print("invalid ride level", level)
+		return
+	end
+	level = math.floor(level)
+
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not dragon then
+		print("player is not riding a dragon", player)
+		return
+	end
+
+	dragon:getObj():SetAttribute(Attributes.RIDE_LEVEL, level)
+	dragon:recomputeSpeedStat()
+
+	print(
+		"set",
+		dragon:getItemName(),
+		"ride level to",
+		level,
+		"Speed",
+		dragon:getObj():GetAttribute(Attributes.DRAGON_SPEED_STAT)
+	)
 end
 
 function DevTools.equipAllDragons(self: DevTools, player: Player)

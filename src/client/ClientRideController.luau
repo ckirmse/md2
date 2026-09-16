@@ -16,6 +16,7 @@ local Effects = GameAssets:WaitForChild("Effects")
 local RidingDragonAudioParent = Effects:WaitForChild("RidingDragonAudioParent")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local BiomeData = require("@game/ReplicatedStorage/Shared/BiomeData")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
@@ -593,7 +594,18 @@ function ClientRideController.updateMovement(self: ClientRideController, deltaTi
 			speedMultiplier = 1
 		end
 
-		local velocityVector = (speedFrac * moveFrac * Constants.BASE_RIDE_SPEED * speedMultiplier) * forwardDirection
+		-- relative to a level-1 Common's Speed of 100, so a baseline dragon is unaffected
+		local speedStat = self.shadow:GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?
+		local speedStatMultiplier = (speedStat or 100) / 100
+
+		local velocityVector = (speedFrac * moveFrac * Constants.BASE_RIDE_SPEED * speedMultiplier * speedStatMultiplier) * forwardDirection
+
+		-- don't push further past a biome gate we haven't earned enough Speed to cross; sideways
+		-- and backward motion are untouched, so this reads as a wall, not a hard freeze
+		local gate = BiomeData.getGoverningGate(self.drivePart.Position.Z)
+		if gate and (not speedStat or speedStat < gate.speedGate) and velocityVector.Z > 0 then
+			velocityVector = Vector3.new(velocityVector.X, velocityVector.Y, 0)
+		end
 
 		--local forwardDirectionXZ = Vector3.new(forwardDirection.X, 0, forwardDirection.Z)
 		--local forwardAngle = forwardDirection:Angle(forwardDirectionXZ, Vector3.zAxis)

@@ -869,6 +869,7 @@ export type GameController = {
 	tryDisconnectPlayerByUserId: (self: GameController, userId: number, message: string) -> boolean,
 	tryEatWhileRiding: (self: GameController, player: Player, cropItemId: any) -> (),
 	tryEndRideDragon: (self: GameController, player: Player, itemId: any) -> (),
+	tryEnforceBiomeGate: (self: GameController, dragon: ShadowDragon, cframe: CFrame) -> boolean,
 	tryEquipAbility: (self: GameController, player: Player, ability: any) -> (),
 	tryEquipDragon: (self: GameController, player: Player, itemId: any, stableSlotIndex: any) -> (),
 	tryEquipVanityComponent: (self: GameController, player: Player, vanityPlacement: any, vanityComponentName: any) -> (),
