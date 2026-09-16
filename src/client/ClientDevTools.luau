@@ -373,6 +373,22 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("dumpBiomeProgress")
 			end
 
+			Iris.SeparatorText({ "Nests" })
+			if Iris.Button({ "Dump Nests" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpNests")
+			end
+
+			local nestObjectId = Iris.State(0)
+			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = nestObjectId })
+			Iris.SameLine()
+			if Iris.Button({ "Force Take Nest Egg" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("forceTakeNestEgg", nestObjectId:get())
+			end
+			if Iris.Button({ "Force Refill Nest" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("forceRefillNest", nestObjectId:get())
+			end
+			Iris.End()
+
 			if Iris.Button({ "Dump Server Trading State" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpServerTradingState")
 			end

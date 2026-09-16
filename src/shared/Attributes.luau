@@ -55,6 +55,8 @@ module = {
 	OPEN_COMPLETE_TIME = "OpenCompleteTime",
 	NEST_RESPAWN_COMPLETE_TIME = "NestRespawnCompleteTime",
 	HATCH_COMPLETE_TIME = "HatchCompleteTime",
+	NEST_NAME = "NestName",
+	SOURCE_BIOME_INDEX = "SourceBiomeIndex",
 
 	-- sellable items need this so client knows what it is
 	SELL_NAME = "SellName",

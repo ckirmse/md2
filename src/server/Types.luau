@@ -564,6 +564,31 @@ export type Node = BaseObject & {
 	setState: (self: Node, state: number?, data: any) -> (),
 }
 
+export type NestFields = BaseObjectFields & {
+	state: number?,
+	eggItemId: number?,
+	respawnTimer: Timer?,
+}
+
+-- inherited and overridden members come from BaseObject; only members new to Nest are listed here
+export type Nest = BaseObject & {
+	state: number?,
+	eggItemId: number?,
+	respawnTimer: Timer?,
+
+	beginDepleted: (self: Nest) -> (),
+	beginIdle: (self: Nest) -> (),
+	beginState: (self: Nest, state: number?) -> (),
+	cleanupDepleted: (self: Nest) -> (),
+	cleanupIdle: (self: Nest) -> (),
+	endState: (self: Nest) -> (),
+	getBiomeIndex: (self: Nest) -> number,
+	getEggSpawnPosition: (self: Nest) -> Vector3,
+	notifyEggTaken: (self: Nest) -> (),
+	notifyRefill: (self: Nest) -> (),
+	setState: (self: Nest, state: number?) -> (),
+}
+
 export type ChestFields = BaseObjectFields & {
 	state: number?,
 }
@@ -695,6 +720,9 @@ export type ChestObjectType = ObjectType
 
 -- inherited and overridden members come from ObjectType; only members new to CritterObjectType are listed here
 export type CritterObjectType = ObjectType
+
+-- inherited and overridden members come from ObjectType; only members new to NestObjectType are listed here
+export type NestObjectType = ObjectType
 
 export type ItemMover = {
 	itemId: number,

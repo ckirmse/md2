@@ -50,6 +50,7 @@ module = {
 	CRITTER_CASTER = "CritterCaster",
 
 	NEST = "Nest",
+	NEST_SPAWN = "NestSpawn",
 
 	GUARDIAN = "Guardian",
 }

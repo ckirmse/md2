@@ -12,6 +12,7 @@ local gameController: Types.GameController
 local indexManager = require("./IndexManager")
 local itemManager = require("./ItemManager")
 local mergeMixin = require("./MergeMixin")
+local nestManager = require("./NestManager")
 local playerAttributesManager = require("./PlayerAttributesManager")
 local plotsManager = require("./PlotsManager")
 local rideMixin = require("./RideMixin")
@@ -357,6 +358,40 @@ function DevTools.dumpBiomeProgress(self: DevTools, player: Player)
 		"clears?",
 		speedStat ~= nil and speedStat >= gate.speedGate
 	)
+end
+
+function DevTools.dumpNests(self: DevTools, player: Player)
+	for _, nest in nestManager:getAllNests() do
+		print(
+			"nest",
+			nest:getObjectId(),
+			nest:getObjectName(),
+			"state",
+			enums.getName(enums.NestState, nest.state),
+			"respawns at",
+			nest:getObj():GetAttribute(Attributes.NEST_RESPAWN_COMPLETE_TIME)
+		)
+	end
+end
+
+function DevTools.forceTakeNestEgg(self: DevTools, player: Player, objectId: any)
+	local nest = nestManager:getNestByObjectId(objectId)
+	if not nest then
+		print("no nest with object id", objectId)
+		return
+	end
+
+	nest:notifyEggTaken()
+end
+
+function DevTools.forceRefillNest(self: DevTools, player: Player, objectId: any)
+	local nest = nestManager:getNestByObjectId(objectId)
+	if not nest then
+		print("no nest with object id", objectId)
+		return
+	end
+
+	nest:notifyRefill()
 end
 
 function DevTools.equipAllDragons(self: DevTools, player: Player)
