@@ -391,6 +391,7 @@ export type ShadowDragon = MItem & {
 	notifyUnequippableEquipped: (self: ShadowDragon) -> (),
 	parkInStableSlot: (self: ShadowDragon, slotCFrame: CFrame) -> (),
 	recomputePower: (self: ShadowDragon) -> (),
+	recomputeSpeedStat: (self: ShadowDragon) -> (),
 	returnToBackpackFromStableSlot: (self: ShadowDragon) -> (),
 	setClientControlMotion: (self: ShadowDragon) -> (),
 	setFlapData: (self: ShadowDragon, periodDivisor: number, amplitudeMultiplier: number) -> (),

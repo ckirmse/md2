@@ -28,6 +28,7 @@ local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local DragonPower = require("@game/ReplicatedStorage/Shared/DragonPower")
+local DragonSpeed = require("@game/ReplicatedStorage/Shared/DragonSpeed")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PivotToIndependentTween = require("@game/ReplicatedStorage/Shared/PivotToIndependentTween")
@@ -1716,6 +1717,17 @@ function ShadowDragon.recomputePower(self: ShadowDragon)
 	self:getObj():SetAttribute(Attributes.DRAGON_POWER, self.power)
 end
 
+function ShadowDragon.recomputeSpeedStat(self: ShadowDragon)
+	local itemData = self:getItemData()
+
+	local baseSpeed = Constants.DRAGON_SPEED_BASE_BY_RARITY[itemData.rarity]
+	local rideLevel = (self:getObj():GetAttribute(Attributes.RIDE_LEVEL) :: number?) or 1
+
+	local speed = DragonSpeed.speedForLevel(baseSpeed, Constants.DRAGON_SPEED_PER_LEVEL_FRAC, rideLevel)
+
+	self:getObj():SetAttribute(Attributes.DRAGON_SPEED_STAT, speed)
+end
+
 function ShadowDragon.getPower(self: ShadowDragon): number
 	if self.power == nil then
 		self:recomputePower()
@@ -1824,6 +1836,7 @@ function ShadowDragon.init(self: ShadowDragon)
 	collectionService:AddTag(self:getObj(), Tags.SHADOW_DRAGON)
 
 	self:recomputePower()
+	self:recomputeSpeedStat()
 end
 
 function ShadowDragon.notifyNewClone(self: ShadowDragon)
