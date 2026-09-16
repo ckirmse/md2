@@ -42,6 +42,11 @@ module = {
 	BASE_RIDE_SPEED = 50,
 	FLY_FAST_MULTIPLIER = 2,
 
+	-- indexed by enums.Rarity (Common/Uncommon/Rare/Epic); document 3's Speed(r,L) base values
+	DRAGON_SPEED_BASE_BY_RARITY = { 100, 200, 400, 800 },
+	DRAGON_SPEED_PER_LEVEL_FRAC = 0.15,
+	DRAGON_MAX_RIDE_LEVEL = 5,
+
 	MAX_TRADE_SLOTS = 4,
 	TRADE_REQUEST_MAX_SEC = 120,
 	TRADE_NEGOTIATION_MAX_SEC = 600,
