@@ -24,14 +24,13 @@ local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PlotHelpers = require("@game/ReplicatedStorage/Shared/PlotHelpers")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
-
 local DEFAULT_LAND_PLOT_INNER_NAME = "Land Plot Inner Template"
 local DEFAULT_LAND_PLOT_OUTER_NAME = "Land Plot Outer Template"
 
 local DEFAULT_EXPANSION_INNER_NAME = "Expansion Inner Template"
 local DEFAULT_EXPANSION_OUTER_NAME = "Expansion Outer Template"
 
-local NUM_PLOTS = 6
+local NUM_PLOTS = 3
 
 -- vanity component data comes from GameData modules and bounds records are simple min/max pairs,
 -- so both stay untyped
@@ -78,12 +77,22 @@ function PlotsManager.translatePositionEndCapToWorld(self: PlotsManager, positio
 end
 
 -- returns position in workspace coordinates
-function PlotsManager.getGroundPositionFromPlotPosition(self: PlotsManager, plotPosition: Vector3, index: number): Vector3
+function PlotsManager.getGroundPositionFromPlotPosition(
+	self: PlotsManager,
+	plotPosition: Vector3,
+	index: number
+): Vector3
 	local position = self:translatePositionPlotToWorld(plotPosition, index)
 	return utils.getGroundPositionForLocation(position)
 end
 
-function PlotsManager.createItemOnPlot(self: PlotsManager, index: number, name: any, plotPosition: Vector3, userId: number)
+function PlotsManager.createItemOnPlot(
+	self: PlotsManager,
+	index: number,
+	name: any,
+	plotPosition: Vector3,
+	userId: number
+)
 	local item = itemManager:createItem(name, userId)
 	if not item then
 		warn("failed to create item on plot", name)
@@ -95,7 +104,12 @@ function PlotsManager.createItemOnPlot(self: PlotsManager, index: number, name: 
 	obj.Parent = workspace
 end
 
-function PlotsManager.addAllChildrenAndMapCFramesForPlotIndex(self: PlotsManager, plotIndex: number, root: any, holder: Instance)
+function PlotsManager.addAllChildrenAndMapCFramesForPlotIndex(
+	self: PlotsManager,
+	plotIndex: number,
+	root: any,
+	holder: Instance
+)
 	for _, inst in root:GetChildren() do
 		local newInst = inst:Clone()
 		newInst:SetAttribute(Attributes.INDEX, plotIndex)
@@ -153,7 +167,10 @@ function PlotsManager.removeAllVanity(self: PlotsManager, plotIndex: number)
 	self:restoreInnerPlot(plotIndex)
 	self:restoreOuterPlot(plotIndex)
 	for _, vanityPlacement in enums.getAllValues(enums.VanityPlacements) do
-		if vanityPlacement == enums.VanityPlacements.MAIN_PLOT_INNER or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_OUTER then
+		if
+			vanityPlacement == enums.VanityPlacements.MAIN_PLOT_INNER
+			or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_OUTER
+		then
 			continue
 		end
 
@@ -198,15 +215,26 @@ function PlotsManager.getPlotItemRecoveryPositionByUserId(self: PlotsManager, us
 	end
 
 	local mainBounds = self.mainBounds[plotIndex]
-	return utils.getGroundPosition((mainBounds.minPosition.X + mainBounds.maxPosition.X) / 2, (mainBounds.minPosition.Z + mainBounds.maxPosition.Z) / 2)
+	return utils.getGroundPosition(
+		(mainBounds.minPosition.X + mainBounds.maxPosition.X) / 2,
+		(mainBounds.minPosition.Z + mainBounds.maxPosition.Z) / 2
+	)
 end
 
-function PlotsManager.getPlotPositionFromWorldPositionForUserId(self: PlotsManager, position: Vector3, userId: number): Vector3
+function PlotsManager.getPlotPositionFromWorldPositionForUserId(
+	self: PlotsManager,
+	position: Vector3,
+	userId: number
+): Vector3
 	local plotIndex = self:getPlotIndexByUserId(userId)
 	return self:translatePositionWorldToPlot(position, plotIndex :: number)
 end
 
-function PlotsManager.getWorldPositionFromPlotPositionForUserId(self: PlotsManager, position: Vector3, userId: number): Vector3?
+function PlotsManager.getWorldPositionFromPlotPositionForUserId(
+	self: PlotsManager,
+	position: Vector3,
+	userId: number
+): Vector3?
 	if typeof(userId) ~= "number" then
 		warn("invalid userid to get world position", userId)
 		return nil
@@ -230,7 +258,6 @@ function PlotsManager.getWorldCFrameFromPlotCFrameForUserId(self: PlotsManager, 
 	local plotIndex = self:getPlotIndexByUserId(userId)
 	return PlotHelpers.translateCFramePlotToWorld(cframe, plotIndex :: number)
 end
-
 
 function PlotsManager.getClosestPlotIndexByPosition(self: PlotsManager, position: Vector3): any
 	local bestIndex: any = nil
@@ -297,7 +324,12 @@ function PlotsManager.isPositionInMainPlotXZByUserId(self: PlotsManager, positio
 	return self:isPositionInMainPlotXZ(position, plotIndex)
 end
 
-function PlotsManager.isPositionInExpansionXZ(self: PlotsManager, position: Vector3, vanityArea: number, plotIndex: number): boolean
+function PlotsManager.isPositionInExpansionXZ(
+	self: PlotsManager,
+	position: Vector3,
+	vanityArea: number,
+	plotIndex: number
+): boolean
 	local bounds = self.expansionBounds[plotIndex][vanityArea]
 	if position.X < bounds.minPosition.X then
 		return false
@@ -315,7 +347,12 @@ function PlotsManager.isPositionInExpansionXZ(self: PlotsManager, position: Vect
 	return true
 end
 
-function PlotsManager.isPositionInExpansionXZByUserId(self: PlotsManager, position: Vector3, vanityArea: number, userId: number): boolean
+function PlotsManager.isPositionInExpansionXZByUserId(
+	self: PlotsManager,
+	position: Vector3,
+	vanityArea: number,
+	userId: number
+): boolean
 	local plotIndex = self:getPlotIndexByUserId(userId)
 	if not plotIndex then
 		return false
@@ -372,7 +409,6 @@ function PlotsManager.initVanityData(self: PlotsManager)
 		local data = require(inst) :: any
 		self.expansionOuterDatas[data.name] = data
 	end
-
 end
 
 function PlotsManager.getAllMainPlotInnerNames(self: PlotsManager): { string }
@@ -556,19 +592,28 @@ end
 
 function PlotsManager.restoreInnerPlot(self: PlotsManager, plotIndex: number)
 	local landPlotInnerData = self:getVanityComponentDataByName(DEFAULT_LAND_PLOT_INNER_NAME)
-	self:replacePlotModel(plotIndex, enums.getName(enums.VanityPlacements, enums.VanityPlacements.MAIN_PLOT_INNER), landPlotInnerData.templatePath)
+	self:replacePlotModel(
+		plotIndex,
+		enums.getName(enums.VanityPlacements, enums.VanityPlacements.MAIN_PLOT_INNER),
+		landPlotInnerData.templatePath
+	)
 end
 
 function PlotsManager.restoreOuterPlot(self: PlotsManager, plotIndex: number)
 	local landPlotOuterData = self:getVanityComponentDataByName(DEFAULT_LAND_PLOT_OUTER_NAME)
-	self:replacePlotModel(plotIndex, enums.getName(enums.VanityPlacements, enums.VanityPlacements.MAIN_PLOT_OUTER), landPlotOuterData.templatePath)
+	self:replacePlotModel(
+		plotIndex,
+		enums.getName(enums.VanityPlacements, enums.VanityPlacements.MAIN_PLOT_OUTER),
+		landPlotOuterData.templatePath
+	)
 end
 
 function PlotsManager.removeVanityName(self: PlotsManager, plotIndex: number, name: any)
 	-- there are no fences or expansions by default, so just remove if we have one
 
 	-- find existing plot model and destroy it
-	local vanityComponent = utils.findFirstDescendantWithNameAndAttribute(MergePlot, name :: string, Attributes.INDEX, plotIndex)
+	local vanityComponent =
+		utils.findFirstDescendantWithNameAndAttribute(MergePlot, name :: string, Attributes.INDEX, plotIndex)
 	if vanityComponent then
 		vanityComponent:Destroy()
 	end
@@ -576,19 +621,28 @@ end
 
 function PlotsManager.restoreExpansionInner(self: PlotsManager, plotIndex: number, vanityPlacement: number)
 	local vanityComponentName = DEFAULT_EXPANSION_INNER_NAME
-	self:replaceVanityInstance(plotIndex, enums.getName(enums.VanityPlacements, vanityPlacement), self.expansionInnerDatas[vanityComponentName].templatePaths[vanityPlacement])
+	self:replaceVanityInstance(
+		plotIndex,
+		enums.getName(enums.VanityPlacements, vanityPlacement),
+		self.expansionInnerDatas[vanityComponentName].templatePaths[vanityPlacement]
+	)
 end
 
 function PlotsManager.restoreExpansionOuter(self: PlotsManager, plotIndex: number, vanityPlacement: number)
 	local vanityComponentName = DEFAULT_EXPANSION_OUTER_NAME
-	self:replaceVanityInstance(plotIndex, enums.getName(enums.VanityPlacements, vanityPlacement), self.expansionOuterDatas[vanityComponentName].templatePaths[vanityPlacement])
+	self:replaceVanityInstance(
+		plotIndex,
+		enums.getName(enums.VanityPlacements, vanityPlacement),
+		self.expansionOuterDatas[vanityComponentName].templatePaths[vanityPlacement]
+	)
 end
 
 function PlotsManager.replaceVanityInstance(self: PlotsManager, plotIndex: number, name: any, path: string)
 	--print("replace vanity instance", plotIndex, name, path)
 
 	-- find existing plot model and destroy it
-	local vanityComponent = utils.findFirstDescendantWithNameAndAttribute(MergePlot, name :: string, Attributes.INDEX, plotIndex)
+	local vanityComponent =
+		utils.findFirstDescendantWithNameAndAttribute(MergePlot, name :: string, Attributes.INDEX, plotIndex)
 	if vanityComponent then
 		vanityComponent:Destroy()
 	end
@@ -607,31 +661,56 @@ function PlotsManager.replaceVanityInstance(self: PlotsManager, plotIndex: numbe
 	newVanityComponent.Parent = MergePlot
 end
 
-function PlotsManager.equipVanityComponentForPlayerAtPlacement(self: PlotsManager, player: Player, vanityPlacement: number, vanityComponentName: string)
+function PlotsManager.equipVanityComponentForPlayerAtPlacement(
+	self: PlotsManager,
+	player: Player,
+	vanityPlacement: number,
+	vanityComponentName: string
+)
 	local plotIndex = self:getPlotIndexByUserId(player.UserId) :: number
 
 	if self.mainPlotInnerDatas[vanityComponentName] then
-		self:replaceVanityInstance(plotIndex, enums.getName(enums.VanityPlacements, vanityPlacement), self.mainPlotInnerDatas[vanityComponentName].templatePath)
+		self:replaceVanityInstance(
+			plotIndex,
+			enums.getName(enums.VanityPlacements, vanityPlacement),
+			self.mainPlotInnerDatas[vanityComponentName].templatePath
+		)
 		return
 	end
 
 	if self.mainPlotOuterDatas[vanityComponentName] then
-		self:replaceVanityInstance(plotIndex, enums.getName(enums.VanityPlacements, vanityPlacement), self.mainPlotOuterDatas[vanityComponentName].templatePath)
+		self:replaceVanityInstance(
+			plotIndex,
+			enums.getName(enums.VanityPlacements, vanityPlacement),
+			self.mainPlotOuterDatas[vanityComponentName].templatePath
+		)
 		return
 	end
 
 	if self.fenceDatas[vanityComponentName] then
-		self:replaceVanityInstance(plotIndex, enums.getName(enums.VanityPlacements, vanityPlacement), self.fenceDatas[vanityComponentName].templatePaths[vanityPlacement])
+		self:replaceVanityInstance(
+			plotIndex,
+			enums.getName(enums.VanityPlacements, vanityPlacement),
+			self.fenceDatas[vanityComponentName].templatePaths[vanityPlacement]
+		)
 		return
 	end
 
 	if self.expansionInnerDatas[vanityComponentName] then
-		self:replaceVanityInstance(plotIndex, enums.getName(enums.VanityPlacements, vanityPlacement), self.expansionInnerDatas[vanityComponentName].templatePaths[vanityPlacement])
+		self:replaceVanityInstance(
+			plotIndex,
+			enums.getName(enums.VanityPlacements, vanityPlacement),
+			self.expansionInnerDatas[vanityComponentName].templatePaths[vanityPlacement]
+		)
 		return
 	end
 
 	if self.expansionOuterDatas[vanityComponentName] then
-		self:replaceVanityInstance(plotIndex, enums.getName(enums.VanityPlacements, vanityPlacement), self.expansionOuterDatas[vanityComponentName].templatePaths[vanityPlacement])
+		self:replaceVanityInstance(
+			plotIndex,
+			enums.getName(enums.VanityPlacements, vanityPlacement),
+			self.expansionOuterDatas[vanityComponentName].templatePaths[vanityPlacement]
+		)
 		return
 	end
 
@@ -651,24 +730,40 @@ function PlotsManager.unequipVanityPlacementForPlayer(self: PlotsManager, player
 		return
 	end
 
-	if vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_1 or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_2 or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_3 or
-		vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_4 or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_5 or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_6 or
-		vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_7 or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_8 or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_9 then
+	if
+		vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_1
+		or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_2
+		or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_3
+		or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_4
+		or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_5
+		or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_6
+		or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_7
+		or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_8
+		or vanityPlacement == enums.VanityPlacements.MAIN_PLOT_FENCE_9
+	then
 		self:removeVanityName(plotIndex, enums.getName(enums.VanityPlacements, vanityPlacement))
 		return
 	end
 
 	-- expansions
 
-	if vanityPlacement == enums.VanityPlacements.EXPANSION_1_INNER or vanityPlacement == enums.VanityPlacements.EXPANSION_2_INNER or
-		vanityPlacement == enums.VanityPlacements.EXPANSION_3_INNER or vanityPlacement == enums.VanityPlacements.EXPANSION_4_INNER then
+	if
+		vanityPlacement == enums.VanityPlacements.EXPANSION_1_INNER
+		or vanityPlacement == enums.VanityPlacements.EXPANSION_2_INNER
+		or vanityPlacement == enums.VanityPlacements.EXPANSION_3_INNER
+		or vanityPlacement == enums.VanityPlacements.EXPANSION_4_INNER
+	then
 		-- restore default; it must be unlocked already
 		self:restoreExpansionInner(plotIndex, vanityPlacement)
 		return
 	end
 
-	if vanityPlacement == enums.VanityPlacements.EXPANSION_1_OUTER or vanityPlacement == enums.VanityPlacements.EXPANSION_2_OUTER or
-		vanityPlacement == enums.VanityPlacements.EXPANSION_3_OUTER or vanityPlacement == enums.VanityPlacements.EXPANSION_4_OUTER then
+	if
+		vanityPlacement == enums.VanityPlacements.EXPANSION_1_OUTER
+		or vanityPlacement == enums.VanityPlacements.EXPANSION_2_OUTER
+		or vanityPlacement == enums.VanityPlacements.EXPANSION_3_OUTER
+		or vanityPlacement == enums.VanityPlacements.EXPANSION_4_OUTER
+	then
 		-- restore default; it must be unlocked already
 		self:restoreExpansionOuter(plotIndex, vanityPlacement)
 		return
@@ -739,11 +834,15 @@ function PlotsManager.init(self: PlotsManager)
 	-- map from plot index to vanity area to bounds structure {minPosition, maxPosition}
 	self.expansionBounds = {}
 	for plotIndex = 1, NUM_PLOTS do
-		local mainPosition1 = self:translatePositionPlotToWorld(self:translatePositionWorldToPlot(mainBounds.minPosition, 1), plotIndex)
-		local mainPosition2 = self:translatePositionPlotToWorld(self:translatePositionWorldToPlot(mainBounds.maxPosition, 1), plotIndex)
+		local mainPosition1 =
+			self:translatePositionPlotToWorld(self:translatePositionWorldToPlot(mainBounds.minPosition, 1), plotIndex)
+		local mainPosition2 =
+			self:translatePositionPlotToWorld(self:translatePositionWorldToPlot(mainBounds.maxPosition, 1), plotIndex)
 
-		local plotMainMinPosition = Vector3.new(math.min(mainPosition1.X, mainPosition2.X), 0, math.min(mainPosition1.Z, mainPosition2.Z))
-		local plotMainMaxPosition = Vector3.new(math.max(mainPosition1.X, mainPosition2.X), 0, math.max(mainPosition1.Z, mainPosition2.Z))
+		local plotMainMinPosition =
+			Vector3.new(math.min(mainPosition1.X, mainPosition2.X), 0, math.min(mainPosition1.Z, mainPosition2.Z))
+		local plotMainMaxPosition =
+			Vector3.new(math.max(mainPosition1.X, mainPosition2.X), 0, math.max(mainPosition1.Z, mainPosition2.Z))
 
 		self.mainBounds[plotIndex] = {
 			minPosition = plotMainMinPosition,
@@ -753,8 +852,14 @@ function PlotsManager.init(self: PlotsManager)
 
 		self.expansionBounds[plotIndex] = {}
 		for _, vanityArea in expansionVanityAreas do
-			local position1 = self:translatePositionPlotToWorld(self:translatePositionWorldToPlot(expansionBounds[vanityArea].minPosition, 1), plotIndex)
-			local position2 = self:translatePositionPlotToWorld(self:translatePositionWorldToPlot(expansionBounds[vanityArea].maxPosition, 1), plotIndex)
+			local position1 = self:translatePositionPlotToWorld(
+				self:translatePositionWorldToPlot(expansionBounds[vanityArea].minPosition, 1),
+				plotIndex
+			)
+			local position2 = self:translatePositionPlotToWorld(
+				self:translatePositionWorldToPlot(expansionBounds[vanityArea].maxPosition, 1),
+				plotIndex
+			)
 
 			local minPosition = Vector3.new(math.min(position1.X, position2.X), 0, math.min(position1.Z, position2.Z))
 			local maxPosition = Vector3.new(math.max(position1.X, position2.X), 0, math.max(position1.Z, position2.Z))
@@ -770,7 +875,12 @@ function PlotsManager.init(self: PlotsManager)
 	-- take cframe of pre-existing inner and outer as the reference points
 	-- probably should change this to instead use the cframes of the DEFAULT_LAND_PLOT_INNER_NAME and DEFAULT_LAND_PLOT_OUTER_NAME
 
-	for _, plotPartName in {enums.getName(enums.VanityPlacements, enums.VanityPlacements.MAIN_PLOT_INNER), enums.getName(enums.VanityPlacements, enums.VanityPlacements.MAIN_PLOT_OUTER)} do
+	for _, plotPartName in
+		{
+			enums.getName(enums.VanityPlacements, enums.VanityPlacements.MAIN_PLOT_INNER),
+			enums.getName(enums.VanityPlacements, enums.VanityPlacements.MAIN_PLOT_OUTER),
+		}
+	do
 		local inst: any = Land:FindFirstChild(plotPartName :: string)
 		self.plotPartCFrames[plotPartName :: string] = PlotHelpers.translateCFrameWorldToPlot(inst:GetPivot(), 1)
 	end
@@ -795,21 +905,23 @@ function PlotsManager.init(self: PlotsManager)
 
 	-- move per-plot elements to be under server storage to clone out to each player when they come in
 	PerPlotElements.Parent = ServerStorage
-
 end
 
 function PlotsManager.new(): PlotsManager
-	local self: PlotsManager = setmetatable({
-		mainPlotInnerDatas = {},
-		mainPlotOuterDatas = {},
-		fenceDatas = {},
-		expansionInnerDatas = {},
-		expansionOuterDatas = {},
+	local self: PlotsManager = setmetatable(
+		{
+			mainPlotInnerDatas = {},
+			mainPlotOuterDatas = {},
+			fenceDatas = {},
+			expansionInnerDatas = {},
+			expansionOuterDatas = {},
 
-		plotPartCFrames = {},
+			plotPartCFrames = {},
 
-		assignments = {},
-	} :: PlotsManagerFields, PlotsManager)
+			assignments = {},
+		} :: PlotsManagerFields,
+		PlotsManager
+	)
 
 	return self
 end
