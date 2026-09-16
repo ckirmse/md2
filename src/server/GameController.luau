@@ -481,7 +481,7 @@ function GameController.isLocationInFreeFlyZone(self: GameController, location: 
 end
 
 function GameController.tryEnforceBiomeGate(self: GameController, dragon: Types.ShadowDragon, cframe: CFrame): boolean
-	local gate = BiomeData.getGoverningGate(cframe.Position.Z)
+	local gate = BiomeData.getGoverningGate(cframe.Position)
 	if not gate then
 		return true
 	end

@@ -350,10 +350,18 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			if Iris.Button({ "Recreate All Shadow Casters" }).clicked() then
 				clientShadowManager:recreateAllCasters()
 			end
+			Iris.SeparatorText({ "Dragons" })
 			if Iris.Button({ "Dump Dragon Power" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpDragonPower")
 			end
+			if Iris.Button({ "Equip All Dragons" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("equipAllDragons")
+			end
+			if Iris.Button({ "Unequip All Dragons" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("unequipAllDragons")
+			end
 
+			Iris.SeparatorText({ "Biome" })
 			local rideLevel = Iris.State(1)
 			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = rideLevel })
 			Iris.SameLine()
@@ -361,13 +369,10 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("setRidingDragonRideLevel", rideLevel:get())
 			end
 			Iris.End()
+			if Iris.Button({ "Dump Biome Progress" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpBiomeProgress")
+			end
 
-			if Iris.Button({ "Equip All Dragons" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("equipAllDragons")
-			end
-			if Iris.Button({ "Unequip All Dragons" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("unequipAllDragons")
-			end
 			if Iris.Button({ "Dump Server Trading State" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpServerTradingState")
 			end

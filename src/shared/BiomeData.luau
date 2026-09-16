@@ -4,23 +4,32 @@ local BiomeData = {}
 
 export type BiomeGate = {
 	biomeIndex: number,
-	gateZ: number,
+	gateDistance: number,
 	speedGate: number,
 }
 
--- biomes sit in a straight line along +Z; each gate covers everything from its gateZ onward until
--- the next gate's gateZ. gateZ values are placeholders (no Studio geometry yet); speedGate values
--- are document 3's real numbers. Append entries here as more biomes get built.
+local HALLWAY_ORIGIN = Vector3.new(-1.044, 0.795, 234.622)
+local HALLWAY_DIRECTION = Vector3.new(1, 0, 0)
+
 local GATES: { BiomeGate } = {
-	{ biomeIndex = 2, gateZ = 460.4, speedGate = 130 },
+	{ biomeIndex = 2, gateDistance = 230, speedGate = 130 },
+	{ biomeIndex = 3, gateDistance = 430, speedGate = 200 },
 }
 BiomeData.GATES = GATES
+BiomeData.HALLWAY_DIRECTION = HALLWAY_DIRECTION
 
--- the gate governing position z: the crossed gate with the highest gateZ, or nil before all gates
-function BiomeData.getGoverningGate(z: number): BiomeGate?
+function BiomeData.getProgress(position: Vector3): number
+	return (position - HALLWAY_ORIGIN):Dot(HALLWAY_DIRECTION)
+end
+
+function BiomeData.getGoverningGate(position: Vector3): BiomeGate?
+	local progress = BiomeData.getProgress(position)
 	local governing: BiomeGate? = nil
-	for _, gate in BiomeData.GATES do
-		if z >= gate.gateZ and (governing == nil or gate.gateZ > (governing :: BiomeGate).gateZ) then
+	for _, gate in GATES do
+		if
+			progress >= gate.gateDistance
+			and (governing == nil or gate.gateDistance > (governing :: BiomeGate).gateDistance)
+		then
 			governing = gate
 		end
 	end

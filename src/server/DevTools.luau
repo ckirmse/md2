@@ -27,6 +27,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local BiomeData = require("@game/ReplicatedStorage/Shared/BiomeData")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
@@ -313,6 +314,48 @@ function DevTools.setRidingDragonRideLevel(self: DevTools, player: Player, level
 		level,
 		"Speed",
 		dragon:getObj():GetAttribute(Attributes.DRAGON_SPEED_STAT)
+	)
+end
+
+function DevTools.dumpBiomeProgress(self: DevTools, player: Player)
+	local position: Vector3
+	local speedStat: number? = nil
+
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if dragon then
+		position = dragon:getObj():GetPivot().Position
+		speedStat = dragon:getObj():GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?
+	else
+		local character = player.Character
+		local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+		if not humanoidRootPart then
+			print("no character to check biome progress for", player)
+			return
+		end
+		position = (humanoidRootPart :: BasePart).Position
+	end
+
+	local progress = BiomeData.getProgress(position)
+	local gate = BiomeData.getGoverningGate(position)
+
+	if not gate then
+		print("biome progress", progress, "- before all gates (biome 1)")
+		return
+	end
+
+	print(
+		"biome progress",
+		progress,
+		"- governing gate biome",
+		gate.biomeIndex,
+		"at distance",
+		gate.gateDistance,
+		"requires Speed",
+		gate.speedGate,
+		"current Speed",
+		speedStat,
+		"clears?",
+		speedStat ~= nil and speedStat >= gate.speedGate
 	)
 end
 

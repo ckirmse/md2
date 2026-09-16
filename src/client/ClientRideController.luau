@@ -31,7 +31,6 @@ local screenGuiManager = require("./ScreenGuiManager")
 local TargetBase = require("./TargetBase")
 local virtualTouchJoystick = require("./VirtualTouchJoystick")
 
-
 local FORWARD_KEY = Enum.KeyCode.W
 local LEFT_KEY = Enum.KeyCode.A
 local RIGHT_KEY = Enum.KeyCode.D
@@ -215,38 +214,31 @@ function ClientRideController.updateStamina(self: ClientRideController)
 	self.prevStamina = stamina
 end
 
-
 function ClientRideController.beginListenInputs(self: ClientRideController)
 	self.moveVector = Vector2.zero
 
 	-- To detect when it starts being moved
-	self.inputBeganConnect = userInputService.InputBegan:Connect(
-		function(input, gameProcessed)
-			if input.KeyCode == Enum.KeyCode.Thumbstick1 then
-				--print("Left Stick Started Moving!")
-			end
+	self.inputBeganConnect = userInputService.InputBegan:Connect(function(input, gameProcessed)
+		if input.KeyCode == Enum.KeyCode.Thumbstick1 then
+			--print("Left Stick Started Moving!")
 		end
-	)
+	end)
 
-	self.inputChangedConnect = userInputService.InputChanged:Connect(
-		function(input, gameProcessed)
-			if input.KeyCode == Enum.KeyCode.Thumbstick1 then
-				local thumbstickVector = input.Position
-				--print("Left Stick Position: X:", thumbstickVector.X, "Y:", thumbstickVector.Y)
-				self.moveVector = thumbstickVector
-			end
+	self.inputChangedConnect = userInputService.InputChanged:Connect(function(input, gameProcessed)
+		if input.KeyCode == Enum.KeyCode.Thumbstick1 then
+			local thumbstickVector = input.Position
+			--print("Left Stick Position: X:", thumbstickVector.X, "Y:", thumbstickVector.Y)
+			self.moveVector = thumbstickVector
 		end
-	)
+	end)
 
 	-- To detect when it stops (returns to center)
-	self.inputEndedConnect = userInputService.InputEnded:Connect(
-		function(input, gameProcessed)
-			if input.KeyCode == Enum.KeyCode.Thumbstick1 then
-				--print("Left Stick Released (Returned to center)!")
-				self.moveVector = Vector2.zero
-			end
+	self.inputEndedConnect = userInputService.InputEnded:Connect(function(input, gameProcessed)
+		if input.KeyCode == Enum.KeyCode.Thumbstick1 then
+			--print("Left Stick Released (Returned to center)!")
+			self.moveVector = Vector2.zero
 		end
-	)
+	end)
 end
 
 function ClientRideController.cleanupListenInputs(self: ClientRideController)
@@ -264,7 +256,6 @@ function ClientRideController.cleanupListenInputs(self: ClientRideController)
 		self.inputEndedConnect:Disconnect()
 		self.inputEndedConnect = nil
 	end
-
 end
 
 local THUMBSTICK_DEAD_ZONE = 0.1
@@ -329,10 +320,14 @@ function ClientRideController.sendServerRidingItemCFrame(self: ClientRideControl
 			playerRelativeToDragonCFrame = nil
 			lastSendPlayerTime = self.lastSendServer.lastSendPlayerTime
 		end
-
 	end
 
-	RemoteEvents.TrySetRidingItemCFrame:FireServer(self.ridingItemId, workspace:GetServerTimeNow(), dragonCFrame, playerRelativeToDragonCFrame)
+	RemoteEvents.TrySetRidingItemCFrame:FireServer(
+		self.ridingItemId,
+		workspace:GetServerTimeNow(),
+		dragonCFrame,
+		playerRelativeToDragonCFrame
+	)
 
 	self.lastSendServer = {
 		time = now,
@@ -340,7 +335,6 @@ function ClientRideController.sendServerRidingItemCFrame(self: ClientRideControl
 		dragonCFrame = dragonCFrame,
 		playerRelativeToDragonCFrame = playerRelativeToDragonCFrame,
 	}
-
 end
 
 -- progress towards avoiding land, but it's pretty jittery--would need to add some sort of smoothing
@@ -581,7 +575,8 @@ function ClientRideController.updateMovement(self: ClientRideController, deltaTi
 		]]
 
 		-- I think this is equivalent to the blob above
-		local interpolatedMatrix = self.drivePart.CFrame.Rotation:Lerp(avoidLandCFrame, deltaTime * 60 / INTERPOLATE_MATCH_CAMERA_SEC)
+		local interpolatedMatrix =
+			self.drivePart.CFrame.Rotation:Lerp(avoidLandCFrame, deltaTime * 60 / INTERPOLATE_MATCH_CAMERA_SEC)
 
 		-- aim our drive part in the new direction
 		self.drivePart.CFrame = interpolatedMatrix.Rotation + self.drivePart.Position
@@ -598,13 +593,20 @@ function ClientRideController.updateMovement(self: ClientRideController, deltaTi
 		local speedStat = self.shadow:GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?
 		local speedStatMultiplier = (speedStat or 100) / 100
 
-		local velocityVector = (speedFrac * moveFrac * Constants.BASE_RIDE_SPEED * speedMultiplier * speedStatMultiplier) * forwardDirection
+		local velocityVector = (
+			speedFrac
+			* moveFrac
+			* Constants.BASE_RIDE_SPEED
+			* speedMultiplier
+			* speedStatMultiplier
+		) * forwardDirection
 
-		-- don't push further past a biome gate we haven't earned enough Speed to cross; sideways
-		-- and backward motion are untouched, so this reads as a wall, not a hard freeze
-		local gate = BiomeData.getGoverningGate(self.drivePart.Position.Z)
-		if gate and (not speedStat or speedStat < gate.speedGate) and velocityVector.Z > 0 then
-			velocityVector = Vector3.new(velocityVector.X, velocityVector.Y, 0)
+		local gate = BiomeData.getGoverningGate(self.drivePart.Position)
+		if gate and (not speedStat or speedStat < gate.speedGate) then
+			local forwardProgress = velocityVector:Dot(BiomeData.HALLWAY_DIRECTION)
+			if forwardProgress > 0 then
+				velocityVector -= BiomeData.HALLWAY_DIRECTION * forwardProgress
+			end
 		end
 
 		--local forwardDirectionXZ = Vector3.new(forwardDirection.X, 0, forwardDirection.Z)
@@ -690,7 +692,6 @@ function ClientRideController.enableTargeting(self: ClientRideController, object
 		self.prompt.Parent = promptParent
 		self.prompt.Enabled = true
 	end
-
 end
 
 function ClientRideController.disableTargeting(self: ClientRideController)
@@ -750,7 +751,6 @@ function ClientRideController.updateTargeting(self: ClientRideController)
 			end
 		end
 
-
 		--print("candidate", inst.Name, objectId, distance)
 
 		-- now see if it's the cone in front of us
@@ -787,7 +787,7 @@ function ClientRideController.updateTargeting(self: ClientRideController)
 
 		local raycastParams = RaycastParams.new()
 		raycastParams.FilterType = Enum.RaycastFilterType.Include
-		raycastParams.FilterDescendantsInstances = {(workspace :: any).Level}
+		raycastParams.FilterDescendantsInstances = { (workspace :: any).Level }
 
 		local raycastResult = workspace:Raycast(dragonPosition, directionToTarget * (distance - 0.01), raycastParams)
 
@@ -852,11 +852,10 @@ function ClientRideController.notifyNewInstance(self: ClientRideController, inst
 		instance = inst,
 		targetType = targetType,
 	}
-
 end
 
 function ClientRideController.notifyRemoveInstance(self: ClientRideController, inst: any, objectId: any)
-	local indicatorData	= self.indicatorMap[objectId]
+	local indicatorData = self.indicatorMap[objectId]
 	if not indicatorData then
 		return
 	end
@@ -865,7 +864,6 @@ function ClientRideController.notifyRemoveInstance(self: ClientRideController, i
 end
 
 function ClientRideController.setupPlayerRiding(self: ClientRideController)
-
 	-- find where the seat is
 	local seatLocation = nil
 	for _, descendant in self.caster:GetDescendants() do
@@ -877,7 +875,6 @@ function ClientRideController.setupPlayerRiding(self: ClientRideController)
 		seatLocation = descendant
 		break
 	end
-
 
 	-- this stuff belongs in clientRideController
 	--useful for debugging, comparing to server side
@@ -940,7 +937,6 @@ function ClientRideController.setupPlayerRiding(self: ClientRideController)
 	Satchel:SetBackpackEnabled(false)
 
 	RemoteEvents.TryBeginRideDragon:FireServer(self.ridingItemId, playerRelativeToDragonCFrame)
-
 end
 
 function ClientRideController.cleanupPlayerRiding(self: ClientRideController)
@@ -1019,17 +1015,13 @@ function ClientRideController.beginRiding(self: ClientRideController, shadow: an
 		clientDragonManager:enableTrail(self.ridingItemId)
 	end
 
-	self.runConnect = runService.PreSimulation:Connect(
-		function(deltaTime)
-			self:run(deltaTime)
-		end
-	)
+	self.runConnect = runService.PreSimulation:Connect(function(deltaTime)
+		self:run(deltaTime)
+	end)
 
-	self.attributeChangedConnect = shadow:GetAttributeChangedSignal(Attributes.DRAGON_STAMINA):Connect(
-		function()
-			self:updateStamina()
-		end
-	)
+	self.attributeChangedConnect = shadow:GetAttributeChangedSignal(Attributes.DRAGON_STAMINA):Connect(function()
+		self:updateStamina()
+	end)
 
 	screenGuiManager:setCurrentItemInstanceDisplay(shadow)
 
@@ -1064,45 +1056,39 @@ function ClientRideController.beginRiding(self: ClientRideController, shadow: an
 	objProximityPrompt.HoldDuration = 0
 	objProximityPrompt.MaxActivationDistance = math.huge
 	objProximityPrompt.Enabled = false -- only enable prompt when have a target
-	objProximityPrompt.Triggered:Connect(
-		function()
-			local indicatorData = self.indicatorMap[self.targetObjectId]
-			if not indicatorData then
-				-- shouldn't be possible
+	objProximityPrompt.Triggered:Connect(function()
+		local indicatorData = self.indicatorMap[self.targetObjectId]
+		if not indicatorData then
+			-- shouldn't be possible
+			return
+		end
+		self.isShootingFireball = true
+		local ridingItemId = self.ridingItemId
+		local targetObjectId = self.targetObjectId
+
+		RemoteEvents.TryChargeUpRidingDragon:FireServer()
+
+		task.delay(Constants.FIREBALL_CHARGE_SEC, function()
+			-- we just delayed so make sure we should still fire
+			if self.ridingItemId ~= ridingItemId then
+				self.isShootingFireball = false
 				return
 			end
-			self.isShootingFireball = true
-			local ridingItemId = self.ridingItemId
-			local targetObjectId = self.targetObjectId
 
-			RemoteEvents.TryChargeUpRidingDragon:FireServer()
-
-			task.delay(Constants.FIREBALL_CHARGE_SEC,
-				function()
-					-- we just delayed so make sure we should still fire
-					if self.ridingItemId ~= ridingItemId then
-						self.isShootingFireball = false
-						return
-					end
-
-					if indicatorData.targetType == TARGET_TYPE_NODE then
-						RemoteEvents.TryMineWhileRiding:FireServer(targetObjectId)
-					elseif indicatorData.targetType == TARGET_TYPE_CROP then
-						RemoteEvents.TryShootFireballAtCrop:FireServer(targetObjectId)
-					elseif indicatorData.targetType == TARGET_TYPE_CRITTER then
-						RemoteEvents.TryShootFireballAtCritter:FireServer(targetObjectId)
-					else
-						warn("unknown target type", indicatorData.targetType)
-					end
-				end
-			)
-
-		end
-	)
+			if indicatorData.targetType == TARGET_TYPE_NODE then
+				RemoteEvents.TryMineWhileRiding:FireServer(targetObjectId)
+			elseif indicatorData.targetType == TARGET_TYPE_CROP then
+				RemoteEvents.TryShootFireballAtCrop:FireServer(targetObjectId)
+			elseif indicatorData.targetType == TARGET_TYPE_CRITTER then
+				RemoteEvents.TryShootFireballAtCritter:FireServer(targetObjectId)
+			else
+				warn("unknown target type", indicatorData.targetType)
+			end
+		end)
+	end)
 	objProximityPrompt.Parent = (player.Character :: any).HumanoidRootPart
 
 	self.prompt = objProximityPrompt
-
 
 	self:setupPlayerRiding()
 
@@ -1110,24 +1096,22 @@ function ClientRideController.beginRiding(self: ClientRideController, shadow: an
 
 	self.targetConnections = {}
 
-	table.insert(self.targetConnections,
-		collectionService:GetInstanceAddedSignal(Tags.MINABLE_NODE):Connect(
-			function(inst)
-				--print("new minable node")
-				local objectId = inst:GetAttribute(Attributes.OBJECT_ID)
-				self:notifyNewInstance(inst, objectId, TARGET_TYPE_NODE)
-			end
-		)
+	table.insert(
+		self.targetConnections,
+		collectionService:GetInstanceAddedSignal(Tags.MINABLE_NODE):Connect(function(inst)
+			--print("new minable node")
+			local objectId = inst:GetAttribute(Attributes.OBJECT_ID)
+			self:notifyNewInstance(inst, objectId, TARGET_TYPE_NODE)
+		end)
 	)
 
-	table.insert(self.targetConnections,
-		collectionService:GetInstanceRemovedSignal(Tags.MINABLE_NODE):Connect(
-			function(inst)
-				--print("minable node gone")
-				local objectId = inst:GetAttribute(Attributes.OBJECT_ID)
-				self:notifyRemoveInstance(inst, objectId)
-			end
-		)
+	table.insert(
+		self.targetConnections,
+		collectionService:GetInstanceRemovedSignal(Tags.MINABLE_NODE):Connect(function(inst)
+			--print("minable node gone")
+			local objectId = inst:GetAttribute(Attributes.OBJECT_ID)
+			self:notifyRemoveInstance(inst, objectId)
+		end)
 	)
 
 	for _, inst in collectionService:GetTagged(Tags.MINABLE_NODE) do
@@ -1136,29 +1120,27 @@ function ClientRideController.beginRiding(self: ClientRideController, shadow: an
 		self:notifyNewInstance(inst, objectId, TARGET_TYPE_NODE)
 	end
 
-	table.insert(self.targetConnections,
-		collectionService:GetInstanceAddedSignal(Tags.CROP):Connect(
-			function(inst)
-				--print("new crop", inst, inst:GetAttribute(Attributes.USER_ID), player.UserId)
-				if inst:GetAttribute(Attributes.USER_ID) == player.UserId then
-					-- can't target own crops
-					return
-				end
-				--print("really using new crop", inst)
-				local objectId = inst:GetAttribute(Attributes.ITEM_ID)
-				self:notifyNewInstance(inst, objectId, TARGET_TYPE_CROP)
+	table.insert(
+		self.targetConnections,
+		collectionService:GetInstanceAddedSignal(Tags.CROP):Connect(function(inst)
+			--print("new crop", inst, inst:GetAttribute(Attributes.USER_ID), player.UserId)
+			if inst:GetAttribute(Attributes.USER_ID) == player.UserId then
+				-- can't target own crops
+				return
 			end
-		)
+			--print("really using new crop", inst)
+			local objectId = inst:GetAttribute(Attributes.ITEM_ID)
+			self:notifyNewInstance(inst, objectId, TARGET_TYPE_CROP)
+		end)
 	)
 
-	table.insert(self.targetConnections,
-		collectionService:GetInstanceRemovedSignal(Tags.CROP):Connect(
-			function(inst)
-				--print("crop gone")
-				local objectId = inst:GetAttribute(Attributes.ITEM_ID)
-				self:notifyRemoveInstance(inst, objectId)
-			end
-		)
+	table.insert(
+		self.targetConnections,
+		collectionService:GetInstanceRemovedSignal(Tags.CROP):Connect(function(inst)
+			--print("crop gone")
+			local objectId = inst:GetAttribute(Attributes.ITEM_ID)
+			self:notifyRemoveInstance(inst, objectId)
+		end)
 	)
 
 	for _, inst in collectionService:GetTagged(Tags.CROP) do
@@ -1172,24 +1154,22 @@ function ClientRideController.beginRiding(self: ClientRideController, shadow: an
 		self:notifyNewInstance(inst, objectId, TARGET_TYPE_CROP)
 	end
 
-	table.insert(self.targetConnections,
-		collectionService:GetInstanceAddedSignal(Tags.CRITTER_CASTER):Connect(
-			function(inst)
-				--print("new critter")
-				local objectId = inst:GetAttribute(Attributes.OBJECT_ID)
-				self:notifyNewInstance(inst, objectId, TARGET_TYPE_CRITTER)
-			end
-		)
+	table.insert(
+		self.targetConnections,
+		collectionService:GetInstanceAddedSignal(Tags.CRITTER_CASTER):Connect(function(inst)
+			--print("new critter")
+			local objectId = inst:GetAttribute(Attributes.OBJECT_ID)
+			self:notifyNewInstance(inst, objectId, TARGET_TYPE_CRITTER)
+		end)
 	)
 
-	table.insert(self.targetConnections,
-		collectionService:GetInstanceRemovedSignal(Tags.CRITTER_CASTER):Connect(
-			function(inst)
-				--print("critter gone")
-				local objectId = inst:GetAttribute(Attributes.OBJECT_ID)
-				self:notifyRemoveInstance(inst, objectId)
-			end
-		)
+	table.insert(
+		self.targetConnections,
+		collectionService:GetInstanceRemovedSignal(Tags.CRITTER_CASTER):Connect(function(inst)
+			--print("critter gone")
+			local objectId = inst:GetAttribute(Attributes.OBJECT_ID)
+			self:notifyRemoveInstance(inst, objectId)
+		end)
 	)
 
 	for _, inst in collectionService:GetTagged(Tags.CRITTER_CASTER) do
@@ -1197,7 +1177,6 @@ function ClientRideController.beginRiding(self: ClientRideController, shadow: an
 		local objectId = inst:GetAttribute(Attributes.OBJECT_ID)
 		self:notifyNewInstance(inst, objectId, TARGET_TYPE_CRITTER)
 	end
-
 
 	local isRiding = true
 
@@ -1320,7 +1299,6 @@ function ClientRideController.cleanupRiding(self: ClientRideController)
 
 	local isRiding = false
 	self.event:Fire(isRiding)
-
 end
 
 function ClientRideController.notifyBeginRideDragonStatus(self: ClientRideController, isSuccess: any)
@@ -1377,7 +1355,6 @@ function ClientRideController.notifyMineWhileRidingStatus(self: ClientRideContro
 	if not isSuccess then
 		self.isShootingFireball = false
 	end
-
 
 	-- this means the fireball has started, not that it's done
 end
@@ -1461,12 +1438,10 @@ end
 function ClientRideController.notifyBeginSitting(self: ClientRideController, shadow: any, caster: any)
 	self:beginRiding(shadow, caster)
 
-	self.casterDestroyConnect = caster.Destroying:Connect(
-		function()
-			self.casterDestroyConnect = nil
-			self:cleanupRiding()
-		end
-	)
+	self.casterDestroyConnect = caster.Destroying:Connect(function()
+		self.casterDestroyConnect = nil
+		self:cleanupRiding()
+	end)
 end
 
 function ClientRideController.notifyEndSitting(self: ClientRideController)
