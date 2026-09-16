@@ -59,7 +59,7 @@ function Nest.cleanupIdle(self: Nest)
 	if self.eggItemId then
 		local item = itemManager:getItemById(self.eggItemId)
 		if item then
-			item:destroy()
+			itemManager:destroyItem(item)
 		end
 		self.eggItemId = nil
 	end
