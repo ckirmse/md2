@@ -2413,6 +2413,90 @@ function GameController.trySetRidingItemCFrame(self: GameController, player: Pla
 	dragon:trySetRidingItemCFrame(time, cframe)
 end
 
+function GameController.tryPickupEgg(self: GameController, player: Player, objectId: any): ()
+	if not rideMixin:isPlayerRiding(player) then
+		return
+	end
+
+	local nest = nestManager:getNestByObjectId(objectId)
+	if not nest then
+		return
+	end
+
+	if not nest:isPlayerCloseEnoughToPickupWhileRiding(player) then
+		return
+	end
+
+	local eggItemId = nest:getEggItemId()
+	if not eggItemId then
+		return
+	end
+
+	local item = itemManager:getItemById(eggItemId)
+	if not item then
+		return
+	end
+
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not dragon then
+		return
+	end
+
+	item:setUserId(player.UserId)
+	nest:notifyEggTaken()
+
+	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", false)
+	utils.setPropertyTreeBaseParts(item:getObj(), "CanCollide", false)
+
+	local biomeIndex = item:getObj():GetAttribute(Attributes.SOURCE_BIOME_INDEX) :: number?
+	local carrySpeedMult = BiomeData.getCarrySpeedMultForBiome(biomeIndex or 1)
+
+	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, true)
+	dragon:getObj():SetAttribute(Attributes.CARRY_SPEED_MULT, carrySpeedMult)
+	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, eggItemId)
+end
+
+function GameController.tryDropEggAtPosition(self: GameController, player: Player, position: any): ()
+	if not rideMixin:isPlayerRiding(player) then
+		return
+	end
+
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not dragon then
+		return
+	end
+
+	local eggItemId = dragon:getObj():GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) :: number?
+	if not eggItemId then
+		return
+	end
+
+	if typeof(position) ~= "Vector3" then
+		return
+	end
+
+	if not plotsManager:isPositionInMainPlotXZByUserId(position, player.UserId) then
+		return
+	end
+
+	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
+	dragon:getObj():SetAttribute(Attributes.CARRY_SPEED_MULT, nil)
+	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
+
+	local item = itemManager:getItemById(eggItemId)
+	if not item then
+		return
+	end
+
+	local groundPosition = utils.getGroundPositionForLocation(position) + Vector3.new(0, item:getPart().Size.Y / 2, 0)
+
+	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", true)
+	item:getObj():PivotTo(CFrame.new(groundPosition))
+	item:setVenueWorkspaceAvailable()
+
+	-- M5 hooks in here: placing the egg is the incubation trigger (roll rarity/mutation, start the hatch timer)
+end
+
 function GameController.tryShootFireballAtCrop(self: GameController, player: Player, cropItemId: any): ()
 	--print("got try shoot fireball at crop player", player, "of item id", cropItemId)
 
@@ -3284,6 +3368,8 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryCheckGroup", "tryCheckGroup")
 	self:addRemoteEventHandler("TryClaimWelcomeBackGift", "tryClaimWelcomeBackGift")
 	self:addRemoteEventHandler("TryClaimLuckBillboard", "tryClaimLuckBillboard")
+	self:addRemoteEventHandler("TryPickupEgg", "tryPickupEgg")
+	self:addRemoteEventHandler("TryDropEggAtPosition", "tryDropEggAtPosition")
 end
 
 function GameController.processPollTimer(self: GameController): ()

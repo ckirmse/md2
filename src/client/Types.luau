@@ -165,6 +165,7 @@ export type ClientDragonManager = {
 	tryBeginRidingDragonById: (self: ClientDragonManager, itemId: any) -> boolean,
 	tryBeginRidingNearestDragon: (self: ClientDragonManager) -> boolean,
 	updateAnimateHead: (self: ClientDragonManager, itemId: any, deltaTime: any) -> (),
+	updateCarriedEgg: (self: ClientDragonManager, itemId: any) -> (),
 	updatePotatoModeEnabled: (self: ClientDragonManager) -> (),
 }
 

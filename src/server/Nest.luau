@@ -14,6 +14,7 @@ local Timer = require("./Timer")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local BiomeData = require("@game/ReplicatedStorage/Shared/BiomeData")
+local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
@@ -36,6 +37,15 @@ function Nest.getBiomeIndex(self: Nest): number
 		return gate.biomeIndex
 	end
 	return 1
+end
+
+function Nest.getEggItemId(self: Nest): number?
+	return self.eggItemId
+end
+
+function Nest.isPlayerCloseEnoughToPickupWhileRiding(self: Nest, player: Player): boolean
+	local distance = ((player.Character :: any).HumanoidRootPart.Position - self:getEggSpawnPosition()).Magnitude
+	return distance <= Constants.PICKUP_EGG_DISTANCE * 1.1
 end
 
 function Nest.beginIdle(self: Nest)

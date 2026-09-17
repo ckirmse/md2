@@ -737,6 +737,14 @@ function Item.getUserId(self: Item): number
 	return self.userId
 end
 
+-- transfers ownership, e.g. a nest egg going from unowned to whoever picks it up
+function Item.setUserId(self: Item, userId: number)
+	self.userId = userId
+
+	self:getObj():SetAttribute(Attributes.USER_ID, userId)
+	self:getPart():SetAttribute(Attributes.USER_ID, userId)
+end
+
 function Item.getPlayer(self: Item): Player?
 	return playersService:GetPlayerByUserId(self.userId)
 end

@@ -239,6 +239,34 @@ function ClientRideController.beginListenInputs(self: ClientRideController)
 			self.moveVector = Vector2.zero
 		end
 	end)
+
+	-- click to drop a carried egg in the plot; only relevant while riding, so this lives with the
+	-- other ride-session input, connected on ride begin and cleaned up on ride end
+	self.dropEggInputConnect = userInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed then
+			return
+		end
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		if not self.shadow:GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) then
+			return
+		end
+
+		local camera = workspace.CurrentCamera
+		local unscaledRay = camera:ViewportPointToRay(input.Position.X, input.Position.Y)
+
+		local raycastParams = RaycastParams.new()
+		raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+		raycastParams.FilterDescendantsInstances = { (player.Character :: any) :: Instance, self.shadow, self.caster }
+
+		local result = workspace:Raycast(unscaledRay.Origin, unscaledRay.Direction * 1000, raycastParams)
+		if not result then
+			return
+		end
+
+		RemoteEvents.TryDropEggAtPosition:FireServer(result.Position)
+	end)
 end
 
 function ClientRideController.cleanupListenInputs(self: ClientRideController)
@@ -255,6 +283,11 @@ function ClientRideController.cleanupListenInputs(self: ClientRideController)
 	if self.inputEndedConnect then
 		self.inputEndedConnect:Disconnect()
 		self.inputEndedConnect = nil
+	end
+
+	if self.dropEggInputConnect then
+		self.dropEggInputConnect:Disconnect()
+		self.dropEggInputConnect = nil
 	end
 end
 

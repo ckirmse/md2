@@ -18,6 +18,18 @@ local GATES: { BiomeGate } = {
 BiomeData.GATES = GATES
 BiomeData.HALLWAY_DIRECTION = HALLWAY_DIRECTION
 
+-- fixed at pickup biome rather than recomputed live as the carrier travels back
+local CARRY_SPEED_MULT_BY_BIOME: { [number]: number } = {
+	[1] = 0.9,
+	[2] = 0.85,
+	[3] = 0.8,
+}
+BiomeData.CARRY_SPEED_MULT_BY_BIOME = CARRY_SPEED_MULT_BY_BIOME
+
+function BiomeData.getCarrySpeedMultForBiome(biomeIndex: number): number
+	return CARRY_SPEED_MULT_BY_BIOME[biomeIndex] or 1
+end
+
 function BiomeData.getProgress(position: Vector3): number
 	return (position - HALLWAY_ORIGIN):Dot(HALLWAY_DIRECTION)
 end

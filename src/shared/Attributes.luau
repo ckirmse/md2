@@ -29,6 +29,8 @@ module = {
 
 	-- dragons need an part with this as a boolean set to true
 	SEAT_LOCATION = "SeatLocation",
+	-- dragons need a part with this as a boolean set to true, for a carried egg to weld to
+	EGG_CARRY_LOCATION = "EggCarryLocation",
 
 	DRAGON_RISE_SPEED = "RiseSpeed",
 	DRAGON_MAX_FLIGHT_DURATION = "MaxFlightDuration",
@@ -49,6 +51,7 @@ module = {
 
 	IS_CARRYING = "IsCarrying",
 	CARRY_SPEED_MULT = "CarrySpeedMult",
+	CARRIED_EGG_ITEM_ID = "CarriedEggItemId",
 
 	GUARDIAN_STATE = "GuardianState",
 

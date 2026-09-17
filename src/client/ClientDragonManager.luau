@@ -1068,6 +1068,87 @@ function ClientDragonManager.disableTrail(self: ClientDragonManager, itemId: any
 end
 
 
+-- aligns a carried egg to the dragon's EggCarryLocation part via AlignPosition/AlignOrientation
+-- (not a WeldConstraint -- that merges assemblies, which caused a mass-change velocity spike on
+-- drop and fought the rig's own animation welds); runs for every dragon in the world, not just
+-- the locally-ridden one, so other players see carried eggs too
+function ClientDragonManager.updateCarriedEgg(self: ClientDragonManager, itemId: any)
+	local indicatorData = self.indicatorMap[itemId]
+	if not indicatorData then
+		return
+	end
+
+	if indicatorData.carriedEggAlignPosition then
+		indicatorData.carriedEggAlignPosition:Destroy()
+		indicatorData.carriedEggAlignPosition = nil
+	end
+	if indicatorData.carriedEggAlignOrientation then
+		indicatorData.carriedEggAlignOrientation:Destroy()
+		indicatorData.carriedEggAlignOrientation = nil
+	end
+	if indicatorData.carriedEggTargetAttachment then
+		indicatorData.carriedEggTargetAttachment:Destroy()
+		indicatorData.carriedEggTargetAttachment = nil
+	end
+	if indicatorData.carriedEggSourceAttachment then
+		indicatorData.carriedEggSourceAttachment:Destroy()
+		indicatorData.carriedEggSourceAttachment = nil
+	end
+
+	local eggItemId = indicatorData.shadow:GetAttribute(Attributes.CARRIED_EGG_ITEM_ID)
+	if not eggItemId then
+		return
+	end
+
+	local carryLocation = utils.findFirstDescendantWithAttribute(indicatorData.caster, Attributes.EGG_CARRY_LOCATION, true)
+	if not carryLocation then
+		warn("dragon caster missing an EggCarryLocation part", indicatorData.caster)
+		return
+	end
+
+	local eggObj = clientEventHandlers:getOrWaitForObject(eggItemId)
+	if not eggObj then
+		return
+	end
+
+	local eggPart = eggObj:IsA("Model") and eggObj.PrimaryPart or eggObj
+	if not eggPart then
+		warn("carried egg has no PrimaryPart to weld", eggObj)
+		return
+	end
+	local eggBasePart = eggPart :: BasePart
+	local carryBasePart = carryLocation :: BasePart
+
+	eggObj:PivotTo(carryBasePart.CFrame)
+
+	local carryAttachment = Instance.new("Attachment")
+	carryAttachment.Name = "EggCarryTargetAttachment"
+	carryAttachment.Parent = carryBasePart
+
+	local eggAttachment = Instance.new("Attachment")
+	eggAttachment.Name = "EggCarrySourceAttachment"
+	eggAttachment.Parent = eggBasePart
+
+	local alignPosition = Instance.new("AlignPosition")
+	alignPosition.Attachment0 = eggAttachment
+	alignPosition.Attachment1 = carryAttachment
+	alignPosition.MaxForce = math.huge
+	alignPosition.Responsiveness = 200
+	alignPosition.Parent = eggBasePart
+
+	local alignOrientation = Instance.new("AlignOrientation")
+	alignOrientation.Attachment0 = eggAttachment
+	alignOrientation.Attachment1 = carryAttachment
+	alignOrientation.MaxTorque = math.huge
+	alignOrientation.Responsiveness = 200
+	alignOrientation.Parent = eggBasePart
+
+	indicatorData.carriedEggTargetAttachment = carryAttachment
+	indicatorData.carriedEggSourceAttachment = eggAttachment
+	indicatorData.carriedEggAlignPosition = alignPosition
+	indicatorData.carriedEggAlignOrientation = alignOrientation
+end
+
 function ClientDragonManager.removeIndicators(self: ClientDragonManager, itemId: any)
 	local indicatorData = self.indicatorMap[itemId]
 	if not indicatorData then
@@ -1107,6 +1188,28 @@ function ClientDragonManager.removeIndicators(self: ClientDragonManager, itemId:
 	if indicatorData.casterRecreatedEventConnect then
 		indicatorData.casterRecreatedEventConnect:Disconnect()
 		indicatorData.casterRecreatedEventConnect = nil
+	end
+
+	if indicatorData.carriedEggChangedConnect then
+		indicatorData.carriedEggChangedConnect:Disconnect()
+		indicatorData.carriedEggChangedConnect = nil
+	end
+
+	if indicatorData.carriedEggAlignPosition then
+		indicatorData.carriedEggAlignPosition:Destroy()
+		indicatorData.carriedEggAlignPosition = nil
+	end
+	if indicatorData.carriedEggAlignOrientation then
+		indicatorData.carriedEggAlignOrientation:Destroy()
+		indicatorData.carriedEggAlignOrientation = nil
+	end
+	if indicatorData.carriedEggTargetAttachment then
+		indicatorData.carriedEggTargetAttachment:Destroy()
+		indicatorData.carriedEggTargetAttachment = nil
+	end
+	if indicatorData.carriedEggSourceAttachment then
+		indicatorData.carriedEggSourceAttachment:Destroy()
+		indicatorData.carriedEggSourceAttachment = nil
 	end
 
 	if indicatorData.runFlapConnect then
@@ -1203,6 +1306,13 @@ function ClientDragonManager.notifyNewInstance(self: ClientDragonManager, shadow
 		local crystalItemId = shadow:GetAttribute(Attributes.ANIMATION_OPENING)
 		self:beginAnimateOpening(itemId, crystalItemId)
 	end
+
+	indicatorData.carriedEggChangedConnect = shadow:GetAttributeChangedSignal(Attributes.CARRIED_EGG_ITEM_ID):Connect(
+		function()
+			self:updateCarriedEgg(itemId)
+		end
+	)
+	self:updateCarriedEgg(itemId)
 
 	if shadow:GetAttribute(Attributes.DRAGON_FLAP_DATA) then
 		local flapDataStr = shadow:GetAttribute(Attributes.DRAGON_FLAP_DATA)
@@ -1344,6 +1454,7 @@ function ClientDragonManager.notifyNewInstance(self: ClientDragonManager, shadow
 					indicatorData.billboard.Adornee = indicatorData.seatLocation
 				end
 			end
+			self:updateCarriedEgg(itemId)
 		end
 	)
 
