@@ -626,12 +626,15 @@ function ClientRideController.updateMovement(self: ClientRideController, deltaTi
 		local speedStat = self.shadow:GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?
 		local speedStatMultiplier = (speedStat or 100) / 100
 
+		local carrySpeedMult = (self.shadow:GetAttribute(Attributes.CARRY_SPEED_MULT) :: number?) or 1
+
 		local velocityVector = (
 			speedFrac
 			* moveFrac
 			* Constants.BASE_RIDE_SPEED
 			* speedMultiplier
 			* speedStatMultiplier
+			* carrySpeedMult
 		) * forwardDirection
 
 		local gate = BiomeData.getGoverningGate(self.drivePart.Position)
