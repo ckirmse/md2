@@ -2479,10 +2479,6 @@ function GameController.tryDropEggAtPosition(self: GameController, player: Playe
 		return
 	end
 
-	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
-	dragon:getObj():SetAttribute(Attributes.CARRY_SPEED_MULT, nil)
-	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
-
 	local item = itemManager:getItemById(eggItemId)
 	if not item then
 		return
@@ -2490,11 +2486,45 @@ function GameController.tryDropEggAtPosition(self: GameController, player: Playe
 
 	local groundPosition = utils.getGroundPositionForLocation(position) + Vector3.new(0, item:getPart().Size.Y / 2, 0)
 
-	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", true)
-	item:getObj():PivotTo(CFrame.new(groundPosition))
-	item:setVenueWorkspaceAvailable()
+	local dragonHeightAboveGround = dragon:getObj():GetPivot().Position.Y - groundPosition.Y
+	if dragonHeightAboveGround > Constants.MAX_EGG_DROP_HEIGHT then
+		self:sendSystemMessageToPlayer(player, "Fly closer to the ground to drop the egg")
+		return
+	end
 
-	-- M5 hooks in here: placing the egg is the incubation trigger (roll rarity/mutation, start the hatch timer)
+	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
+	dragon:getObj():SetAttribute(Attributes.CARRY_SPEED_MULT, nil)
+	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
+
+	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", true)
+	self:tossEggToGroundPosition(item, groundPosition)
+end
+
+function GameController.tossEggToGroundPosition(self: GameController, item: Types.Item, groundPosition: Vector3)
+	local TOSS_SPEED = 45
+	local FALL_SPEED = 60
+
+	local startPosition = item:getObj():GetPivot().Position
+	local apexHorizontal = startPosition:Lerp(Vector3.new(groundPosition.X, startPosition.Y, groundPosition.Z), 0.8)
+	local apexY = startPosition.Y - (startPosition.Y - groundPosition.Y) * 0.3
+	local apexPosition = Vector3.new(apexHorizontal.X, apexY, apexHorizontal.Z)
+
+	local tossDuration = (apexPosition - startPosition).Magnitude / TOSS_SPEED
+	local tossTweenInfo = TweenInfo.new(tossDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+	local tossTween = PivotToTween(item:getObj(), tossTweenInfo, CFrame.new(apexPosition))
+
+	tossTween.Completed:Connect(function()
+		local fallDuration = (groundPosition - apexPosition).Magnitude / FALL_SPEED
+		local fallTweenInfo = TweenInfo.new(fallDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+		local fallTween = PivotToTween(item:getObj(), fallTweenInfo, CFrame.new(groundPosition))
+
+		fallTween.Completed:Connect(function()
+			item:setVenueWorkspaceAvailable()
+			-- M5 hooks in here: placing the egg is the incubation trigger (roll rarity/mutation, start the hatch timer)
+		end)
+		fallTween:Play()
+	end)
+	tossTween:Play()
 end
 
 function GameController.tryShootFireballAtCrop(self: GameController, player: Player, cropItemId: any): ()
