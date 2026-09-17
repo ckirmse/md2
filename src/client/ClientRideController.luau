@@ -1364,6 +1364,14 @@ function ClientRideController.isInBiomeLevels(self: ClientRideController): boole
 	return BiomeData.isInBiomeLevels(self.drivePart.Position)
 end
 
+function ClientRideController.isCarryingEgg(self: ClientRideController): boolean
+	if not self:isRiding() then
+		return false
+	end
+
+	return self.shadow:GetAttribute(Attributes.IS_CARRYING) == true
+end
+
 -- when player decides to stop
 function ClientRideController.tryEndRiding(self: ClientRideController)
 	if not self:isRiding() then

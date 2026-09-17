@@ -2226,6 +2226,10 @@ function GameController.tryEndRideDragon(self: GameController, player: Player, i
 		self:sendSystemMessageToPlayer(player, "You can't dismount inside a biome")
 		return
 	end
+	if dragon and dragon:getObj():GetAttribute(Attributes.IS_CARRYING) then
+		self:sendSystemMessageToPlayer(player, "You can't dismount while carrying an egg")
+		return
+	end
 
 	--RemoteEvents.NotifyEndRideDragonStatus:FireClient(player, true)
 
@@ -2624,6 +2628,10 @@ function GameController.tryPutAwayRidingDragon(self: GameController, player: Pla
 	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
 	if dragon and BiomeData.isInBiomeLevels(dragon:getObj():GetPivot().Position) then
 		self:sendSystemMessageToPlayer(player, "You can't dismount inside a biome")
+		return
+	end
+	if dragon and dragon:getObj():GetAttribute(Attributes.IS_CARRYING) then
+		self:sendSystemMessageToPlayer(player, "You can't dismount while carrying an egg")
 		return
 	end
 
