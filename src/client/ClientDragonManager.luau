@@ -1292,6 +1292,14 @@ function ClientDragonManager.notifyNewInstance(self: ClientDragonManager, shadow
 
 	local indicatorData = self.indicatorMap[itemId]
 
+	if
+		self.autoRidePending
+		and isOwnedByPlayer
+		and shadow:GetAttribute(Attributes.DRAGON_SLOT_INDEX) == nil
+	then
+		self.autoRideItemId = itemId
+	end
+
 	indicatorData.animationOpeningChangedConnect = shadow:GetAttributeChangedSignal(Attributes.ANIMATION_OPENING):Connect(
 		function()
 			local crystalItemId = shadow:GetAttribute(Attributes.ANIMATION_OPENING)
@@ -1589,10 +1597,13 @@ function ClientDragonManager.hookCharacterForAutoRide(self: ClientDragonManager,
 		if clientRideController:isRiding() then
 			return
 		end
+		if self.autoRidePending then
+			return
+		end
 
 		self.autoRidePending = true
 		self.autoRideDeadline = workspace:GetServerTimeNow() + AUTO_RIDE_TIMEOUT_SEC
-		self.autoRideItemId = child:GetAttribute(Attributes.ITEM_ID)
+		self.autoRideItemId = nil
 	end)
 end
 
@@ -1679,12 +1690,9 @@ function ClientDragonManager.init(self: ClientDragonManager)
 			if self.autoRidePending then
 				if isRiding or workspace:GetServerTimeNow() > self.autoRideDeadline then
 					self.autoRidePending = false
-				else
-					local indicatorData = self.indicatorMap[self.autoRideItemId]
-					if indicatorData and indicatorData.shadow.Parent == workspace then
-						if self:tryBeginRidingDragonById(self.autoRideItemId) then
-							self.autoRidePending = false
-						end
+				elseif self.autoRideItemId then
+					if self:tryBeginRidingDragonById(self.autoRideItemId) then
+						self.autoRidePending = false
 					end
 				end
 			end
