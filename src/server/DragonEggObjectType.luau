@@ -91,6 +91,14 @@ function DragonEggObjectType.new(): DragonEggObjectType
 			elementType = "number",
 			optional = true,
 		},
+
+		-- dragon item name to hatch into per rolled rarity, indexed 1-4 by enums.Rarity
+		hatchDragonNames = {
+			type = "array",
+			length = 4,
+			elementType = "string",
+			optional = true,
+		},
 	}
 
 	return self

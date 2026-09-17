@@ -36,6 +36,7 @@ local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local dragonPowerValues = require("@game/ServerScriptService/GameData/Control/DragonPowerValues")
+local hatchingData = require("@game/ServerScriptService/GameData/Control/Hatching")
 
 local analyticsManager = require("./AnalyticsManager")
 
@@ -1256,6 +1257,8 @@ function ShadowDragon.trySetRidingItemCFrame(self: ShadowDragon, time: number, c
 
 	self.lastRidingUpdateTime = time
 
+	self:addRideXp(durationSec * hatchingData.rideXpPerMountedSec)
+
 	-- always allow first move onto the dragon; it's often a few studs
 	-- both times are always set while riding
 	if (self.lastRidingUpdateTime :: number) > (self.ridingBeginTime :: number) then
@@ -1484,6 +1487,8 @@ function ShadowDragon.getSaveData(self: ShadowDragon, itemIdMap: any): any
 
 	retval.state = self.state
 	retval.stableSlotIndex = self.stableSlotIndex
+	retval.rideLevel = self.rideLevel
+	retval.rideXp = self.rideXp
 	if self.state == enums.DragonState.OPENING then
 		--print("saving data remapping an item id for dragon target", self.opening.crystalItemId, itemIdMap[self.opening.crystalItemId])
 		retval.opening = {}
@@ -1510,6 +1515,12 @@ function ShadowDragon.loadSaveData(self: ShadowDragon, itemSaveData: any, itemId
 	super.loadSaveData(self, itemSaveData, itemIdMap)
 
 	self.stableSlotIndex = itemSaveData.stableSlotIndex
+
+	self.rideLevel = itemSaveData.rideLevel or 1
+	self.rideXp = itemSaveData.rideXp or 0
+	self:getObj():SetAttribute(Attributes.RIDE_LEVEL, self.rideLevel)
+	self:getObj():SetAttribute(Attributes.RIDE_XP, self.rideXp)
+	self:recomputeSpeedStat()
 
 	-- saved in this state: itemSaveData.state but we put every dragon in idle to start with; they were saved with idle locations
 
@@ -1721,11 +1732,45 @@ function ShadowDragon.recomputeSpeedStat(self: ShadowDragon)
 	local itemData = self:getItemData()
 
 	local baseSpeed = Constants.DRAGON_SPEED_BASE_BY_RARITY[itemData.rarity]
-	local rideLevel = (self:getObj():GetAttribute(Attributes.RIDE_LEVEL) :: number?) or 1
 
-	local speed = DragonSpeed.speedForLevel(baseSpeed, Constants.DRAGON_SPEED_PER_LEVEL_FRAC, rideLevel)
+	local speed = DragonSpeed.speedForLevel(baseSpeed, Constants.DRAGON_SPEED_PER_LEVEL_FRAC, self.rideLevel)
 
 	self:getObj():SetAttribute(Attributes.DRAGON_SPEED_STAT, speed)
+end
+
+function ShadowDragon.getRideLevel(self: ShadowDragon): number
+	return self.rideLevel
+end
+
+-- resets progress into the new level, matching how a level-up itself works
+function ShadowDragon.setRideLevel(self: ShadowDragon, rideLevel: number)
+	self.rideLevel = math.clamp(math.floor(rideLevel), 1, Constants.DRAGON_MAX_RIDE_LEVEL)
+	self.rideXp = 0
+
+	self:getObj():SetAttribute(Attributes.RIDE_LEVEL, self.rideLevel)
+	self:getObj():SetAttribute(Attributes.RIDE_XP, self.rideXp)
+
+	self:recomputeSpeedStat()
+end
+
+function ShadowDragon.addRideXp(self: ShadowDragon, xp: number)
+	if xp <= 0 or self.rideLevel >= Constants.DRAGON_MAX_RIDE_LEVEL then
+		return
+	end
+
+	self.rideXp += xp
+	while self.rideXp >= hatchingData.rideXpPerLevel and self.rideLevel < Constants.DRAGON_MAX_RIDE_LEVEL do
+		self.rideXp -= hatchingData.rideXpPerLevel
+		self.rideLevel += 1
+	end
+	if self.rideLevel >= Constants.DRAGON_MAX_RIDE_LEVEL then
+		self.rideXp = 0
+	end
+
+	self:getObj():SetAttribute(Attributes.RIDE_LEVEL, self.rideLevel)
+	self:getObj():SetAttribute(Attributes.RIDE_XP, self.rideXp)
+
+	self:recomputeSpeedStat()
 end
 
 function ShadowDragon.getPower(self: ShadowDragon): number
@@ -1821,6 +1866,13 @@ function ShadowDragon.init(self: ShadowDragon)
 	self.lastKnownGoodOutsidePosition = nil
 
 	self.stableSlotIndex = nil
+
+	if self.rideLevel == nil then
+		self.rideLevel = 1
+		self.rideXp = 0
+	end
+	self:getObj():SetAttribute(Attributes.RIDE_LEVEL, self.rideLevel)
+	self:getObj():SetAttribute(Attributes.RIDE_XP, self.rideXp)
 
 	local periodDivisor, amplitudeMultiplier = self:getFlapDataForCurrentState()
 	self:setFlapData(periodDivisor, amplitudeMultiplier)

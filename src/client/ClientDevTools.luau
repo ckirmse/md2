@@ -389,6 +389,23 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
+			Iris.SeparatorText({ "Hatching" })
+			local rideXpAmount = Iris.State(50)
+			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = rideXpAmount })
+			Iris.SameLine()
+			if Iris.Button({ "Grant Ride Xp" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("grantRideXp", rideXpAmount:get())
+			end
+			Iris.End()
+
+			local hatchEggItemId = Iris.State(0)
+			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = hatchEggItemId })
+			Iris.SameLine()
+			if Iris.Button({ "Force Hatch Egg" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("forceHatchEgg", hatchEggItemId:get())
+			end
+			Iris.End()
+
 			if Iris.Button({ "Dump Server Trading State" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpServerTradingState")
 			end

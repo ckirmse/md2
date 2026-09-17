@@ -270,12 +270,27 @@ export type Crop = MItem & {
 
 export type DragonEggFields = MItemFields & {
 	doPreventSettling: boolean?,
+	random: Random,
+	hatchTimer: any,
+	rolledRarity: number?,
+	rolledMutation: number?,
+	hatchCompleteTime: number?,
 }
 
 -- inherited and overridden members come from MItem; only members new to DragonEgg are listed here
 export type DragonEgg = MItem & {
 	doPreventSettling: boolean?,
+	random: Random,
+	hatchTimer: any,
+	rolledRarity: number?,
+	rolledMutation: number?,
+	hatchCompleteTime: number?,
 
+	beginIncubating: (self: DragonEgg, durationSec: number, rolledRarity: number, rolledMutation: number) -> (),
+	cleanupIncubating: (self: DragonEgg) -> (),
+	finishHatching: (self: DragonEgg) -> (),
+	forceHatchNow: (self: DragonEgg) -> (),
+	notifyPlacedInPlot: (self: DragonEgg, carryingDragon: any) -> (),
 }
 
 -- the per-state scratch tables (movingToEat, eating, opening, ...) are dynamic bags that get reset
@@ -302,6 +317,8 @@ export type ShadowDragonFields = MItemFields & {
 	opening: any,
 	settling: any,
 	stableSlotIndex: number?,
+	rideLevel: number,
+	rideXp: number,
 }
 
 -- inherited and overridden members come from MItem; only members new to ShadowDragon are listed here
@@ -327,7 +344,12 @@ export type ShadowDragon = MItem & {
 	stamina: any,
 	state: number?,
 	wasRidingMaxDuration: boolean?,
+	rideLevel: number,
+	rideXp: number,
 
+	addRideXp: (self: ShadowDragon, xp: number) -> (),
+	getRideLevel: (self: ShadowDragon) -> number,
+	setRideLevel: (self: ShadowDragon, rideLevel: number) -> (),
 	beginEating: (self: ShadowDragon, crop: any) -> (),
 	beginIdle: (self: ShadowDragon, data: any) -> (),
 	beginMovingToEat: (self: ShadowDragon, crop: any) -> (),
@@ -878,6 +900,7 @@ export type GameController = {
 	spawnItemsAtPosition: (self: GameController, items: { any }, position: Vector3) -> (),
 	spawnItemsAtPositionAndGoToPlayerBackpack: (self: GameController, items: { any }, position: Vector3, player: Player?) -> (),
 	spawnItemsInBackpack: (self: GameController, items: { any }) -> (),
+	tossEggToGroundPosition: (self: GameController, item: Item, groundPosition: Vector3, carryingDragon: ShadowDragon) -> (),
 	tryAcceptTrade: (self: GameController, player: Player, partnerPlayerName: any) -> (),
 	tryBeginDragonEatingCrop: (self: GameController, dragon: any, crop: any) -> (),
 	tryBeginDragonOpeningCrystal: (self: GameController, dragon: any, crystal: any) -> (),
@@ -987,9 +1010,14 @@ export type ItemManager = {
 
 export type PlotsManager = {
 	addAllChildrenAndMapCFramesForPlotIndex: (self: PlotsManager, plotIndex: number, root: any, holder: Instance) -> (),
-	calculateTreeBounds: (self: PlotsManager, root: any) -> any,
 	createItemOnPlot: (self: PlotsManager, index: number, name: any, plotPosition: Vector3, userId: number) -> (),
 	equipVanityComponentForPlayerAtPlacement: (self: PlotsManager, player: Player, vanityPlacement: number, vanityComponentName: string) -> (),
+	getGroundPositionFromPlotPosition: (self: PlotsManager, plotPosition: Vector3, index: number) -> Vector3,
+	getPlotPositionFromWorldPositionForUserId: (self: PlotsManager, position: Vector3, userId: number) -> Vector3,
+	getWorldPositionFromPlotPositionForUserId: (self: PlotsManager, position: Vector3, userId: number) -> Vector3?,
+	isPositionInExpansionXZ: (self: PlotsManager, position: Vector3, vanityArea: number, plotIndex: number) -> boolean,
+	isPositionInExpansionXZByUserId: (self: PlotsManager, position: Vector3, vanityArea: number, userId: number) -> boolean,
+	calculateTreeBounds: (self: PlotsManager, root: any) -> any,
 	getAllExpansionInnerNames: (self: PlotsManager) -> { string },
 	getAllExpansionOuterNames: (self: PlotsManager) -> { string },
 	getAllFenceNames: (self: PlotsManager) -> { string },
@@ -999,25 +1027,20 @@ export type PlotsManager = {
 	getCategoryVanityComponentNames: (self: PlotsManager, vanityComponentName: string) -> { string },
 	getClosestPlotIndexByPosition: (self: PlotsManager, position: Vector3) -> any,
 	getEndCapCFrame: (self: PlotsManager, endCapIndex: number) -> CFrame,
-	getGroundPositionFromPlotPosition: (self: PlotsManager, plotPosition: Vector3, index: number) -> Vector3,
 	getNumEndCaps: (self: PlotsManager) -> number,
 	getNumPlots: (self: PlotsManager) -> number,
 	getPlotCFrameForUserId: (self: PlotsManager, userId: number) -> CFrame?,
 	getPlotCFrameFromWorldCFrameForUserId: (self: PlotsManager, cframe: CFrame, userId: number) -> CFrame,
 	getPlotIndexByUserId: (self: PlotsManager, userId: number) -> number?,
 	getPlotItemRecoveryPositionByUserId: (self: PlotsManager, userId: number) -> Vector3?,
-	getPlotPositionFromWorldPositionForUserId: (self: PlotsManager, position: Vector3, userId: number) -> Vector3,
 	getRandomLocationInMainPlot: (self: PlotsManager, plotIndex: number) -> Vector3,
 	getRandomLocationInMainPlotByUserId: (self: PlotsManager, userId: number) -> Vector3?,
 	getVanityComponentDataByName: (self: PlotsManager, vanityComponentName: string) -> any,
 	getVanityComponentNameForBlueprintName: (self: PlotsManager, blueprintItemName: string) -> string?,
 	getWorldCFrameFromPlotCFrameForUserId: (self: PlotsManager, cframe: CFrame, userId: number) -> CFrame?,
-	getWorldPositionFromPlotPositionForUserId: (self: PlotsManager, position: Vector3, userId: number) -> Vector3?,
 	init: (self: PlotsManager) -> (),
 	initVanityData: (self: PlotsManager) -> (),
 	isPlotIndexOccupied: (self: PlotsManager, plotIndex: number) -> boolean,
-	isPositionInExpansionXZ: (self: PlotsManager, position: Vector3, vanityArea: number, plotIndex: number) -> boolean,
-	isPositionInExpansionXZByUserId: (self: PlotsManager, position: Vector3, vanityArea: number, userId: number) -> boolean,
 	isPositionInMainPlotXZ: (self: PlotsManager, position: Vector3, plotIndex: number) -> boolean,
 	isPositionInMainPlotXZByUserId: (self: PlotsManager, position: Vector3, userId: number) -> boolean,
 	notifyAddUserId: (self: PlotsManager, userId: number) -> number?,

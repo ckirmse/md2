@@ -305,8 +305,7 @@ function DevTools.setRidingDragonRideLevel(self: DevTools, player: Player, level
 		return
 	end
 
-	dragon:getObj():SetAttribute(Attributes.RIDE_LEVEL, level)
-	dragon:recomputeSpeedStat()
+	dragon:setRideLevel(level)
 
 	print(
 		"set",
@@ -316,6 +315,28 @@ function DevTools.setRidingDragonRideLevel(self: DevTools, player: Player, level
 		"Speed",
 		dragon:getObj():GetAttribute(Attributes.DRAGON_SPEED_STAT)
 	)
+end
+
+function DevTools.grantRideXp(self: DevTools, player: Player, xp: any)
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not dragon then
+		print("player is not riding a dragon", player)
+		return
+	end
+
+	dragon:addRideXp(xp)
+
+	print("granted", xp, "ride xp to", dragon:getItemName(), "now level", dragon:getRideLevel())
+end
+
+function DevTools.forceHatchEgg(self: DevTools, player: Player, itemId: any)
+	if not Validate.isItemIdForPlayer(player, itemId) then
+		warn("dev tool cannot force-hatch item not owned by this player", itemId, player)
+		return
+	end
+
+	local item = itemManager:getItemById(itemId) :: Types.DragonEgg
+	item:forceHatchNow()
 end
 
 function DevTools.dumpBiomeProgress(self: DevTools, player: Player)

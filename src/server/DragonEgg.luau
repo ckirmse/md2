@@ -10,12 +10,59 @@ DragonEgg.__index = setmetatable(DragonEgg, super)
 local collectionService = game:GetService("CollectionService")
 
 local Types = require("./Types")
+local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local pickupMixin = require("./PickupMixin")
-
+local Timer = require("./Timer")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
+
+local hatchingData = require("@game/ServerScriptService/GameData/Control/Hatching")
+
+local RARITY_COUNT = enums.getCount(enums.Rarity)
+local MUTATION_COUNT = enums.getCount(enums.Mutations)
+
+local function rollRarity(random: Random, biomeIndex: number): number
+	local odds = hatchingData.rarityOddsByBiome[biomeIndex] or hatchingData.rarityOddsByBiome[1]
+	local roll = random:NextNumber()
+	local cumulative = 0
+	for rarity = 1, RARITY_COUNT do
+		local chance = odds[rarity]
+		if not chance then
+			continue
+		end
+		cumulative += chance
+		if roll < cumulative then
+			return rarity
+		end
+	end
+	return enums.Rarity.COMMON
+end
+
+local function rollMutation(random: Random): number
+	local roll = random:NextNumber()
+	local cumulative = 0
+	for mutation = 1, MUTATION_COUNT do
+		local chance = hatchingData.mutationOdds[mutation]
+		if not chance then
+			continue
+		end
+		cumulative += chance
+		if roll < cumulative then
+			return mutation
+		end
+	end
+	return enums.Mutations.NORMAL
+end
+
+local function computeHatchDurationSec(rarity: number, biomeIndex: number): number
+	local base = hatchingData.hatchBaseSecByRarity[rarity] or hatchingData.hatchBaseSecByRarity[enums.Rarity.COMMON]
+	local multiplier = hatchingData.hatchBiomeMultiplier[biomeIndex] or 1.0
+	return base * multiplier
+end
 
 
 export type DragonEggFields = Types.DragonEggFields
@@ -57,6 +104,11 @@ end
 
 function DragonEgg.notifyParentPlayer(self: DragonEgg)
 	super.notifyParentPlayer(self)
+
+	-- picking an incubating egg back up cancels it, matching Crystal's mid-opening pattern
+	if self.hatchTimer then
+		self:cleanupIncubating()
+	end
 end
 
 function DragonEgg.notifyMergingWithTriggerItem(self: DragonEgg, triggerItem: any)
@@ -66,9 +118,95 @@ function DragonEgg.notifyMergingWithTriggerItem(self: DragonEgg, triggerItem: an
 
 end
 
+-- only pickable on foot once incubating in a plot; not while unclaimed at a nest or being carried
+-- (those are dragon-only, via the nest pickup/carry flow)
 function DragonEgg.canBePickedUp(self: DragonEgg): boolean
-	-- other cases handled by mixin
-	return true
+	return self.hatchTimer ~= nil
+end
+
+-- placing the egg in a plot is the incubation trigger; rarity/mutation are rolled now (from the
+-- egg's source biome) but stay hidden until the dragon actually appears at hatch. carryingDragon
+-- gets ride xp for the rolled rarity, matching document 3's per-egg-banked xp award
+function DragonEgg.notifyPlacedInPlot(self: DragonEgg, carryingDragon: Types.ShadowDragon?)
+	if self.hatchTimer then
+		warn("egg is already incubating, ignoring second placement", self:getItemName())
+		return
+	end
+
+	local biomeIndex = (self:getObj():GetAttribute(Attributes.SOURCE_BIOME_INDEX) :: number?) or 1
+
+	local rarity = rollRarity(self.random, biomeIndex)
+	local mutation = rollMutation(self.random)
+
+	if carryingDragon then
+		carryingDragon:addRideXp(hatchingData.rideXpByEggRarity[rarity] or 0)
+	end
+
+	self:beginIncubating(computeHatchDurationSec(rarity, biomeIndex), rarity, mutation)
+end
+
+function DragonEgg.beginIncubating(self: DragonEgg, durationSec: number, rolledRarity: number, rolledMutation: number)
+	self.rolledRarity = rolledRarity
+	self.rolledMutation = rolledMutation
+	self.hatchCompleteTime = workspace:GetServerTimeNow() + durationSec
+
+	self:getObj():SetAttribute(Attributes.HATCH_COMPLETE_TIME, self.hatchCompleteTime)
+
+	self:setVenueWorkspaceBusy()
+
+	self.hatchTimer = Timer.new(durationSec,
+		function()
+			self:finishHatching()
+		end
+	)
+end
+
+function DragonEgg.cleanupIncubating(self: DragonEgg)
+	if self.hatchTimer then
+		self.hatchTimer:cancel()
+		self.hatchTimer = nil
+	end
+
+	self:getObj():SetAttribute(Attributes.HATCH_COMPLETE_TIME, nil)
+end
+
+function DragonEgg.forceHatchNow(self: DragonEgg)
+	if not self.hatchTimer then
+		warn("egg is not incubating, cannot force hatch", self:getItemName())
+		return
+	end
+
+	self.hatchTimer:cancel()
+	self.hatchTimer = nil
+
+	self:finishHatching()
+end
+
+function DragonEgg.finishHatching(self: DragonEgg)
+	self.hatchTimer = nil
+	self:getObj():SetAttribute(Attributes.HATCH_COMPLETE_TIME, nil)
+
+	local hatchDragonNames = self:getItemData().hatchDragonNames
+	local dragonItemName = hatchDragonNames and hatchDragonNames[self.rolledRarity :: number]
+	if not dragonItemName then
+		warn("egg has no hatchDragonNames entry for rolled rarity, cannot hatch", self:getItemName(), self.rolledRarity)
+		return
+	end
+
+	local position = self:getObj():GetPivot().Position
+	local userId = self:getUserId()
+
+	local dragonItem = itemManager:createItem(dragonItemName, userId)
+	if not dragonItem then
+		warn("failed to create hatched dragon", dragonItemName)
+		return
+	end
+
+	(dragonItem :: Types.MItem):setMutation(self.rolledMutation :: number)
+
+	itemManager:destroyItem(self)
+
+	gameController:spawnItemsAtPosition({ dragonItem }, position)
 end
 
 function DragonEgg.setPreventSettling(self: DragonEgg)
@@ -85,11 +223,35 @@ function DragonEgg.getSaveData(self: DragonEgg, itemIdMap: any): any
 
 	retval.type = "dragonEgg"
 
+	if self.hatchTimer then
+		retval.hatch = {
+			rolledRarity = self.rolledRarity,
+			rolledMutation = self.rolledMutation,
+			remainingSec = self.hatchTimer:getTimeLeft() or 0,
+		}
+	end
+
 	return retval
 end
 
 function DragonEgg.loadSaveData(self: DragonEgg, itemSaveData: any, itemIdMap: any)
 	super.loadSaveData(self, itemSaveData, itemIdMap)
+end
+
+function DragonEgg.notifyLoadComplete(self: DragonEgg, itemSaveData: any, itemIdMap: any, offlineElapsedSec: number?)
+	if not itemSaveData.hatch then
+		return
+	end
+
+	-- simulate offline time passing, matching Crystal's opening-timer resume pattern
+	local remainingSec = math.max(0, itemSaveData.hatch.remainingSec - (offlineElapsedSec or 0))
+	self:beginIncubating(remainingSec, itemSaveData.hatch.rolledRarity, itemSaveData.hatch.rolledMutation)
+end
+
+function DragonEgg.destroy(self: DragonEgg)
+	self:cleanupIncubating()
+
+	super.destroy(self)
 end
 
 function DragonEgg.notifyNewClone(self: DragonEgg)
@@ -98,6 +260,8 @@ function DragonEgg.notifyNewClone(self: DragonEgg)
 	super.notifyNewClone(self)
 
 	local itemData = self:getItemData()
+
+	self.random = Random.new()
 
 	self:getObj():SetAttribute(Attributes.PRIMARY_ELEMENT, itemData.primaryElement)
 
@@ -109,11 +273,18 @@ function DragonEgg.new(itemId: number, itemName: string, userId: number): Dragon
 
 	local itemData = self:getItemData()
 
+	self.random = Random.new()
+
 	self:getObj():SetAttribute(Attributes.PRIMARY_ELEMENT, itemData.primaryElement)
 
 	collectionService:AddTag(self:getObj(), Tags.DRAGON_EGG)
 
 	return self
+end
+
+function DragonEgg.initClass(deps: any)
+	gameController = deps.gameController
+	itemManager = deps.itemManager
 end
 
 return DragonEgg

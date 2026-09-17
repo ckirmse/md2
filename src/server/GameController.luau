@@ -19,6 +19,7 @@ local Crop = require("./Crop")
 local Crystal = require("./Crystal")
 local customerTools = require("./CustomerTools")
 local devTools = require("./DevTools")
+local DragonEgg = require("./DragonEgg")
 local firstSessionOfferManager = require("./FirstSessionOfferManager")
 local ftueManager = require("./FtueManager")
 local gameDataVerifier = require("./GameDataVerifier")
@@ -2497,10 +2498,10 @@ function GameController.tryDropEggAtPosition(self: GameController, player: Playe
 	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
 
 	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", true)
-	self:tossEggToGroundPosition(item, groundPosition)
+	self:tossEggToGroundPosition(item, groundPosition, dragon)
 end
 
-function GameController.tossEggToGroundPosition(self: GameController, item: Types.Item, groundPosition: Vector3)
+function GameController.tossEggToGroundPosition(self: GameController, item: Types.Item, groundPosition: Vector3, carryingDragon: Types.ShadowDragon)
 	local TOSS_SPEED = 45
 	local FALL_SPEED = 60
 
@@ -2519,8 +2520,7 @@ function GameController.tossEggToGroundPosition(self: GameController, item: Type
 		local fallTween = PivotToTween(item:getObj(), fallTweenInfo, CFrame.new(groundPosition))
 
 		fallTween.Completed:Connect(function()
-			item:setVenueWorkspaceAvailable()
-			-- M5 hooks in here: placing the egg is the incubation trigger (roll rarity/mutation, start the hatch timer)
+			(item :: Types.DragonEgg):notifyPlacedInPlot(carryingDragon)
 		end)
 		fallTween:Play()
 	end)
@@ -3694,6 +3694,7 @@ local function initClasses(gameController: GameController): ()
 
 	Crop.initClass(deps)
 	ShadowDragon.initClass(deps)
+	DragonEgg.initClass(deps)
 	Gem.initClass(deps)
 	Crystal.initClass(deps)
 	Pack.initClass(deps)
