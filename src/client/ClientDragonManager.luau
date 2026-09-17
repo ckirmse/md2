@@ -58,6 +58,7 @@ type ClientDragonManagerFields = {
 	latestJumpRequestTime: any,
 	autoRidePending: boolean,
 	autoRideDeadline: number,
+	autoRideItemId: any,
 }
 
 export type ClientDragonManager = typeof(setmetatable({} :: ClientDragonManagerFields, ClientDragonManager))
@@ -1591,6 +1592,7 @@ function ClientDragonManager.hookCharacterForAutoRide(self: ClientDragonManager,
 
 		self.autoRidePending = true
 		self.autoRideDeadline = workspace:GetServerTimeNow() + AUTO_RIDE_TIMEOUT_SEC
+		self.autoRideItemId = child:GetAttribute(Attributes.ITEM_ID)
 	end)
 end
 
@@ -1674,25 +1676,15 @@ function ClientDragonManager.init(self: ClientDragonManager)
 			local bestItemId = nil
 			local bestDistance = nil
 
-			-- auto-ride: mount a selected backpack dragon once its shadow arrives in the world
 			if self.autoRidePending then
 				if isRiding or workspace:GetServerTimeNow() > self.autoRideDeadline then
 					self.autoRidePending = false
 				else
-					for itemId, indicatorData in self.indicatorMap do
-						if indicatorData.shadow.Parent ~= workspace then
-							continue
-						end
-						if indicatorData.shadow:GetAttribute(Attributes.USER_ID) ~= player.UserId then
-							continue
-						end
-						if indicatorData.shadow:GetAttribute(Attributes.DRAGON_SLOT_INDEX) ~= nil then
-							continue
-						end
-						if self:tryBeginRidingDragonById(itemId) then
+					local indicatorData = self.indicatorMap[self.autoRideItemId]
+					if indicatorData and indicatorData.shadow.Parent == workspace then
+						if self:tryBeginRidingDragonById(self.autoRideItemId) then
 							self.autoRidePending = false
 						end
-						break
 					end
 				end
 			end
