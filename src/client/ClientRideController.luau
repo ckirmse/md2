@@ -1356,6 +1356,14 @@ function ClientRideController.notifyTrySetRidingCFrameRejected(self: ClientRideC
 	self.caster:PivotTo(self.shadow:GetPivot())
 end
 
+function ClientRideController.isInBiomeLevels(self: ClientRideController): boolean
+	if not self:isRiding() then
+		return false
+	end
+
+	return BiomeData.isInBiomeLevels(self.drivePart.Position)
+end
+
 -- when player decides to stop
 function ClientRideController.tryEndRiding(self: ClientRideController)
 	if not self:isRiding() then

@@ -1758,7 +1758,7 @@ function ClientDragonManager.init(self: ClientDragonManager)
 				local ridingObj = clientRideController:getRidingObj()
 				local itemId = ridingObj:GetAttribute(Attributes.ITEM_ID)
 				local indicatorData = self.indicatorMap[itemId]
-				if indicatorData then
+				if indicatorData and not clientRideController:isInBiomeLevels() then
 					clientRideController:tryEndRiding()
 				end
 			else

@@ -34,6 +34,10 @@ function BiomeData.getProgress(position: Vector3): number
 	return (position - HALLWAY_ORIGIN):Dot(HALLWAY_DIRECTION)
 end
 
+function BiomeData.isInBiomeLevels(position: Vector3): boolean
+	return BiomeData.getProgress(position) >= 0
+end
+
 function BiomeData.getGoverningGate(position: Vector3): BiomeGate?
 	local progress = BiomeData.getProgress(position)
 	local governing: BiomeGate? = nil

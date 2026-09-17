@@ -352,6 +352,7 @@ export type ClientRideController = {
 	getRidingObj: (self: ClientRideController) -> any,
 	getStamina: (self: ClientRideController) -> (),
 	init: (self: ClientRideController) -> (),
+	isInBiomeLevels: (self: ClientRideController) -> boolean,
 	isInRideBeginCooldown: (self: ClientRideController) -> (),
 	isRiding: (self: ClientRideController) -> boolean,
 	isRidingAndControlling: (self: ClientRideController) -> boolean,

@@ -2221,6 +2221,12 @@ function GameController.tryEndRideDragon(self: GameController, player: Player, i
 		return
 	end
 
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if dragon and BiomeData.isInBiomeLevels(dragon:getObj():GetPivot().Position) then
+		self:sendSystemMessageToPlayer(player, "You can't dismount inside a biome")
+		return
+	end
+
 	--RemoteEvents.NotifyEndRideDragonStatus:FireClient(player, true)
 
 	rideMixin:notifyPlayerEndRideDragon(player, itemId)
@@ -2612,6 +2618,12 @@ end
 function GameController.tryPutAwayRidingDragon(self: GameController, player: Player): ()
 	-- same as dismounting: notifyRideEnd returns the dragon to the backpack
 	if not rideMixin:isPlayerRiding(player) then
+		return
+	end
+
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if dragon and BiomeData.isInBiomeLevels(dragon:getObj():GetPivot().Position) then
+		self:sendSystemMessageToPlayer(player, "You can't dismount inside a biome")
 		return
 	end
 

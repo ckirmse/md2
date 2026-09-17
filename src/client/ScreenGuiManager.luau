@@ -665,7 +665,7 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 	local isRiding = clientRideController:isRiding()
 	if isRiding and (clientRideController:getRidingObj() :: any):GetAttribute(Attributes.PICKUP_NAME) ~= nil then
 		self.latestEquippedItemId = nil
-		local canPutAwayRidingDragon = clientRideController:isRidingAndControllingAndInFreeFlyZone()
+		local canPutAwayRidingDragon = clientRideController:isRidingAndControllingAndInFreeFlyZone() and not clientRideController:isInBiomeLevels()
 		PutAwayButton.Visible = canPutAwayRidingDragon
 		return
 	end
@@ -774,6 +774,10 @@ end
 function ScreenGuiManager.processPutAwayButtonActivated(self: ScreenGuiManager)
 	local isRiding = clientRideController:isRiding()
 	if isRiding then
+		if clientRideController:isInBiomeLevels() then
+			return
+		end
+
 		--print("trying to put away dragon")
 		RemoteEvents.TryPutAwayRidingDragon:FireServer()
 		return
