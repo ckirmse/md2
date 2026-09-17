@@ -1579,8 +1579,8 @@ function ShadowDragon.tryStepUpdateStaminaAndFreeFlyZone(self: ShadowDragon)
 		nextStamina = math.min(maxStamina, self.stamina + 1)
 	else
 		if self.isRiding then
-			-- lose stamina if outside free fly zone
-			nextStamina = math.max(0, self.stamina - 1)
+			-- stamina depletion disabled
+			-- nextStamina = math.max(0, self.stamina - 1)
 		end
 	end
 

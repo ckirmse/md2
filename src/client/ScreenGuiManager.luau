@@ -560,6 +560,10 @@ function ScreenGuiManager.setStaminaDisplay(self: ScreenGuiManager, stamina: num
 	local CurrentItemProperties = ScreenGui:WaitForChild("CurrentItemProperties")
 	local line3 = CurrentItemProperties:WaitForChild("Line3")
 
+	-- stamina display disabled
+	line3.Visible = false
+
+	--[[
 	if not stamina then
 		line3.Visible = false
 		return
@@ -567,6 +571,7 @@ function ScreenGuiManager.setStaminaDisplay(self: ScreenGuiManager, stamina: num
 
 	line3.Text = string.format("Stamina: %i", stamina)
 	line3.Visible = true
+	]]
 end
 
 function ScreenGuiManager.setStaminaDisplayBlinkState(self: ScreenGuiManager, blinkState: any)
