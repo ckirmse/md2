@@ -119,10 +119,7 @@ end
 function DragonEgg.notifyParentPlayer(self: DragonEgg)
 	super.notifyParentPlayer(self)
 
-	-- picking an incubating egg back up cancels it, matching Crystal's mid-opening pattern
-	if self.hatchTimer then
-		self:cleanupIncubating()
-	end
+	self:pauseIncubating()
 end
 
 function DragonEgg.notifyMergingWithTriggerItem(self: DragonEgg, triggerItem: any)
@@ -144,6 +141,13 @@ end
 function DragonEgg.notifyPlacedInPlot(self: DragonEgg, carryingDragon: Types.ShadowDragon?)
 	if self.hatchTimer then
 		warn("egg is already incubating, ignoring second placement", self:getItemName())
+		return
+	end
+
+	if self.pausedRemainingSec then
+		local remainingSec = self.pausedRemainingSec
+		self.pausedRemainingSec = nil
+		self:beginIncubating(remainingSec, self.rolledRarity :: number, self.rolledMutation :: number)
 		return
 	end
 
@@ -182,6 +186,16 @@ function DragonEgg.cleanupIncubating(self: DragonEgg)
 	end
 
 	self:getObj():SetAttribute(Attributes.HATCH_COMPLETE_TIME, nil)
+end
+
+function DragonEgg.pauseIncubating(self: DragonEgg)
+	if not self.hatchTimer then
+		return
+	end
+
+	self.pausedRemainingSec = self.hatchTimer:getTimeLeft() or 0
+
+	self:cleanupIncubating()
 end
 
 function DragonEgg.forceHatchNow(self: DragonEgg)
@@ -243,6 +257,13 @@ function DragonEgg.getSaveData(self: DragonEgg, itemIdMap: any): any
 			rolledMutation = self.rolledMutation,
 			remainingSec = self.hatchTimer:getTimeLeft() or 0,
 		}
+	elseif self.pausedRemainingSec then
+		retval.hatch = {
+			rolledRarity = self.rolledRarity,
+			rolledMutation = self.rolledMutation,
+			remainingSec = self.pausedRemainingSec,
+			isPaused = true,
+		}
 	end
 
 	return retval
@@ -254,6 +275,13 @@ end
 
 function DragonEgg.notifyLoadComplete(self: DragonEgg, itemSaveData: any, itemIdMap: any, offlineElapsedSec: number?)
 	if not itemSaveData.hatch then
+		return
+	end
+
+	if itemSaveData.hatch.isPaused then
+		self.rolledRarity = itemSaveData.hatch.rolledRarity
+		self.rolledMutation = itemSaveData.hatch.rolledMutation
+		self.pausedRemainingSec = itemSaveData.hatch.remainingSec
 		return
 	end
 

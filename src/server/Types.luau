@@ -275,6 +275,7 @@ export type DragonEggFields = MItemFields & {
 	rolledRarity: number?,
 	rolledMutation: number?,
 	hatchCompleteTime: number?,
+	pausedRemainingSec: number?,
 }
 
 -- inherited and overridden members come from MItem; only members new to DragonEgg are listed here
@@ -285,9 +286,11 @@ export type DragonEgg = MItem & {
 	rolledRarity: number?,
 	rolledMutation: number?,
 	hatchCompleteTime: number?,
+	pausedRemainingSec: number?,
 
 	beginIncubating: (self: DragonEgg, durationSec: number, rolledRarity: number, rolledMutation: number) -> (),
 	cleanupIncubating: (self: DragonEgg) -> (),
+	pauseIncubating: (self: DragonEgg) -> (),
 	finishHatching: (self: DragonEgg) -> (),
 	forceHatchNow: (self: DragonEgg) -> (),
 	notifyPlacedInPlot: (self: DragonEgg, carryingDragon: any) -> (),
