@@ -5,18 +5,28 @@ local BiomeData = {}
 export type BiomeGate = {
 	biomeIndex: number,
 	gateDistance: number,
-	speedGate: number,
+	speedGate: number?,
 }
 
 local HALLWAY_ORIGIN = Vector3.new(-1.044, 0.795, 234.622)
 local HALLWAY_DIRECTION = Vector3.new(1, 0, 0)
 
 local GATES: { BiomeGate } = {
-	{ biomeIndex = 2, gateDistance = 230, speedGate = 130 },
-	{ biomeIndex = 3, gateDistance = 430, speedGate = 200 },
+	{ biomeIndex = 2, gateDistance = 230, speedGate = nil },
+	{ biomeIndex = 3, gateDistance = 430, speedGate = nil },
 }
 BiomeData.GATES = GATES
 BiomeData.HALLWAY_DIRECTION = HALLWAY_DIRECTION
+
+function BiomeData.setSpeedGateForBiome(biomeIndex: number, speedGate: number)
+	for _, gate in GATES do
+		if gate.biomeIndex == biomeIndex then
+			gate.speedGate = speedGate
+			return
+		end
+	end
+	warn("no gate found for biome index", biomeIndex, "cannot set speed gate")
+end
 
 -- fixed at pickup biome rather than recomputed live as the carrier travels back
 local CARRY_SPEED_MULT_BY_BIOME: { [number]: number } = {

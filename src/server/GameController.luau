@@ -106,6 +106,7 @@ export type GameController = typeof(setmetatable({} :: GameControllerFields, Gam
 local WelcomeBack = require("@game/ReplicatedStorage/Shared/WelcomeBack")
 
 local crystalTimeData = require("@game/ServerScriptService/GameData/Control/CrystalTime")
+local dragonSpeedData = require("@game/ServerScriptService/GameData/Control/DragonSpeed")
 local eatingTimeData = require("@game/ServerScriptService/GameData/Control/EatingTime")
 local starterOfferData = require("@game/ServerScriptService/GameData/Control/StarterOffer")
 local vanityAreasData = require("@game/ServerScriptService/GameData/Control/VanityAreas")
@@ -483,6 +484,22 @@ function GameController.isLocationInFreeFlyZone(self: GameController, location: 
 	return utils.isLocationInRectangleXZ(location, freeFlyCornerA, freeFlyCornerB)
 end
 
+function GameController.initBiomeGateSpeedConfig(self: GameController)
+	local biomeGateConfig = Instance.new("Folder")
+	biomeGateConfig.Name = "BiomeGateConfig"
+
+	for biomeIndex, speedGate in dragonSpeedData.speedGateByBiome do
+		BiomeData.setSpeedGateForBiome(biomeIndex, speedGate)
+
+		local gateConfig = Instance.new("Configuration")
+		gateConfig:SetAttribute(Attributes.BIOME_INDEX, biomeIndex)
+		gateConfig:SetAttribute(Attributes.SPEED_GATE, speedGate)
+		gateConfig.Parent = biomeGateConfig
+	end
+
+	biomeGateConfig.Parent = ReplicatedStorage
+end
+
 function GameController.tryEnforceBiomeGate(self: GameController, dragon: Types.ShadowDragon, cframe: CFrame): boolean
 	local gate = BiomeData.getGoverningGate(cframe.Position)
 	if not gate then
@@ -490,7 +507,7 @@ function GameController.tryEnforceBiomeGate(self: GameController, dragon: Types.
 	end
 
 	local speedStat = dragon:getObj():GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?
-	return speedStat ~= nil and speedStat >= gate.speedGate
+	return gate.speedGate ~= nil and speedStat ~= nil and speedStat >= gate.speedGate
 end
 
 function GameController.getCountEatingCrop(self: GameController, crop: any): number
@@ -3619,6 +3636,8 @@ function GameController.init(self: GameController): ()
 	gameDataVerifier:verifyAll()
 
 	lootTableManager:init()
+
+	self:initBiomeGateSpeedConfig()
 
 	self:initCollision()
 

@@ -635,7 +635,7 @@ function ClientRideController.updateMovement(self: ClientRideController, deltaTi
 		) * forwardDirection
 
 		local gate = BiomeData.getGoverningGate(self.drivePart.Position)
-		if gate and (not speedStat or speedStat < gate.speedGate) then
+		if gate and gate.speedGate and (not speedStat or speedStat < gate.speedGate) then
 			local forwardProgress = velocityVector:Dot(BiomeData.HALLWAY_DIRECTION)
 			if forwardProgress > 0 then
 				velocityVector -= BiomeData.HALLWAY_DIRECTION * forwardProgress
@@ -1507,6 +1507,13 @@ end
 
 function ClientRideController.init(self: ClientRideController)
 	-- late load to avoid circular references
+
+	local biomeGateConfig = ReplicatedStorage:WaitForChild("BiomeGateConfig")
+	for _, gateConfig in biomeGateConfig:GetChildren() do
+		local biomeIndex = gateConfig:GetAttribute(Attributes.BIOME_INDEX) :: number
+		local speedGate = gateConfig:GetAttribute(Attributes.SPEED_GATE) :: number
+		BiomeData.setSpeedGateForBiome(biomeIndex, speedGate)
+	end
 
 	local ridingDragonAudioParent = RidingDragonAudioParent:Clone()
 	ridingDragonAudioParent.Parent = workspace

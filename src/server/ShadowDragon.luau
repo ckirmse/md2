@@ -36,6 +36,7 @@ local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local dragonPowerValues = require("@game/ServerScriptService/GameData/Control/DragonPowerValues")
+local dragonSpeedData = require("@game/ServerScriptService/GameData/Control/DragonSpeed")
 local hatchingData = require("@game/ServerScriptService/GameData/Control/Hatching")
 
 local analyticsManager = require("./AnalyticsManager")
@@ -1731,9 +1732,9 @@ end
 function ShadowDragon.recomputeSpeedStat(self: ShadowDragon)
 	local itemData = self:getItemData()
 
-	local baseSpeed = Constants.DRAGON_SPEED_BASE_BY_RARITY[itemData.rarity]
+	local baseSpeed = dragonSpeedData.baseSpeedByRarity[itemData.rarity]
 
-	local speed = DragonSpeed.speedForLevel(baseSpeed, Constants.DRAGON_SPEED_PER_LEVEL_FRAC, self.rideLevel)
+	local speed = DragonSpeed.speedForLevel(baseSpeed, dragonSpeedData.speedPerLevelFrac, self.rideLevel)
 
 	self:getObj():SetAttribute(Attributes.DRAGON_SPEED_STAT, speed)
 end
@@ -1744,7 +1745,7 @@ end
 
 -- resets progress into the new level, matching how a level-up itself works
 function ShadowDragon.setRideLevel(self: ShadowDragon, rideLevel: number)
-	self.rideLevel = math.clamp(math.floor(rideLevel), 1, Constants.DRAGON_MAX_RIDE_LEVEL)
+	self.rideLevel = math.clamp(math.floor(rideLevel), 1, dragonSpeedData.maxRideLevel)
 	self.rideXp = 0
 
 	self:getObj():SetAttribute(Attributes.RIDE_LEVEL, self.rideLevel)
@@ -1754,16 +1755,16 @@ function ShadowDragon.setRideLevel(self: ShadowDragon, rideLevel: number)
 end
 
 function ShadowDragon.addRideXp(self: ShadowDragon, xp: number)
-	if xp <= 0 or self.rideLevel >= Constants.DRAGON_MAX_RIDE_LEVEL then
+	if xp <= 0 or self.rideLevel >= dragonSpeedData.maxRideLevel then
 		return
 	end
 
 	self.rideXp += xp
-	while self.rideXp >= hatchingData.rideXpPerLevel and self.rideLevel < Constants.DRAGON_MAX_RIDE_LEVEL do
+	while self.rideXp >= hatchingData.rideXpPerLevel and self.rideLevel < dragonSpeedData.maxRideLevel do
 		self.rideXp -= hatchingData.rideXpPerLevel
 		self.rideLevel += 1
 	end
-	if self.rideLevel >= Constants.DRAGON_MAX_RIDE_LEVEL then
+	if self.rideLevel >= dragonSpeedData.maxRideLevel then
 		self.rideXp = 0
 	end
 

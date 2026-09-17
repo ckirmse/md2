@@ -377,7 +377,7 @@ function DevTools.dumpBiomeProgress(self: DevTools, player: Player)
 		"current Speed",
 		speedStat,
 		"clears?",
-		speedStat ~= nil and speedStat >= gate.speedGate
+		gate.speedGate ~= nil and speedStat ~= nil and speedStat >= gate.speedGate
 	)
 end
 

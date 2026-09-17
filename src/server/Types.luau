@@ -874,6 +874,7 @@ export type GameController = {
 	getRemoteEventMetrics: (self: GameController) -> any,
 	grantCoinsForGemValue: (self: GameController, player: Player?, primaryElement: number, gemCount: number) -> (),
 	init: (self: GameController) -> (),
+	initBiomeGateSpeedConfig: (self: GameController) -> (),
 	initCollision: (self: GameController) -> (),
 	isIndexEnabled: (self: GameController) -> boolean,
 	isLocationInFreeFlyZone: (self: GameController, location: Vector3) -> boolean,
