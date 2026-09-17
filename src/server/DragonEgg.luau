@@ -59,10 +59,8 @@ local function rollMutation(random: Random): number
 	return enums.Mutations.NORMAL
 end
 
-local function computeHatchDurationSec(rarity: number, biomeIndex: number): number
-	local base = hatchingData.hatchBaseSecByRarity[rarity] or hatchingData.hatchBaseSecByRarity[enums.Rarity.COMMON]
-	local multiplier = hatchingData.hatchBiomeMultiplier[biomeIndex] or 1.0
-	return base * multiplier
+local function computeHatchDurationSec(biomeIndex: number): number
+	return hatchingData.hatchSecByBiome[biomeIndex] or hatchingData.hatchSecByBiome[1]
 end
 
 
@@ -160,7 +158,7 @@ function DragonEgg.notifyPlacedInPlot(self: DragonEgg, carryingDragon: Types.Sha
 		carryingDragon:addRideXp(hatchingData.rideXpByEggRarity[rarity] or 0)
 	end
 
-	self:beginIncubating(computeHatchDurationSec(rarity, biomeIndex), rarity, mutation)
+	self:beginIncubating(computeHatchDurationSec(biomeIndex), rarity, mutation)
 end
 
 function DragonEgg.beginIncubating(self: DragonEgg, durationSec: number, rolledRarity: number, rolledMutation: number)
