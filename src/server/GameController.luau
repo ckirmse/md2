@@ -2477,7 +2477,7 @@ function GameController.tryPickupEgg(self: GameController, player: Player, objec
 	utils.setPropertyTreeBaseParts(item:getObj(), "CanCollide", false)
 
 	local biomeIndex = item:getObj():GetAttribute(Attributes.SOURCE_BIOME_INDEX) :: number?
-	local carrySpeedMult = BiomeData.getCarrySpeedMultForBiome(biomeIndex or 1)
+	local carrySpeedMult = dragonSpeedData.carrySpeedMultByBiome[biomeIndex or 1] or 1
 
 	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, true)
 	dragon:getObj():SetAttribute(Attributes.CARRY_SPEED_MULT, carrySpeedMult)
