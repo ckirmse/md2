@@ -13,6 +13,7 @@ local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local pickupMixin = require("./PickupMixin")
+local plotsManager = require("./PlotsManager")
 local Timer = require("./Timer")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
@@ -97,9 +98,22 @@ function DragonEgg.notifyParentWorkspace(self: DragonEgg)
 
 	self:settleOnGroundInWorkspace(
 		function()
-			--print("egg settled")
+			self:tryBeginIncubatingFromPlacement()
 		end
 	)
+end
+
+function DragonEgg.tryBeginIncubatingFromPlacement(self: DragonEgg)
+	if self.hatchTimer then
+		return
+	end
+
+	local position = self:getObj():GetPivot().Position
+	if not plotsManager:isPositionInMainPlotXZByUserId(position, self:getUserId()) then
+		return
+	end
+
+	self:notifyPlacedInPlot(nil)
 end
 
 function DragonEgg.notifyParentPlayer(self: DragonEgg)
@@ -152,7 +166,7 @@ function DragonEgg.beginIncubating(self: DragonEgg, durationSec: number, rolledR
 
 	self:getObj():SetAttribute(Attributes.HATCH_COMPLETE_TIME, self.hatchCompleteTime)
 
-	self:setVenueWorkspaceBusy()
+	self:setVenueWorkspaceAvailable()
 
 	self.hatchTimer = Timer.new(durationSec,
 		function()

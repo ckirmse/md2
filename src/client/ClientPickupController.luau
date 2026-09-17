@@ -350,6 +350,10 @@ function ClientPickupController.init(self: ClientPickupController)
 			end
 
 			self:notifyNewInstance(shadow, caster)
+
+			inst:GetAttributeChangedSignal(Attributes.USER_ID):Connect(function()
+				self:notifyNewInstance(shadow, caster)
+			end)
 		end
 	)
 
@@ -376,6 +380,10 @@ function ClientPickupController.init(self: ClientPickupController)
 		end
 
 		self:notifyNewInstance(shadow, caster)
+
+		inst:GetAttributeChangedSignal(Attributes.USER_ID):Connect(function()
+			self:notifyNewInstance(shadow, caster)
+		end)
 	end
 
 	runService.PostSimulation:Connect(

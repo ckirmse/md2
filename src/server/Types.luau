@@ -291,6 +291,7 @@ export type DragonEgg = MItem & {
 	finishHatching: (self: DragonEgg) -> (),
 	forceHatchNow: (self: DragonEgg) -> (),
 	notifyPlacedInPlot: (self: DragonEgg, carryingDragon: any) -> (),
+	tryBeginIncubatingFromPlacement: (self: DragonEgg) -> (),
 }
 
 -- the per-state scratch tables (movingToEat, eating, opening, ...) are dynamic bags that get reset
