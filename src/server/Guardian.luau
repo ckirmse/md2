@@ -41,7 +41,17 @@ function Guardian.findCarrierInBiome(self: Guardian): Types.ShadowDragon?
 			continue
 		end
 
-		if getBiomeIndexForPosition(dragon:getObj():GetPivot().Position) == self.biomeIndex then
+		local eggItemId = dragon:getObj():GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) :: number?
+		if not eggItemId then
+			continue
+		end
+
+		local eggItem = itemManager:getItemById(eggItemId)
+		if not eggItem then
+			continue
+		end
+
+		if eggItem:getObj():GetAttribute(Attributes.SOURCE_BIOME_INDEX) == self.biomeIndex then
 			return dragon
 		end
 	end
