@@ -597,6 +597,7 @@ export type ScreenGuiManager = {
 	run: (self: ScreenGuiManager, deltaTime: number) -> (),
 	setCurrentItemInstanceDisplay: (self: ScreenGuiManager, inst: any) -> (),
 	setIndexFeatureEnabled: (self: ScreenGuiManager, isEnabled: boolean) -> (),
+	setSpeedDisplay: (self: ScreenGuiManager, speedStat: number?) -> (),
 	setStaminaDisplay: (self: ScreenGuiManager, stamina: number?) -> (),
 	setStaminaDisplayBlinkState: (self: ScreenGuiManager, blinkState: any) -> (),
 	showFtueMessage: (self: ScreenGuiManager, text: string) -> (),

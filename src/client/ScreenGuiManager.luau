@@ -560,9 +560,6 @@ function ScreenGuiManager.setStaminaDisplay(self: ScreenGuiManager, stamina: num
 	local CurrentItemProperties = ScreenGui:WaitForChild("CurrentItemProperties")
 	local line3 = CurrentItemProperties:WaitForChild("Line3")
 
-	-- stamina display disabled
-	line3.Visible = false
-
 	--[[
 	if not stamina then
 		line3.Visible = false
@@ -572,6 +569,20 @@ function ScreenGuiManager.setStaminaDisplay(self: ScreenGuiManager, stamina: num
 	line3.Text = string.format("Stamina: %i", stamina)
 	line3.Visible = true
 	]]
+end
+
+function ScreenGuiManager.setSpeedDisplay(self: ScreenGuiManager, speedStat: number?)
+	local ScreenGui: any = PlayerGui:WaitForChild("ScreenGui")
+	local CurrentItemProperties = ScreenGui:WaitForChild("CurrentItemProperties")
+	local line3 = CurrentItemProperties:WaitForChild("Line3")
+
+	if not speedStat then
+		line3.Visible = false
+		return
+	end
+
+	line3.Text = string.format("Speed: %i", speedStat)
+	line3.Visible = true
 end
 
 function ScreenGuiManager.setStaminaDisplayBlinkState(self: ScreenGuiManager, blinkState: any)

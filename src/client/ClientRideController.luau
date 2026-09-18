@@ -74,6 +74,7 @@ local player = game:GetService("Players").LocalPlayer :: Player
 type ClientRideControllerFields = {
 	alignOrientationConstraint: any,
 	attributeChangedConnect: any,
+	speedStatChangedConnect: any,
 	audioMountDragon: any,
 	audioRideDragon: any,
 	baseWalkSpeed: any,
@@ -1064,6 +1065,11 @@ function ClientRideController.beginRiding(self: ClientRideController, shadow: an
 		self:updateStamina()
 	end)
 
+	screenGuiManager:setSpeedDisplay(shadow:GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?)
+	self.speedStatChangedConnect = shadow:GetAttributeChangedSignal(Attributes.DRAGON_SPEED_STAT):Connect(function()
+		screenGuiManager:setSpeedDisplay(shadow:GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?)
+	end)
+
 	screenGuiManager:setCurrentItemInstanceDisplay(shadow)
 
 	screenGuiManager:setStaminaDisplayBlinkState(false)
@@ -1309,7 +1315,13 @@ function ClientRideController.cleanupRiding(self: ClientRideController)
 		self.attributeChangedConnect = nil
 	end
 
+	if self.speedStatChangedConnect then
+		self.speedStatChangedConnect:Disconnect()
+		self.speedStatChangedConnect = nil
+	end
+
 	screenGuiManager:setStaminaDisplay(nil)
+	screenGuiManager:setSpeedDisplay(nil)
 
 	Satchel:SetBackpackEnabled(true)
 
