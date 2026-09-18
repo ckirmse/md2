@@ -133,9 +133,6 @@ function DragonEgg.canBePickedUp(self: DragonEgg): boolean
 	return self.hatchTimer ~= nil
 end
 
--- placing the egg in a plot is the incubation trigger; rarity/mutation are rolled now (from the
--- egg's source biome) but stay hidden until the dragon actually appears at hatch. carryingDragon
--- gets ride xp for the rolled rarity, matching document 3's per-egg-banked xp award
 function DragonEgg.notifyPlacedInPlot(self: DragonEgg, carryingDragon: Types.ShadowDragon?)
 	if self.hatchTimer then
 		warn("egg is already incubating, ignoring second placement", self:getItemName())
@@ -145,25 +142,21 @@ function DragonEgg.notifyPlacedInPlot(self: DragonEgg, carryingDragon: Types.Sha
 	if self.pausedRemainingSec then
 		local remainingSec = self.pausedRemainingSec
 		self.pausedRemainingSec = nil
-		self:beginIncubating(remainingSec, self.rolledRarity :: number, self.rolledMutation :: number)
+		self:beginIncubating(remainingSec)
 		return
 	end
 
 	local biomeIndex = (self:getObj():GetAttribute(Attributes.SOURCE_BIOME_INDEX) :: number?) or 1
-
-	local rarity = rollRarity(self.random, biomeIndex)
-	local mutation = rollMutation(self.random)
+	self.incubatingBiomeIndex = biomeIndex
 
 	if carryingDragon then
-		carryingDragon:addRideXp(hatchingData.rideXpByEggRarity[rarity] or 0)
+		self.carryingDragonItemId = carryingDragon:getItemId()
 	end
 
-	self:beginIncubating(computeHatchDurationSec(biomeIndex), rarity, mutation)
+	self:beginIncubating(computeHatchDurationSec(biomeIndex))
 end
 
-function DragonEgg.beginIncubating(self: DragonEgg, durationSec: number, rolledRarity: number, rolledMutation: number)
-	self.rolledRarity = rolledRarity
-	self.rolledMutation = rolledMutation
+function DragonEgg.beginIncubating(self: DragonEgg, durationSec: number)
 	self.hatchCompleteTime = workspace:GetServerTimeNow() + durationSec
 
 	self:getObj():SetAttribute(Attributes.HATCH_COMPLETE_TIME, self.hatchCompleteTime)
@@ -212,10 +205,22 @@ function DragonEgg.finishHatching(self: DragonEgg)
 	self.hatchTimer = nil
 	self:getObj():SetAttribute(Attributes.HATCH_COMPLETE_TIME, nil)
 
+	local biomeIndex = self.incubatingBiomeIndex or 1
+	local rarity = rollRarity(self.random, biomeIndex)
+	local mutation = rollMutation(self.random)
+
+	if self.carryingDragonItemId then
+		local carryingDragon = itemManager:getItemById(self.carryingDragonItemId)
+		if carryingDragon then
+			(carryingDragon :: Types.ShadowDragon):addRideXp(hatchingData.rideXpByEggRarity[rarity] or 0)
+		end
+		self.carryingDragonItemId = nil
+	end
+
 	local hatchDragonNames = self:getItemData().hatchDragonNames
-	local dragonItemName = hatchDragonNames and hatchDragonNames[self.rolledRarity :: number]
+	local dragonItemName = hatchDragonNames and hatchDragonNames[rarity]
 	if not dragonItemName then
-		warn("egg has no hatchDragonNames entry for rolled rarity, cannot hatch", self:getItemName(), self.rolledRarity)
+		warn("egg has no hatchDragonNames entry for rolled rarity, cannot hatch", self:getItemName(), rarity)
 		return
 	end
 
@@ -228,7 +233,7 @@ function DragonEgg.finishHatching(self: DragonEgg)
 		return
 	end
 
-	(dragonItem :: Types.MItem):setMutation(self.rolledMutation :: number)
+	(dragonItem :: Types.MItem):setMutation(mutation)
 
 	itemManager:destroyItem(self)
 
@@ -251,14 +256,14 @@ function DragonEgg.getSaveData(self: DragonEgg, itemIdMap: any): any
 
 	if self.hatchTimer then
 		retval.hatch = {
-			rolledRarity = self.rolledRarity,
-			rolledMutation = self.rolledMutation,
+			biomeIndex = self.incubatingBiomeIndex,
+			carryingDragonItemId = self.carryingDragonItemId and itemIdMap[self.carryingDragonItemId],
 			remainingSec = self.hatchTimer:getTimeLeft() or 0,
 		}
 	elseif self.pausedRemainingSec then
 		retval.hatch = {
-			rolledRarity = self.rolledRarity,
-			rolledMutation = self.rolledMutation,
+			biomeIndex = self.incubatingBiomeIndex,
+			carryingDragonItemId = self.carryingDragonItemId and itemIdMap[self.carryingDragonItemId],
 			remainingSec = self.pausedRemainingSec,
 			isPaused = true,
 		}
@@ -276,16 +281,17 @@ function DragonEgg.notifyLoadComplete(self: DragonEgg, itemSaveData: any, itemId
 		return
 	end
 
+	self.incubatingBiomeIndex = itemSaveData.hatch.biomeIndex
+	self.carryingDragonItemId = itemSaveData.hatch.carryingDragonItemId and itemIdMap[itemSaveData.hatch.carryingDragonItemId]
+
 	if itemSaveData.hatch.isPaused then
-		self.rolledRarity = itemSaveData.hatch.rolledRarity
-		self.rolledMutation = itemSaveData.hatch.rolledMutation
 		self.pausedRemainingSec = itemSaveData.hatch.remainingSec
 		return
 	end
 
 	-- simulate offline time passing, matching Crystal's opening-timer resume pattern
 	local remainingSec = math.max(0, itemSaveData.hatch.remainingSec - (offlineElapsedSec or 0))
-	self:beginIncubating(remainingSec, itemSaveData.hatch.rolledRarity, itemSaveData.hatch.rolledMutation)
+	self:beginIncubating(remainingSec)
 end
 
 function DragonEgg.destroy(self: DragonEgg)
