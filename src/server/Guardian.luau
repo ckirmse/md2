@@ -12,6 +12,7 @@ local runService = game:GetService("RunService")
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local nestManager = require("./NestManager")
 local PivotToTween = require("@game/ReplicatedStorage/Shared/PivotToTween")
 local Timer = require("./Timer")
 
@@ -199,6 +200,13 @@ function Guardian.notifyCaughtDragon(self: Guardian, dragon: Types.ShadowDragon)
 		local item = itemManager:getItemById(eggItemId)
 		if item then
 			itemManager:destroyItem(item)
+		end
+	end
+
+	for _, nest in nestManager:getAllNests() do
+		if nest:getBiomeIndex() == self.biomeIndex and nest.state == enums.NestState.DEPLETED then
+			nest:notifyRefill()
+			break
 		end
 	end
 
