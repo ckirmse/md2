@@ -398,6 +398,10 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
+			if Iris.Button({ "Dump Ride Xp" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpRideXp")
+			end
+
 			local hatchEggItemId = Iris.State(0)
 			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = hatchEggItemId })
 			Iris.SameLine()

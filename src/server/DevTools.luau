@@ -329,6 +329,22 @@ function DevTools.grantRideXp(self: DevTools, player: Player, xp: any)
 	print("granted", xp, "ride xp to", dragon:getItemName(), "now level", dragon:getRideLevel())
 end
 
+function DevTools.dumpRideXp(self: DevTools, player: Player)
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not dragon then
+		print("player is not riding a dragon", player)
+		return
+	end
+
+	print(
+		"dragon", dragon:getItemName(),
+		"ride level", dragon:getRideLevel(),
+		"ride xp", dragon:getObj():GetAttribute(Attributes.RIDE_XP),
+		"speed stat", dragon:getObj():GetAttribute(Attributes.DRAGON_SPEED_STAT),
+		"server time", workspace:GetServerTimeNow()
+	)
+end
+
 function DevTools.forceHatchEgg(self: DevTools, player: Player, itemId: any)
 	if not Validate.isItemIdForPlayer(player, itemId) then
 		warn("dev tool cannot force-hatch item not owned by this player", itemId, player)
