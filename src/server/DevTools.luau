@@ -12,6 +12,7 @@ local gameController: Types.GameController
 local indexManager = require("./IndexManager")
 local itemManager = require("./ItemManager")
 local mergeMixin = require("./MergeMixin")
+local guardianManager = require("./GuardianManager")
 local nestManager = require("./NestManager")
 local playerAttributesManager = require("./PlayerAttributesManager")
 local plotsManager = require("./PlotsManager")
@@ -429,6 +430,46 @@ function DevTools.forceRefillNest(self: DevTools, player: Player, objectId: any)
 	end
 
 	nest:notifyRefill()
+end
+
+function DevTools.dumpGuardians(self: DevTools, player: Player)
+	for _, guardian in guardianManager:getAllGuardians() do
+		print(
+			"guardian",
+			guardian:getObjectId(),
+			guardian:getObjectName(),
+			"biome",
+			guardian:getBiomeIndex(),
+			"state",
+			enums.getName(enums.GuardianState, guardian.state)
+		)
+	end
+end
+
+function DevTools.forceWakeGuardian(self: DevTools, player: Player, objectId: any)
+	local guardian = guardianManager:getGuardianByObjectId(objectId)
+	if not guardian then
+		print("no guardian with object id", objectId)
+		return
+	end
+
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not dragon then
+		print("player is not riding a dragon", player)
+		return
+	end
+
+	guardian:forceWake(dragon)
+end
+
+function DevTools.forceResetGuardian(self: DevTools, player: Player, objectId: any)
+	local guardian = guardianManager:getGuardianByObjectId(objectId)
+	if not guardian then
+		print("no guardian with object id", objectId)
+		return
+	end
+
+	guardian:forceReset()
 end
 
 function DevTools.equipAllDragons(self: DevTools, player: Player)

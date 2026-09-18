@@ -389,6 +389,22 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
+			Iris.SeparatorText({ "Guardians" })
+			if Iris.Button({ "Dump Guardians" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpGuardians")
+			end
+
+			local guardianObjectId = Iris.State(0)
+			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = guardianObjectId })
+			Iris.SameLine()
+			if Iris.Button({ "Force Wake Guardian" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("forceWakeGuardian", guardianObjectId:get())
+			end
+			if Iris.Button({ "Force Reset Guardian" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("forceResetGuardian", guardianObjectId:get())
+			end
+			Iris.End()
+
 			Iris.SeparatorText({ "Hatching" })
 			local rideXpAmount = Iris.State(50)
 			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = rideXpAmount })

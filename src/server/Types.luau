@@ -618,6 +618,54 @@ export type Nest = BaseObject & {
 	setState: (self: Nest, state: number?) -> (),
 }
 
+export type GuardianFields = BaseObjectFields & {
+	state: number?,
+	biomeIndex: number,
+	homeCFrame: CFrame,
+	targetDragon: any?,
+	isForcedEncounter: boolean?,
+	sleepCheckElapsedSec: number?,
+	sleepCheckConnect: RBXScriptConnection?,
+	telegraphTimer: Timer?,
+	chaseStartTime: number?,
+	chaseConnect: RBXScriptConnection?,
+	returnTween: Tween?,
+}
+
+-- inherited and overridden members come from BaseObject; only members new to Guardian are listed here
+export type Guardian = BaseObject & {
+	state: number?,
+	biomeIndex: number,
+	homeCFrame: CFrame,
+	targetDragon: any?,
+	isForcedEncounter: boolean?,
+	sleepCheckElapsedSec: number?,
+	sleepCheckConnect: RBXScriptConnection?,
+	telegraphTimer: Timer?,
+	chaseStartTime: number?,
+	chaseConnect: RBXScriptConnection?,
+	returnTween: Tween?,
+
+	beginChasing: (self: Guardian, dragon: any) -> (),
+	beginReturning: (self: Guardian) -> (),
+	beginSleeping: (self: Guardian) -> (),
+	beginState: (self: Guardian, state: number?, data: any) -> (),
+	beginTelegraphing: (self: Guardian, dragon: any) -> (),
+	cleanupChasing: (self: Guardian) -> (),
+	cleanupReturning: (self: Guardian) -> (),
+	cleanupSleeping: (self: Guardian) -> (),
+	cleanupTelegraphing: (self: Guardian) -> (),
+	endState: (self: Guardian) -> (),
+	findCarrierInBiome: (self: Guardian) -> any?,
+	forceReset: (self: Guardian) -> (),
+	forceWake: (self: Guardian, dragon: any) -> (),
+	getBiomeIndex: (self: Guardian) -> number,
+	notifyCaughtDragon: (self: Guardian, dragon: any) -> (),
+	notifyTelegraphComplete: (self: Guardian) -> (),
+	setState: (self: Guardian, state: number?, data: any) -> (),
+	stepChasing: (self: Guardian, dragon: any, objectData: any, deltaTime: number) -> (),
+}
+
 export type ChestFields = BaseObjectFields & {
 	state: number?,
 }
@@ -752,6 +800,9 @@ export type CritterObjectType = ObjectType
 
 -- inherited and overridden members come from ObjectType; only members new to NestObjectType are listed here
 export type NestObjectType = ObjectType
+
+-- inherited and overridden members come from ObjectType; only members new to GuardianObjectType are listed here
+export type GuardianObjectType = ObjectType
 
 export type ItemMover = {
 	itemId: number,

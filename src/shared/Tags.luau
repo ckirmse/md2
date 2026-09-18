@@ -53,6 +53,7 @@ module = {
 	NEST_SPAWN = "NestSpawn",
 
 	GUARDIAN = "Guardian",
+	GUARDIAN_SPAWN = "GuardianSpawn",
 }
 
 return module
