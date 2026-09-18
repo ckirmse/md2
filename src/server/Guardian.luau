@@ -17,20 +17,11 @@ local PivotToTween = require("@game/ReplicatedStorage/Shared/PivotToTween")
 local Timer = require("./Timer")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
-local BiomeData = require("@game/ReplicatedStorage/Shared/BiomeData")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 
 export type GuardianFields = Types.GuardianFields
 export type Guardian = Types.Guardian
-
-local function getBiomeIndexForPosition(position: Vector3): number
-	local gate = BiomeData.getGoverningGate(position)
-	if gate then
-		return gate.biomeIndex
-	end
-	return 1
-end
 
 function Guardian.getBiomeIndex(self: Guardian): number
 	return self.biomeIndex
@@ -118,7 +109,6 @@ function Guardian.notifyTelegraphComplete(self: Guardian)
 	local isValidTarget = dragon ~= nil and dragonObj ~= nil and (dragonObj :: Instance).Parent == workspace
 	if isValidTarget and not self.isForcedEncounter then
 		isValidTarget = (dragonObj :: any):GetAttribute(Attributes.IS_CARRYING) == true
-			and getBiomeIndexForPosition((dragonObj :: any):GetPivot().Position) == self.biomeIndex
 	end
 
 	if isValidTarget then
@@ -151,11 +141,6 @@ function Guardian.stepChasing(self: Guardian, dragon: Types.ShadowDragon, object
 
 	if not self.isForcedEncounter then
 		if not dragonObj:GetAttribute(Attributes.IS_CARRYING) then
-			self:setState(enums.GuardianState.RETURNING)
-			return
-		end
-
-		if getBiomeIndexForPosition(targetPosition) ~= self.biomeIndex then
 			self:setState(enums.GuardianState.RETURNING)
 			return
 		end
