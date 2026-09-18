@@ -196,6 +196,9 @@ function Guardian.notifyCaughtDragon(self: Guardian, dragon: Types.ShadowDragon)
 	dragonObj:SetAttribute(Attributes.CARRY_SPEED_MULT, nil)
 	dragonObj:SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
 
+	local stunSec = self:getObjectData().stunSec
+	dragonObj:SetAttribute(Attributes.STUNNED_UNTIL, workspace:GetServerTimeNow() + stunSec)
+
 	if eggItemId then
 		local item = itemManager:getItemById(eggItemId)
 		if item then

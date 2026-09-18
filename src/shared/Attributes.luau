@@ -62,6 +62,7 @@ module = {
 	SOURCE_BIOME_INDEX = "SourceBiomeIndex",
 	BIOME_INDEX = "BiomeIndex",
 	SPEED_GATE = "SpeedGate",
+	STUNNED_UNTIL = "StunnedUntil",
 
 	-- sellable items need this so client knows what it is
 	SELL_NAME = "SellName",

@@ -2435,6 +2435,11 @@ function GameController.trySetRidingItemCFrame(self: GameController, player: Pla
 		return
 	end
 
+	local stunnedUntil = dragon:getObj():GetAttribute(Attributes.STUNNED_UNTIL) :: number?
+	if stunnedUntil and workspace:GetServerTimeNow() < stunnedUntil then
+		return
+	end
+
 	-- assign player cframe, so server and other players know where they are
 	-- (when player is welded to a part and that part is moved, the client doesn't update the server if the server doesn't know about that part,
 	-- which is the case here with shadow dragons)

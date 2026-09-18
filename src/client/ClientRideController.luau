@@ -649,6 +649,11 @@ function ClientRideController.updateMovement(self: ClientRideController, deltaTi
 		--local forwardAngle = forwardDirection:Angle(forwardDirectionXZ, Vector3.zAxis)
 		--print("forward direction angle to xz plane is", math.deg(forwardAngle))
 
+		local stunnedUntil = self.shadow:GetAttribute(Attributes.STUNNED_UNTIL) :: number?
+		if stunnedUntil and workspace:GetServerTimeNow() < stunnedUntil then
+			velocityVector = Vector3.zero
+		end
+
 		self.linearVelocityConstraint.VectorVelocity = velocityVector
 
 		--print("moving velocity constraint", velocityVector, self.linearVelocityConstraint)

@@ -28,6 +28,7 @@ function GuardianObjectType.new(): GuardianObjectType
 		catchDistance = "nonnegativeNumber",
 		wakeCheckIntervalSec = "nonnegativeNumber",
 		returnSpeed = "nonnegativeNumber",
+		stunSec = "nonnegativeNumber",
 	}
 
 	return self
