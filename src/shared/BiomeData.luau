@@ -18,6 +18,10 @@ local GATES: { BiomeGate } = {
 BiomeData.GATES = GATES
 BiomeData.HALLWAY_DIRECTION = HALLWAY_DIRECTION
 
+BiomeData.SPEED_GATE_PASS_COLOR = Color3.fromRGB(85, 255, 127)
+BiomeData.SPEED_GATE_FAIL_COLOR = Color3.fromRGB(255, 85, 85)
+BiomeData.SPEED_GATE_NEUTRAL_COLOR = Color3.fromRGB(255, 255, 255)
+
 function BiomeData.setSpeedGateForBiome(biomeIndex: number, speedGate: number)
 	for _, gate in GATES do
 		if gate.biomeIndex == biomeIndex then

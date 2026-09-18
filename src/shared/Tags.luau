@@ -54,6 +54,8 @@ module = {
 
 	GUARDIAN = "Guardian",
 	GUARDIAN_SPAWN = "GuardianSpawn",
+
+	BIOME_GATE_SPAWN = "BiomeGateSpawn",
 }
 
 return module
