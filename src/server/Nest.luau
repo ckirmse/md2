@@ -19,9 +19,6 @@ local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
--- a nest egg has no owner yet -- ownership transfers to whoever actually takes it (M4)
-local UNOWNED_USER_ID = 0
-
 export type NestFields = Types.NestFields
 export type Nest = Types.Nest
 
@@ -51,7 +48,7 @@ end
 function Nest.beginIdle(self: Nest)
 	local objectData = self:getObjectData()
 
-	local item = itemManager:createItem(objectData.eggItemName, UNOWNED_USER_ID)
+	local item = itemManager:createItem(objectData.eggItemName, Constants.UNOWNED_USER_ID)
 	if not item then
 		warn("nest failed to create egg item", objectData.eggItemName, self:getObjectName())
 		return

@@ -63,6 +63,7 @@ module = {
 	BIOME_INDEX = "BiomeIndex",
 	SPEED_GATE = "SpeedGate",
 	STUNNED_UNTIL = "StunnedUntil",
+	FREE_FOR_PICKUP = "FreeForPickup",
 
 	-- sellable items need this so client knows what it is
 	SELL_NAME = "SellName",

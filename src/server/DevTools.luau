@@ -472,6 +472,22 @@ function DevTools.forceResetGuardian(self: DevTools, player: Player, objectId: a
 	guardian:forceReset()
 end
 
+function DevTools.forceHitCarrierEgg(self: DevTools, player: Player)
+	local attackerDragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not attackerDragon then
+		print("player is not riding a dragon", player)
+		return
+	end
+
+	local targetDragon = gameController:findNearestCarryingDragon(attackerDragon, nil)
+	if not targetDragon then
+		print("no other dragon is currently carrying an egg")
+		return
+	end
+
+	gameController:applyHitToCarrier(player, attackerDragon, targetDragon)
+end
+
 function DevTools.equipAllDragons(self: DevTools, player: Player)
 	local playerData = gameController:getPlayerData(player)
 

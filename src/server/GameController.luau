@@ -110,6 +110,7 @@ local WelcomeBack = require("@game/ReplicatedStorage/Shared/WelcomeBack")
 local crystalTimeData = require("@game/ServerScriptService/GameData/Control/CrystalTime")
 local dragonSpeedData = require("@game/ServerScriptService/GameData/Control/DragonSpeed")
 local eatingTimeData = require("@game/ServerScriptService/GameData/Control/EatingTime")
+local pvpHitData = require("@game/ServerScriptService/GameData/Control/PvpHit")
 local starterOfferData = require("@game/ServerScriptService/GameData/Control/StarterOffer")
 local vanityAreasData = require("@game/ServerScriptService/GameData/Control/VanityAreas")
 
@@ -2535,6 +2536,153 @@ function GameController.tryDropEggAtPosition(self: GameController, player: Playe
 	self:tossEggToGroundPosition(item, groundPosition, dragon)
 end
 
+function GameController.findNearestCarryingDragon(self: GameController, attackerDragon: Types.ShadowDragon, maxDistance: number?): Types.ShadowDragon?
+	local attackerPosition = attackerDragon:getObj():GetPivot().Position
+
+	local nearestTargetDragon: Types.ShadowDragon? = nil
+	local nearestDistance = maxDistance or math.huge
+	for _, dragon in itemManager:getAllDragons() do
+		if dragon == attackerDragon then
+			continue
+		end
+		if not dragon:getObj():GetAttribute(Attributes.IS_CARRYING) then
+			continue
+		end
+
+		local distance = (dragon:getObj():GetPivot().Position - attackerPosition).Magnitude
+		if distance <= nearestDistance then
+			nearestTargetDragon = dragon
+			nearestDistance = distance
+		end
+	end
+
+	return nearestTargetDragon
+end
+
+function GameController.applyHitToCarrier(self: GameController, attackerPlayer: Player, attackerDragon: Types.ShadowDragon, targetDragon: Types.ShadowDragon): ()
+	local targetPlayer = targetDragon:getPlayer()
+	if not targetPlayer then
+		return
+	end
+
+	local eggItemId = targetDragon:getObj():GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) :: number?
+	if not eggItemId then
+		return
+	end
+
+	local item = itemManager:getItemById(eggItemId)
+	if not item then
+		return
+	end
+
+	local now = workspace:GetServerTimeNow()
+
+	targetDragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
+	targetDragon:getObj():SetAttribute(Attributes.CARRY_SPEED_MULT, nil)
+	targetDragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
+	targetDragon:getObj():SetAttribute(Attributes.STUNNED_UNTIL, now + pvpHitData.carrierStunSec)
+
+	local attackerPosition = attackerDragon:getObj():GetPivot().Position
+	local targetPosition = targetDragon:getObj():GetPivot().Position
+	local flingDirection = targetPosition - attackerPosition
+	if flingDirection.Magnitude < 1 then
+		flingDirection = targetDragon:getObj():GetPivot().LookVector
+	end
+	flingDirection = flingDirection.Unit
+
+	local flingDistance = pvpHitData.eggFlingDistanceMin
+		+ (pvpHitData.eggFlingDistanceMax - pvpHitData.eggFlingDistanceMin) * math.random()
+	local rawLandingPosition = targetPosition + flingDirection * flingDistance
+	local groundPosition = utils.getGroundPositionForLocation(rawLandingPosition) + Vector3.new(0, item:getPart().Size.Y / 2, 0)
+
+	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", true)
+	item:getObj():PivotTo(CFrame.new(groundPosition))
+
+	item:setUserId(Constants.UNOWNED_USER_ID)
+	item:getObj():SetAttribute(Attributes.FREE_FOR_PICKUP, true)
+
+	self:getPlayerData(targetPlayer):setSwingBlockedUntil(now + pvpHitData.recaptureGuardSec)
+
+	self:sendSystemMessageToPlayer(attackerPlayer, "You knocked the egg loose!")
+	self:sendSystemMessageToPlayer(targetPlayer, "You got hit and lost the egg!")
+end
+
+function GameController.tryHitCarrierEgg(self: GameController, player: Player): ()
+	if not rideMixin:isPlayerRiding(player) then
+		return
+	end
+
+	local attackerDragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not attackerDragon then
+		return
+	end
+
+	local now = workspace:GetServerTimeNow()
+	local playerData = self:getPlayerData(player)
+
+	if playerData:getSwingBlockedUntil() > now then
+		return
+	end
+
+	if playerData:getLastSwingAttemptTime() + pvpHitData.attackerSwingCooldownSec > now then
+		return
+	end
+	playerData:setLastSwingAttemptTime(now)
+
+	local targetDragon = self:findNearestCarryingDragon(attackerDragon, pvpHitData.hitRange)
+	if not targetDragon then
+		return
+	end
+
+	self:applyHitToCarrier(player, attackerDragon, targetDragon)
+end
+
+function GameController.tryPickupFreeEgg(self: GameController, player: Player, itemId: any): ()
+	if not rideMixin:isPlayerRiding(player) then
+		return
+	end
+
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not dragon then
+		return
+	end
+
+	if dragon:getObj():GetAttribute(Attributes.IS_CARRYING) then
+		return
+	end
+
+	if typeof(itemId) ~= "number" then
+		return
+	end
+
+	local item = itemManager:getItemById(itemId)
+	if not item then
+		return
+	end
+
+	if not item:getObj():GetAttribute(Attributes.FREE_FOR_PICKUP) then
+		return
+	end
+
+	local distance = (dragon:getObj():GetPivot().Position - item:getObj():GetPivot().Position).Magnitude
+	if distance > Constants.PICKUP_EGG_DISTANCE * 1.1 then
+		return
+	end
+
+	item:setUserId(player.UserId)
+	item:getObj():SetAttribute(Attributes.FREE_FOR_PICKUP, nil)
+
+	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", false)
+	utils.setPropertyTreeBaseParts(item:getObj(), "CanCollide", false)
+
+	local biomeIndex = item:getObj():GetAttribute(Attributes.SOURCE_BIOME_INDEX) :: number?
+	local carrySpeedMult = dragonSpeedData.carrySpeedMultByBiome[biomeIndex or 1] or 1
+
+	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, true)
+	dragon:getObj():SetAttribute(Attributes.CARRY_SPEED_MULT, carrySpeedMult)
+	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, itemId)
+end
+
 function GameController.tossEggToGroundPosition(self: GameController, item: Types.Item, groundPosition: Vector3, carryingDragon: Types.ShadowDragon)
 	local TOSS_SPEED = 45
 	local FALL_SPEED = 60
@@ -3444,6 +3592,8 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryClaimLuckBillboard", "tryClaimLuckBillboard")
 	self:addRemoteEventHandler("TryPickupEgg", "tryPickupEgg")
 	self:addRemoteEventHandler("TryDropEggAtPosition", "tryDropEggAtPosition")
+	self:addRemoteEventHandler("TryHitCarrierEgg", "tryHitCarrierEgg")
+	self:addRemoteEventHandler("TryPickupFreeEgg", "tryPickupFreeEgg")
 end
 
 function GameController.processPollTimer(self: GameController): ()

@@ -405,6 +405,11 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
+			Iris.SeparatorText({ "PvP Theft" })
+			if Iris.Button({ "Force Hit Carrier Egg" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("forceHitCarrierEgg")
+			end
+
 			Iris.SeparatorText({ "Hatching" })
 			local rideXpAmount = Iris.State(50)
 			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = rideXpAmount })

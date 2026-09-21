@@ -50,18 +50,16 @@ function Guardian.findCarrierInBiome(self: Guardian): Types.ShadowDragon?
 	return nil
 end
 
-function Guardian.beginSleeping(self: Guardian)
-	self:getObj():SetAttribute(Attributes.GUARDIAN_STATE, enums.GuardianState.SLEEPING)
-
+function Guardian.beginWakeCheck(self: Guardian)
 	local wakeCheckIntervalSec = self:getObjectData().wakeCheckIntervalSec
 
-	self.sleepCheckElapsedSec = 0
-	self.sleepCheckConnect = runService.Heartbeat:Connect(function(deltaTime: number)
-		self.sleepCheckElapsedSec = (self.sleepCheckElapsedSec :: number) + deltaTime
-		if (self.sleepCheckElapsedSec :: number) < wakeCheckIntervalSec then
+	self.wakeCheckElapsedSec = 0
+	self.wakeCheckConnect = runService.Heartbeat:Connect(function(deltaTime: number)
+		self.wakeCheckElapsedSec = (self.wakeCheckElapsedSec :: number) + deltaTime
+		if (self.wakeCheckElapsedSec :: number) < wakeCheckIntervalSec then
 			return
 		end
-		self.sleepCheckElapsedSec = 0
+		self.wakeCheckElapsedSec = 0
 
 		local carrier = self:findCarrierInBiome()
 		if carrier then
@@ -71,11 +69,20 @@ function Guardian.beginSleeping(self: Guardian)
 	end)
 end
 
-function Guardian.cleanupSleeping(self: Guardian)
-	if self.sleepCheckConnect then
-		self.sleepCheckConnect:Disconnect()
-		self.sleepCheckConnect = nil
+function Guardian.cleanupWakeCheck(self: Guardian)
+	if self.wakeCheckConnect then
+		self.wakeCheckConnect:Disconnect()
+		self.wakeCheckConnect = nil
 	end
+end
+
+function Guardian.beginSleeping(self: Guardian)
+	self:getObj():SetAttribute(Attributes.GUARDIAN_STATE, enums.GuardianState.SLEEPING)
+	self:beginWakeCheck()
+end
+
+function Guardian.cleanupSleeping(self: Guardian)
+	self:cleanupWakeCheck()
 end
 
 function Guardian.beginTelegraphing(self: Guardian, dragon: Types.ShadowDragon)
@@ -224,6 +231,8 @@ function Guardian.beginReturning(self: Guardian)
 		return
 	end
 
+	self:beginWakeCheck()
+
 	local returnSpeed = self:getObjectData().returnSpeed
 	local tweenInfo = TweenInfo.new(distance / returnSpeed, Enum.EasingStyle.Linear)
 	local returnTween = PivotToTween(self:getObj(), tweenInfo, homeCFrame)
@@ -238,6 +247,8 @@ function Guardian.beginReturning(self: Guardian)
 end
 
 function Guardian.cleanupReturning(self: Guardian)
+	self:cleanupWakeCheck()
+
 	if self.returnTween then
 		self.returnTween:Cancel()
 		self.returnTween = nil
