@@ -4,8 +4,11 @@ local ClientPvpHitManager = {}
 ClientPvpHitManager.__index = ClientPvpHitManager
 
 local collectionService = game:GetService("CollectionService")
+local players = game:GetService("Players")
 local runService = game:GetService("RunService")
 local userInputService = game:GetService("UserInputService")
+
+local player = players.LocalPlayer :: Player
 
 local Types = require("./Types")
 local clientRideController: Types.ClientRideController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
@@ -22,6 +25,7 @@ local SWING_KEY = Enum.KeyCode.F
 
 type ClientPvpHitManagerFields = {
 	indicatorMap: { [Instance]: any },
+	swingIndicatorBillboard: BillboardGui,
 }
 
 export type ClientPvpHitManager = typeof(setmetatable({} :: ClientPvpHitManagerFields, ClientPvpHitManager))
@@ -68,6 +72,42 @@ function ClientPvpHitManager.notifyNewInstance(self: ClientPvpHitManager, egg: I
 	self:configurePrompt(egg)
 end
 
+function ClientPvpHitManager.findNearestSwingTarget(self: ClientPvpHitManager): Instance?
+	local ridingObj: any = clientRideController:getRidingObj()
+	if not ridingObj then
+		return nil
+	end
+
+	local ridingPosition = ridingObj:GetPivot().Position
+
+	local nearestTarget: Instance? = nil
+	local nearestDistance = Constants.PVP_HIT_INDICATOR_RANGE
+	for _, shadow: any in collectionService:GetTagged(Tags.SHADOW_DRAGON) do
+		if shadow == ridingObj then
+			continue
+		end
+		if not shadow:GetAttribute(Attributes.IS_CARRYING) then
+			continue
+		end
+
+		local distance = (shadow:GetPivot().Position - ridingPosition).Magnitude
+		if distance <= nearestDistance then
+			nearestTarget = shadow
+			nearestDistance = distance
+		end
+	end
+
+	return nearestTarget
+end
+
+function ClientPvpHitManager.updateSwingIndicator(self: ClientPvpHitManager)
+	local isRidingAndControlling = clientRideController:isRiding() and clientRideController:isRidingAndControlling()
+	local target = if isRidingAndControlling then self:findNearestSwingTarget() else nil
+
+	self.swingIndicatorBillboard.Adornee = target
+	self.swingIndicatorBillboard.Enabled = target ~= nil
+end
+
 function ClientPvpHitManager.notifyRemoveInstance(self: ClientPvpHitManager, egg: Instance)
 	local indicatorData = self.indicatorMap[egg]
 	if not indicatorData then
@@ -82,9 +122,33 @@ function ClientPvpHitManager.notifyRemoveInstance(self: ClientPvpHitManager, egg
 	self.indicatorMap[egg] = nil
 end
 
+local function createSwingIndicatorBillboard(): BillboardGui
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "PvpHitIndicator"
+	billboard.Size = UDim2.new(6, 0, 1.5, 0)
+	billboard.StudsOffset = Vector3.new(0, 6, 0)
+	billboard.AlwaysOnTop = true
+	billboard.Enabled = false
+
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.BackgroundTransparency = 1
+	textLabel.TextScaled = true
+	textLabel.Font = Enum.Font.GothamBold
+	textLabel.TextColor3 = Color3.fromRGB(255, 85, 85)
+	textLabel.TextStrokeTransparency = 0
+	textLabel.Text = "Press F to Hit"
+	textLabel.Parent = billboard
+
+	billboard.Parent = player:WaitForChild("PlayerGui")
+
+	return billboard
+end
+
 function ClientPvpHitManager.new(): ClientPvpHitManager
 	local self: ClientPvpHitManager = setmetatable({
 		indicatorMap = {},
+		swingIndicatorBillboard = createSwingIndicatorBillboard(),
 	} :: ClientPvpHitManagerFields, ClientPvpHitManager)
 
 	return self
@@ -111,6 +175,8 @@ function ClientPvpHitManager.init(self: ClientPvpHitManager)
 		for egg in self.indicatorMap do
 			self:configurePrompt(egg)
 		end
+
+		self:updateSwingIndicator()
 	end)
 
 	userInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
