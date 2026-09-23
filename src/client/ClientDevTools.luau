@@ -377,6 +377,22 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
+			Iris.SeparatorText({ "Scatter Zones" })
+			if Iris.Button({ "Dump Scatter Zones" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpScatterZones")
+			end
+
+			local scatterZoneObjectId = Iris.State(0)
+			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = scatterZoneObjectId })
+			Iris.SameLine()
+			if Iris.Button({ "Force Take One Egg" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("forceTakeOneScatterEgg", scatterZoneObjectId:get())
+			end
+			if Iris.Button({ "Force Refill Zone" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("forceRefillScatterZone", scatterZoneObjectId:get())
+			end
+			Iris.End()
+
 			Iris.SeparatorText({ "Hatching" })
 			local hatchEggItemId = Iris.State(0)
 			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = hatchEggItemId })

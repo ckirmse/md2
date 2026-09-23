@@ -46,6 +46,8 @@ local PlayerData = require("./PlayerData")
 local plotsManager = require("./PlotsManager")
 local processReceipt = require("./ProcessReceipt")
 local rideMixin = require("./RideMixin")
+local ScatterZone = require("./ScatterZone")
+local scatterZoneManager = require("./ScatterZoneManager")
 local sellMixin = require("./SellMixin")
 local serverListener = require("./ServerListener")
 local ShadowDragon = require("./ShadowDragon")
@@ -2450,6 +2452,57 @@ function GameController.tryPickupEgg(self: GameController, player: Player, objec
 	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, eggItemId)
 end
 
+function GameController.tryPickupScatteredEgg(self: GameController, player: Player, itemId: any): ()
+	if not rideMixin:isPlayerRiding(player) then
+		return
+	end
+
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not dragon then
+		return
+	end
+
+	if dragon:getObj():GetAttribute(Attributes.IS_CARRYING) then
+		return
+	end
+
+	if typeof(itemId) ~= "number" then
+		return
+	end
+
+	local item = itemManager:getItemById(itemId)
+	if not item then
+		return
+	end
+
+	if item:getType() ~= "dragonEgg" then
+		return
+	end
+
+	if item:getUserId() ~= Constants.UNOWNED_USER_ID then
+		return
+	end
+
+	local distance = (dragon:getObj():GetPivot().Position - item:getObj():GetPivot().Position).Magnitude
+	if distance > Constants.PICKUP_EGG_DISTANCE * 1.1 then
+		return
+	end
+
+	item:setUserId(player.UserId)
+
+	local zoneObjectId = item:getObj():GetAttribute(Attributes.SOURCE_SCATTER_ZONE_ID) :: number?
+	local zone = zoneObjectId and scatterZoneManager:getZoneByObjectId(zoneObjectId)
+	if zone then
+		zone:notifyEggTaken(itemId)
+	end
+
+	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", false)
+	utils.setPropertyTreeBaseParts(item:getObj(), "CanCollide", false)
+
+	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, true)
+	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, itemId)
+end
+
 function GameController.tryDropEggAtPosition(self: GameController, player: Player, position: any): ()
 	if not rideMixin:isPlayerRiding(player) then
 		return
@@ -3398,6 +3451,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryClaimLuckBillboard", "tryClaimLuckBillboard")
 	self:addRemoteEventHandler("TryPickupEgg", "tryPickupEgg")
 	self:addRemoteEventHandler("TryDropEggAtPosition", "tryDropEggAtPosition")
+	self:addRemoteEventHandler("TryPickupScatteredEgg", "tryPickupScatteredEgg")
 end
 
 function GameController.processPollTimer(self: GameController): ()
@@ -3626,6 +3680,7 @@ function GameController.init(self: GameController): ()
 	vanityStoreManager:init()
 	islandManager:init()
 	nestManager:init()
+	scatterZoneManager:init()
 	stableManager:init()
 
 	processReceipt:init()
@@ -3684,6 +3739,7 @@ local function initClasses(gameController: GameController): ()
 	indexManager.initClass(deps)
 	islandManager.initClass(deps)
 	nestManager.initClass(deps)
+	scatterZoneManager.initClass(deps)
 	plotsManager.initClass(deps)
 	lootTableManager.initClass(deps)
 
@@ -3702,6 +3758,7 @@ local function initClasses(gameController: GameController): ()
 	Chest.initClass(deps)
 	Critter.initClass(deps)
 	Nest.initClass(deps)
+	ScatterZone.initClass(deps)
 
 	ItemMover.initClass(deps)
 	PlayerData.initClass(deps)

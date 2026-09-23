@@ -15,6 +15,7 @@ local KeyObjectType = require("./KeyObjectType")
 local NestObjectType = require("./NestObjectType")
 local NodeObjectType = require("./NodeObjectType")
 local PackObjectType = require("./PackObjectType")
+local ScatterZoneObjectType = require("./ScatterZoneObjectType")
 local ShadowDragonObjectType = require("./ShadowDragonObjectType")
 
 local ObjectTypeModule = require("./ObjectType")
@@ -37,6 +38,7 @@ local dataTypeClassMap: { [string]: any } = {
 	critter = CritterObjectType,
 	nest = NestObjectType,
 	node = NodeObjectType,
+	scatterZone = ScatterZoneObjectType,
 }
 
 type ObjectDataStoreFields = {

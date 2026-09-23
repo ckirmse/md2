@@ -609,6 +609,30 @@ export type Nest = BaseObject & {
 	setState: (self: Nest, state: number?) -> (),
 }
 
+export type ScatterZoneFields = BaseObjectFields & {
+	spawnedEggItemIds: { [number]: boolean },
+	refillTimer: Timer?,
+}
+
+-- inherited and overridden members come from BaseObject; only members new to ScatterZone are listed here
+export type ScatterZone = BaseObject & {
+	spawnedEggItemIds: { [number]: boolean },
+	refillTimer: Timer?,
+
+	beginRefillLoop: (self: ScatterZone) -> (),
+	findSpawnPosition: (self: ScatterZone) -> Vector3,
+	getBiomeIndex: (self: ScatterZone) -> number,
+	getCurrentEggCount: (self: ScatterZone) -> number,
+	getDistanceToNearestEgg: (self: ScatterZone, position: Vector3) -> number,
+	getMaxEggsInZone: (self: ScatterZone) -> number,
+	getMinEggSpacing: (self: ScatterZone) -> number,
+	getRandomPositionInBounds: (self: ScatterZone) -> Vector3,
+	getRespawnSec: (self: ScatterZone) -> number,
+	notifyEggTaken: (self: ScatterZone, itemId: number) -> (),
+	topUp: (self: ScatterZone) -> boolean,
+	trySpawnOneEgg: (self: ScatterZone) -> boolean,
+}
+
 export type ChestFields = BaseObjectFields & {
 	state: number?,
 }
@@ -743,6 +767,9 @@ export type CritterObjectType = ObjectType
 
 -- inherited and overridden members come from ObjectType; only members new to NestObjectType are listed here
 export type NestObjectType = ObjectType
+
+-- inherited and overridden members come from ObjectType; only members new to ScatterZoneObjectType are listed here
+export type ScatterZoneObjectType = ObjectType
 
 export type ItemMover = {
 	itemId: number,
@@ -936,6 +963,7 @@ export type GameController = {
 	tryOpenPack: (self: GameController, player: Player, packItemId: any) -> (),
 	tryPickupEgg: (self: GameController, player: Player, objectId: any) -> (),
 	tryPickupItem: (self: GameController, player: Player, itemId: any) -> (),
+	tryPickupScatteredEgg: (self: GameController, player: Player, itemId: any) -> (),
 	tryPlaceLuckBillboardForPlayer: (self: GameController, player: Player) -> (),
 	tryPutAwayRidingDragon: (self: GameController, player: Player) -> (),
 	tryRedeemFirstSessionOffer: (self: GameController, player: Player) -> (),

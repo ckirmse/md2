@@ -1431,4 +1431,25 @@ function utils.formatLargeInteger(number: number): string
 	return utils.formatLargePositiveInteger(number)
 end
 
+function utils.pickWeightedRandom(weights: { [string]: number }): string?
+	local totalWeight = 0
+	for _, weight in weights do
+		totalWeight += weight
+	end
+	if totalWeight <= 0 then
+		return nil
+	end
+
+	local roll = math.random() * totalWeight
+	local cumulative = 0
+	for name, weight in weights do
+		cumulative += weight
+		if roll < cumulative then
+			return name
+		end
+	end
+
+	return nil
+end
+
 return utils

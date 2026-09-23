@@ -51,6 +51,8 @@ module = {
 
 	NEST = "Nest",
 	NEST_SPAWN = "NestSpawn",
+
+	EGG_SCATTER_ZONE = "EggScatterZone",
 }
 
 return module

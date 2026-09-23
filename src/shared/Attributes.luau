@@ -55,6 +55,11 @@ module = {
 	SOURCE_BIOME_INDEX = "SourceBiomeIndex",
 	BIOME_INDEX = "BiomeIndex",
 	STUNNED_UNTIL = "StunnedUntil",
+	SCATTER_ZONE_NAME = "ScatterZoneName",
+	MAX_EGGS_IN_ZONE = "MaxEggsInZone",
+	RESPAWN_SEC = "RespawnSec",
+	MIN_EGG_SPACING = "MinEggSpacing",
+	SOURCE_SCATTER_ZONE_ID = "SourceScatterZoneId",
 
 	-- sellable items need this so client knows what it is
 	SELL_NAME = "SellName",

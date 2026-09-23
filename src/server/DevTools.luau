@@ -16,6 +16,7 @@ local nestManager = require("./NestManager")
 local playerAttributesManager = require("./PlayerAttributesManager")
 local plotsManager = require("./PlotsManager")
 local rideMixin = require("./RideMixin")
+local scatterZoneManager = require("./ScatterZoneManager")
 local stableManager = require("./StableManager")
 local starterOfferManager = require("./StarterOfferManager")
 local storageManager = require("./StorageManager")
@@ -333,6 +334,52 @@ function DevTools.forceRefillNest(self: DevTools, player: Player, objectId: any)
 	end
 
 	nest:notifyRefill()
+end
+
+function DevTools.dumpScatterZones(self: DevTools, player: Player)
+	for _, zone in scatterZoneManager:getAllZones() do
+		print(
+			"scatter zone",
+			zone:getObjectId(),
+			zone:getObjectName(),
+			"biome",
+			zone:getBiomeIndex(),
+			"eggs",
+			zone:getCurrentEggCount(),
+			"/",
+			zone:getMaxEggsInZone()
+		)
+	end
+end
+
+function DevTools.forceRefillScatterZone(self: DevTools, player: Player, objectId: any)
+	local zone = scatterZoneManager:getZoneByObjectId(objectId)
+	if not zone then
+		print("no scatter zone with object id", objectId)
+		return
+	end
+
+	zone:topUp()
+end
+
+function DevTools.forceTakeOneScatterEgg(self: DevTools, player: Player, objectId: any)
+	local zone = scatterZoneManager:getZoneByObjectId(objectId)
+	if not zone then
+		print("no scatter zone with object id", objectId)
+		return
+	end
+
+	local itemId = next(zone.spawnedEggItemIds)
+	if not itemId then
+		print("scatter zone has no eggs to take", objectId)
+		return
+	end
+
+	local item = itemManager:getItemById(itemId)
+	if item then
+		itemManager:destroyItem(item)
+	end
+	zone:notifyEggTaken(itemId)
 end
 
 function DevTools.equipAllDragons(self: DevTools, player: Player)

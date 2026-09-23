@@ -38,7 +38,6 @@ function NestObjectType.new(): NestObjectType
 		type = "string",
 		name = "string",
 		templatePath = "string",
-		eggItemName = "string",
 		respawnSec = "nonnegativeNumber",
 	}
 

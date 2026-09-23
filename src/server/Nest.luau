@@ -9,6 +9,7 @@ Nest.__index = setmetatable(Nest, super)
 local collectionService = game:GetService("CollectionService")
 
 local Types = require("./Types")
+local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local Timer = require("./Timer")
 
@@ -18,8 +19,18 @@ local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
+local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/EggLootTables")
+
 export type NestFields = Types.NestFields
 export type Nest = Types.Nest
+
+local function pickSpecialEggName(biomeIndex: number): string?
+	local weights = eggLootTablesData.specialLootByBiome[biomeIndex] or eggLootTablesData.specialLootByBiome[1]
+	if not weights then
+		return nil
+	end
+	return utils.pickWeightedRandom(weights)
+end
 
 function Nest.getEggSpawnPosition(self: Nest): Vector3
 	local eggSpawn = utils.findFirstDescendant(self.obj, "EggSpawn") :: Attachment
@@ -40,18 +51,23 @@ function Nest.isPlayerCloseEnoughToPickupWhileRiding(self: Nest, player: Player)
 end
 
 function Nest.beginIdle(self: Nest)
-	local objectData = self:getObjectData()
+	local biomeIndex = self:getBiomeIndex()
+	local eggItemName = pickSpecialEggName(biomeIndex)
+	if not eggItemName then
+		warn("nest has no special loot table entries for its biome", biomeIndex, self:getObjectName())
+		return
+	end
 
-	local item = itemManager:createItem(objectData.eggItemName, Constants.UNOWNED_USER_ID)
+	local item = itemManager:createItem(eggItemName, Constants.UNOWNED_USER_ID)
 	if not item then
-		warn("nest failed to create egg item", objectData.eggItemName, self:getObjectName())
+		warn("nest failed to create egg item", eggItemName, self:getObjectName())
 		return
 	end
 
 	item:getObj():PivotTo(CFrame.new(self:getEggSpawnPosition()))
 	item:setPreventSettling()
 	item:getObj().Parent = workspace
-	item:getObj():SetAttribute(Attributes.SOURCE_BIOME_INDEX, self:getBiomeIndex())
+	item:getObj():SetAttribute(Attributes.SOURCE_BIOME_INDEX, biomeIndex)
 
 	self.eggItemId = item:getItemId()
 end
@@ -101,6 +117,7 @@ end
 
 function Nest.notifyRefill(self: Nest)
 	self:setState(enums.NestState.IDLE)
+	gameController:sendSystemMessageToAllPlayers(self:getObjectName() .. " egg has respawned!")
 end
 
 function Nest.endState(self: Nest)
@@ -152,6 +169,7 @@ function Nest.new(objectData: any, cframe: CFrame, objectId: number): Nest
 end
 
 function Nest.initClass(deps: any)
+	gameController = deps.gameController
 	itemManager = deps.itemManager
 end
 
