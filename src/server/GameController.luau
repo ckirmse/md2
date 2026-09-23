@@ -105,7 +105,6 @@ export type GameController = typeof(setmetatable({} :: GameControllerFields, Gam
 local WelcomeBack = require("@game/ReplicatedStorage/Shared/WelcomeBack")
 
 local crystalTimeData = require("@game/ServerScriptService/GameData/Control/CrystalTime")
-local dragonSpeedData = require("@game/ServerScriptService/GameData/Control/DragonSpeed")
 local eatingTimeData = require("@game/ServerScriptService/GameData/Control/EatingTime")
 local starterOfferData = require("@game/ServerScriptService/GameData/Control/StarterOffer")
 local vanityAreasData = require("@game/ServerScriptService/GameData/Control/VanityAreas")
@@ -2447,11 +2446,7 @@ function GameController.tryPickupEgg(self: GameController, player: Player, objec
 	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", false)
 	utils.setPropertyTreeBaseParts(item:getObj(), "CanCollide", false)
 
-	local biomeIndex = item:getObj():GetAttribute(Attributes.SOURCE_BIOME_INDEX) :: number?
-	local carrySpeedMult = dragonSpeedData.carrySpeedMultByBiome[biomeIndex or 1] or 1
-
 	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, true)
-	dragon:getObj():SetAttribute(Attributes.CARRY_SPEED_MULT, carrySpeedMult)
 	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, eggItemId)
 end
 
@@ -2492,7 +2487,6 @@ function GameController.tryDropEggAtPosition(self: GameController, player: Playe
 	end
 
 	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
-	dragon:getObj():SetAttribute(Attributes.CARRY_SPEED_MULT, nil)
 	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
 
 	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", true)

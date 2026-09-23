@@ -46,7 +46,6 @@ module = {
 	DRAGON_SLOT_INDEX = "DragonSlotIndex",
 
 	IS_CARRYING = "IsCarrying",
-	CARRY_SPEED_MULT = "CarrySpeedMult",
 	CARRIED_EGG_ITEM_ID = "CarriedEggItemId",
 
 	OPEN_COMPLETE_TIME = "OpenCompleteTime",

@@ -621,14 +621,11 @@ function ClientRideController.updateMovement(self: ClientRideController, deltaTi
 			speedMultiplier = 1
 		end
 
-		local carrySpeedMult = (self.shadow:GetAttribute(Attributes.CARRY_SPEED_MULT) :: number?) or 1
-
 		local velocityVector = (
 			speedFrac
 			* moveFrac
 			* Constants.BASE_RIDE_SPEED
 			* speedMultiplier
-			* carrySpeedMult
 		) * forwardDirection
 
 		--local forwardDirectionXZ = Vector3.new(forwardDirection.X, 0, forwardDirection.Z)
