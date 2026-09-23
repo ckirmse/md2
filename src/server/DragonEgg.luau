@@ -111,7 +111,7 @@ function DragonEgg.tryBeginIncubatingFromPlacement(self: DragonEgg)
 		return
 	end
 
-	self:notifyPlacedInPlot(nil)
+	self:notifyPlacedInPlot()
 end
 
 function DragonEgg.notifyParentPlayer(self: DragonEgg)
@@ -133,7 +133,7 @@ function DragonEgg.canBePickedUp(self: DragonEgg): boolean
 	return self.hatchTimer ~= nil
 end
 
-function DragonEgg.notifyPlacedInPlot(self: DragonEgg, carryingDragon: Types.ShadowDragon?)
+function DragonEgg.notifyPlacedInPlot(self: DragonEgg)
 	if self.hatchTimer then
 		warn("egg is already incubating, ignoring second placement", self:getItemName())
 		return
@@ -148,10 +148,6 @@ function DragonEgg.notifyPlacedInPlot(self: DragonEgg, carryingDragon: Types.Sha
 
 	local biomeIndex = (self:getObj():GetAttribute(Attributes.SOURCE_BIOME_INDEX) :: number?) or 1
 	self.incubatingBiomeIndex = biomeIndex
-
-	if carryingDragon then
-		self.carryingDragonItemId = carryingDragon:getItemId()
-	end
 
 	self:beginIncubating(computeHatchDurationSec(biomeIndex))
 end
@@ -209,14 +205,6 @@ function DragonEgg.finishHatching(self: DragonEgg)
 	local rarity = rollRarity(self.random, biomeIndex)
 	local mutation = rollMutation(self.random)
 
-	if self.carryingDragonItemId then
-		local carryingDragon = itemManager:getItemById(self.carryingDragonItemId)
-		if carryingDragon then
-			(carryingDragon :: Types.ShadowDragon):addRideXp(hatchingData.rideXpByEggRarity[rarity] or 0)
-		end
-		self.carryingDragonItemId = nil
-	end
-
 	local hatchDragonNames = self:getItemData().hatchDragonNames
 	local dragonItemName = hatchDragonNames and hatchDragonNames[rarity]
 	if not dragonItemName then
@@ -257,13 +245,11 @@ function DragonEgg.getSaveData(self: DragonEgg, itemIdMap: any): any
 	if self.hatchTimer then
 		retval.hatch = {
 			biomeIndex = self.incubatingBiomeIndex,
-			carryingDragonItemId = self.carryingDragonItemId and itemIdMap[self.carryingDragonItemId],
 			remainingSec = self.hatchTimer:getTimeLeft() or 0,
 		}
 	elseif self.pausedRemainingSec then
 		retval.hatch = {
 			biomeIndex = self.incubatingBiomeIndex,
-			carryingDragonItemId = self.carryingDragonItemId and itemIdMap[self.carryingDragonItemId],
 			remainingSec = self.pausedRemainingSec,
 			isPaused = true,
 		}
@@ -282,7 +268,6 @@ function DragonEgg.notifyLoadComplete(self: DragonEgg, itemSaveData: any, itemId
 	end
 
 	self.incubatingBiomeIndex = itemSaveData.hatch.biomeIndex
-	self.carryingDragonItemId = itemSaveData.hatch.carryingDragonItemId and itemIdMap[itemSaveData.hatch.carryingDragonItemId]
 
 	if itemSaveData.hatch.isPaused then
 		self.pausedRemainingSec = itemSaveData.hatch.remainingSec

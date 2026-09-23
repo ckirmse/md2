@@ -92,8 +92,6 @@ type PlayerDataFields = {
 	hasClaimedGroupLuck: boolean,
 	luckTimer: any,
 	latestPromptGroupTime: number,
-	swingBlockedUntil: number,
-	lastSwingAttemptTime: number,
 	tradeRequestCount: number,
 	pendingWelcomeBackCoinCount: number,
 	lastLogoutIncomePerSecond: number,
@@ -333,23 +331,6 @@ function PlayerData.notifyReceivedMutation(self: PlayerData)
 	RemoteEvents.NotifyPromptGroup:FireClient(self.player)
 
 	analyticsManager:logEvent(self.player, analyticsManager.Events.PromptGroup, {})
-end
-
--- the pvp theft recapture guard: a player who was just hit cannot swing again for a while
-function PlayerData.getSwingBlockedUntil(self: PlayerData): number
-	return self.swingBlockedUntil
-end
-
-function PlayerData.setSwingBlockedUntil(self: PlayerData, swingBlockedUntil: number)
-	self.swingBlockedUntil = swingBlockedUntil
-end
-
-function PlayerData.getLastSwingAttemptTime(self: PlayerData): number
-	return self.lastSwingAttemptTime
-end
-
-function PlayerData.setLastSwingAttemptTime(self: PlayerData, lastSwingAttemptTime: number)
-	self.lastSwingAttemptTime = lastSwingAttemptTime
 end
 
 function PlayerData.isLocationInPlotOrUnlockedExpansions(self: PlayerData, location: Vector3)
@@ -3199,8 +3180,6 @@ function PlayerData.new(player: Player?): PlayerData
 	self.vanityPlacements = {}
 	self.vanityAreaStates = {}
 	self.latestPromptGroupTime = 0
-	self.swingBlockedUntil = 0
-	self.lastSwingAttemptTime = 0
 
 	-- these can be set by dev tool controls
 	self.devToolSettings = {}

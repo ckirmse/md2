@@ -571,20 +571,6 @@ function ScreenGuiManager.setStaminaDisplay(self: ScreenGuiManager, stamina: num
 	]]
 end
 
-function ScreenGuiManager.setSpeedDisplay(self: ScreenGuiManager, speedStat: number?)
-	local ScreenGui: any = PlayerGui:WaitForChild("ScreenGui")
-	local CurrentItemProperties = ScreenGui:WaitForChild("CurrentItemProperties")
-	local line3 = CurrentItemProperties:WaitForChild("Line3")
-
-	if not speedStat then
-		line3.Visible = false
-		return
-	end
-
-	line3.Text = string.format("Speed: %i", speedStat)
-	line3.Visible = true
-end
-
 function ScreenGuiManager.setStaminaDisplayBlinkState(self: ScreenGuiManager, blinkState: any)
 	local ScreenGui: any = PlayerGui:WaitForChild("ScreenGui")
 	local CurrentItemProperties = ScreenGui:WaitForChild("CurrentItemProperties")
@@ -681,7 +667,7 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 	local isRiding = clientRideController:isRiding()
 	if isRiding and (clientRideController:getRidingObj() :: any):GetAttribute(Attributes.PICKUP_NAME) ~= nil then
 		self.latestEquippedItemId = nil
-		local canPutAwayRidingDragon = clientRideController:isRidingAndControllingAndInFreeFlyZone() and not clientRideController:isInBiomeLevels() and not clientRideController:isCarryingEgg()
+		local canPutAwayRidingDragon = clientRideController:isRidingAndControllingAndInFreeFlyZone() and not clientRideController:isCarryingEgg()
 		PutAwayButton.Visible = canPutAwayRidingDragon
 		return
 	end
@@ -790,7 +776,7 @@ end
 function ScreenGuiManager.processPutAwayButtonActivated(self: ScreenGuiManager)
 	local isRiding = clientRideController:isRiding()
 	if isRiding then
-		if clientRideController:isInBiomeLevels() or clientRideController:isCarryingEgg() then
+		if clientRideController:isCarryingEgg() then
 			return
 		end
 

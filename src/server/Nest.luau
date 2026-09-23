@@ -13,7 +13,6 @@ local itemManager: Types.ItemManager -- injected via initClass(deps); typed thro
 local Timer = require("./Timer")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
-local BiomeData = require("@game/ReplicatedStorage/Shared/BiomeData")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
@@ -27,13 +26,8 @@ function Nest.getEggSpawnPosition(self: Nest): Vector3
 	return eggSpawn.WorldPosition
 end
 
--- the nest doesn't move, so this is just wherever it sits; biome 1 has no gate entry, hence the default
 function Nest.getBiomeIndex(self: Nest): number
-	local gate = BiomeData.getGoverningGate(self:getObj():GetPivot().Position)
-	if gate then
-		return gate.biomeIndex
-	end
-	return 1
+	return (self:getObj():GetAttribute(Attributes.BIOME_INDEX) :: number?) or 1
 end
 
 function Nest.getEggItemId(self: Nest): number?

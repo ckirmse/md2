@@ -361,18 +361,6 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("unequipAllDragons")
 			end
 
-			Iris.SeparatorText({ "Biome" })
-			local rideLevel = Iris.State(1)
-			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = rideLevel })
-			Iris.SameLine()
-			if Iris.Button({ "Set Riding Dragon Ride Level" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("setRidingDragonRideLevel", rideLevel:get())
-			end
-			Iris.End()
-			if Iris.Button({ "Dump Biome Progress" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("dumpBiomeProgress")
-			end
-
 			Iris.SeparatorText({ "Nests" })
 			if Iris.Button({ "Dump Nests" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpNests")
@@ -389,40 +377,7 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
-			Iris.SeparatorText({ "Guardians" })
-			if Iris.Button({ "Dump Guardians" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("dumpGuardians")
-			end
-
-			local guardianObjectId = Iris.State(0)
-			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = guardianObjectId })
-			Iris.SameLine()
-			if Iris.Button({ "Force Wake Guardian" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("forceWakeGuardian", guardianObjectId:get())
-			end
-			if Iris.Button({ "Force Reset Guardian" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("forceResetGuardian", guardianObjectId:get())
-			end
-			Iris.End()
-
-			Iris.SeparatorText({ "PvP Theft" })
-			if Iris.Button({ "Force Hit Carrier Egg" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("forceHitCarrierEgg")
-			end
-
 			Iris.SeparatorText({ "Hatching" })
-			local rideXpAmount = Iris.State(50)
-			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = rideXpAmount })
-			Iris.SameLine()
-			if Iris.Button({ "Grant Ride Xp" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("grantRideXp", rideXpAmount:get())
-			end
-			Iris.End()
-
-			if Iris.Button({ "Dump Ride Xp" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("dumpRideXp")
-			end
-
 			local hatchEggItemId = Iris.State(0)
 			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = hatchEggItemId })
 			Iris.SameLine()

@@ -12,7 +12,6 @@ local gameController: Types.GameController
 local indexManager = require("./IndexManager")
 local itemManager = require("./ItemManager")
 local mergeMixin = require("./MergeMixin")
-local guardianManager = require("./GuardianManager")
 local nestManager = require("./NestManager")
 local playerAttributesManager = require("./PlayerAttributesManager")
 local plotsManager = require("./PlotsManager")
@@ -29,7 +28,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
-local BiomeData = require("@game/ReplicatedStorage/Shared/BiomeData")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
@@ -293,59 +291,6 @@ function DevTools.dumpDragonPower(self: DevTools, player: Player)
 	print("  total (all owned dragons):", total)
 end
 
-function DevTools.setRidingDragonRideLevel(self: DevTools, player: Player, level: any)
-	if not level or level < 1 then
-		print("invalid ride level", level)
-		return
-	end
-	level = math.floor(level)
-
-	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if not dragon then
-		print("player is not riding a dragon", player)
-		return
-	end
-
-	dragon:setRideLevel(level)
-
-	print(
-		"set",
-		dragon:getItemName(),
-		"ride level to",
-		level,
-		"Speed",
-		dragon:getObj():GetAttribute(Attributes.DRAGON_SPEED_STAT)
-	)
-end
-
-function DevTools.grantRideXp(self: DevTools, player: Player, xp: any)
-	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if not dragon then
-		print("player is not riding a dragon", player)
-		return
-	end
-
-	dragon:addRideXp(xp)
-
-	print("granted", xp, "ride xp to", dragon:getItemName(), "now level", dragon:getRideLevel())
-end
-
-function DevTools.dumpRideXp(self: DevTools, player: Player)
-	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if not dragon then
-		print("player is not riding a dragon", player)
-		return
-	end
-
-	print(
-		"dragon", dragon:getItemName(),
-		"ride level", dragon:getRideLevel(),
-		"ride xp", dragon:getObj():GetAttribute(Attributes.RIDE_XP),
-		"speed stat", dragon:getObj():GetAttribute(Attributes.DRAGON_SPEED_STAT),
-		"server time", workspace:GetServerTimeNow()
-	)
-end
-
 function DevTools.forceHatchEgg(self: DevTools, player: Player, itemId: any)
 	if not Validate.isItemIdForPlayer(player, itemId) then
 		warn("dev tool cannot force-hatch item not owned by this player", itemId, player)
@@ -354,48 +299,6 @@ function DevTools.forceHatchEgg(self: DevTools, player: Player, itemId: any)
 
 	local item = itemManager:getItemById(itemId) :: Types.DragonEgg
 	item:forceHatchNow()
-end
-
-function DevTools.dumpBiomeProgress(self: DevTools, player: Player)
-	local position: Vector3
-	local speedStat: number? = nil
-
-	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if dragon then
-		position = dragon:getObj():GetPivot().Position
-		speedStat = dragon:getObj():GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?
-	else
-		local character = player.Character
-		local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-		if not humanoidRootPart then
-			print("no character to check biome progress for", player)
-			return
-		end
-		position = (humanoidRootPart :: BasePart).Position
-	end
-
-	local progress = BiomeData.getProgress(position)
-	local gate = BiomeData.getGoverningGate(position)
-
-	if not gate then
-		print("biome progress", progress, "- before all gates (biome 1)")
-		return
-	end
-
-	print(
-		"biome progress",
-		progress,
-		"- governing gate biome",
-		gate.biomeIndex,
-		"at distance",
-		gate.gateDistance,
-		"requires Speed",
-		gate.speedGate,
-		"current Speed",
-		speedStat,
-		"clears?",
-		gate.speedGate ~= nil and speedStat ~= nil and speedStat >= gate.speedGate
-	)
 end
 
 function DevTools.dumpNests(self: DevTools, player: Player)
@@ -430,62 +333,6 @@ function DevTools.forceRefillNest(self: DevTools, player: Player, objectId: any)
 	end
 
 	nest:notifyRefill()
-end
-
-function DevTools.dumpGuardians(self: DevTools, player: Player)
-	for _, guardian in guardianManager:getAllGuardians() do
-		print(
-			"guardian",
-			guardian:getObjectId(),
-			guardian:getObjectName(),
-			"biome",
-			guardian:getBiomeIndex(),
-			"state",
-			enums.getName(enums.GuardianState, guardian.state)
-		)
-	end
-end
-
-function DevTools.forceWakeGuardian(self: DevTools, player: Player, objectId: any)
-	local guardian = guardianManager:getGuardianByObjectId(objectId)
-	if not guardian then
-		print("no guardian with object id", objectId)
-		return
-	end
-
-	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if not dragon then
-		print("player is not riding a dragon", player)
-		return
-	end
-
-	guardian:forceWake(dragon)
-end
-
-function DevTools.forceResetGuardian(self: DevTools, player: Player, objectId: any)
-	local guardian = guardianManager:getGuardianByObjectId(objectId)
-	if not guardian then
-		print("no guardian with object id", objectId)
-		return
-	end
-
-	guardian:forceReset()
-end
-
-function DevTools.forceHitCarrierEgg(self: DevTools, player: Player)
-	local attackerDragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if not attackerDragon then
-		print("player is not riding a dragon", player)
-		return
-	end
-
-	local targetDragon = gameController:findNearestCarryingDragon(attackerDragon, nil)
-	if not targetDragon then
-		print("no other dragon is currently carrying an egg")
-		return
-	end
-
-	gameController:applyHitToCarrier(player, attackerDragon, targetDragon)
 end
 
 function DevTools.equipAllDragons(self: DevTools, player: Player)

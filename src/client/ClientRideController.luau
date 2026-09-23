@@ -16,7 +16,6 @@ local Effects = GameAssets:WaitForChild("Effects")
 local RidingDragonAudioParent = Effects:WaitForChild("RidingDragonAudioParent")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
-local BiomeData = require("@game/ReplicatedStorage/Shared/BiomeData")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
@@ -74,7 +73,6 @@ local player = game:GetService("Players").LocalPlayer :: Player
 type ClientRideControllerFields = {
 	alignOrientationConstraint: any,
 	attributeChangedConnect: any,
-	speedStatChangedConnect: any,
 	audioMountDragon: any,
 	audioRideDragon: any,
 	baseWalkSpeed: any,
@@ -623,10 +621,6 @@ function ClientRideController.updateMovement(self: ClientRideController, deltaTi
 			speedMultiplier = 1
 		end
 
-		-- relative to a level-1 Common's Speed of 100, so a baseline dragon is unaffected
-		local speedStat = self.shadow:GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?
-		local speedStatMultiplier = (speedStat or 100) / 100
-
 		local carrySpeedMult = (self.shadow:GetAttribute(Attributes.CARRY_SPEED_MULT) :: number?) or 1
 
 		local velocityVector = (
@@ -634,17 +628,8 @@ function ClientRideController.updateMovement(self: ClientRideController, deltaTi
 			* moveFrac
 			* Constants.BASE_RIDE_SPEED
 			* speedMultiplier
-			* speedStatMultiplier
 			* carrySpeedMult
 		) * forwardDirection
-
-		local gate = BiomeData.getGoverningGate(self.drivePart.Position)
-		if gate and gate.speedGate and (not speedStat or speedStat < gate.speedGate) then
-			local forwardProgress = velocityVector:Dot(BiomeData.HALLWAY_DIRECTION)
-			if forwardProgress > 0 then
-				velocityVector -= BiomeData.HALLWAY_DIRECTION * forwardProgress
-			end
-		end
 
 		--local forwardDirectionXZ = Vector3.new(forwardDirection.X, 0, forwardDirection.Z)
 		--local forwardAngle = forwardDirection:Angle(forwardDirectionXZ, Vector3.zAxis)
@@ -1065,11 +1050,6 @@ function ClientRideController.beginRiding(self: ClientRideController, shadow: an
 		self:updateStamina()
 	end)
 
-	screenGuiManager:setSpeedDisplay(shadow:GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?)
-	self.speedStatChangedConnect = shadow:GetAttributeChangedSignal(Attributes.DRAGON_SPEED_STAT):Connect(function()
-		screenGuiManager:setSpeedDisplay(shadow:GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?)
-	end)
-
 	screenGuiManager:setCurrentItemInstanceDisplay(shadow)
 
 	screenGuiManager:setStaminaDisplayBlinkState(false)
@@ -1315,13 +1295,7 @@ function ClientRideController.cleanupRiding(self: ClientRideController)
 		self.attributeChangedConnect = nil
 	end
 
-	if self.speedStatChangedConnect then
-		self.speedStatChangedConnect:Disconnect()
-		self.speedStatChangedConnect = nil
-	end
-
 	screenGuiManager:setStaminaDisplay(nil)
-	screenGuiManager:setSpeedDisplay(nil)
 
 	Satchel:SetBackpackEnabled(true)
 
@@ -1374,14 +1348,6 @@ function ClientRideController.notifyTrySetRidingCFrameRejected(self: ClientRideC
 
 	self.shadow:PivotTo(ridingCFrame)
 	self.caster:PivotTo(self.shadow:GetPivot())
-end
-
-function ClientRideController.isInBiomeLevels(self: ClientRideController): boolean
-	if not self:isRiding() then
-		return false
-	end
-
-	return BiomeData.isInBiomeLevels(self.drivePart.Position)
 end
 
 function ClientRideController.isCarryingEgg(self: ClientRideController): boolean
@@ -1527,13 +1493,6 @@ end
 
 function ClientRideController.init(self: ClientRideController)
 	-- late load to avoid circular references
-
-	local biomeGateConfig = ReplicatedStorage:WaitForChild("BiomeGateConfig")
-	for _, gateConfig in biomeGateConfig:GetChildren() do
-		local biomeIndex = gateConfig:GetAttribute(Attributes.BIOME_INDEX) :: number
-		local speedGate = gateConfig:GetAttribute(Attributes.SPEED_GATE) :: number
-		BiomeData.setSpeedGateForBiome(biomeIndex, speedGate)
-	end
 
 	local ridingDragonAudioParent = RidingDragonAudioParent:Clone()
 	ridingDragonAudioParent.Parent = workspace

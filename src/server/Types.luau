@@ -273,7 +273,6 @@ export type DragonEggFields = MItemFields & {
 	random: Random,
 	hatchTimer: any,
 	incubatingBiomeIndex: number?,
-	carryingDragonItemId: number?,
 	hatchCompleteTime: number?,
 	pausedRemainingSec: number?,
 }
@@ -284,7 +283,6 @@ export type DragonEgg = MItem & {
 	random: Random,
 	hatchTimer: any,
 	incubatingBiomeIndex: number?,
-	carryingDragonItemId: number?,
 	hatchCompleteTime: number?,
 	pausedRemainingSec: number?,
 
@@ -293,7 +291,7 @@ export type DragonEgg = MItem & {
 	pauseIncubating: (self: DragonEgg) -> (),
 	finishHatching: (self: DragonEgg) -> (),
 	forceHatchNow: (self: DragonEgg) -> (),
-	notifyPlacedInPlot: (self: DragonEgg, carryingDragon: any) -> (),
+	notifyPlacedInPlot: (self: DragonEgg) -> (),
 	tryBeginIncubatingFromPlacement: (self: DragonEgg) -> (),
 }
 
@@ -321,8 +319,6 @@ export type ShadowDragonFields = MItemFields & {
 	opening: any,
 	settling: any,
 	stableSlotIndex: number?,
-	rideLevel: number,
-	rideXp: number,
 }
 
 -- inherited and overridden members come from MItem; only members new to ShadowDragon are listed here
@@ -348,12 +344,7 @@ export type ShadowDragon = MItem & {
 	stamina: any,
 	state: number?,
 	wasRidingMaxDuration: boolean?,
-	rideLevel: number,
-	rideXp: number,
 
-	addRideXp: (self: ShadowDragon, xp: number) -> (),
-	getRideLevel: (self: ShadowDragon) -> number,
-	setRideLevel: (self: ShadowDragon, rideLevel: number) -> (),
 	beginEating: (self: ShadowDragon, crop: any) -> (),
 	beginIdle: (self: ShadowDragon, data: any) -> (),
 	beginMovingToEat: (self: ShadowDragon, crop: any) -> (),
@@ -618,56 +609,6 @@ export type Nest = BaseObject & {
 	setState: (self: Nest, state: number?) -> (),
 }
 
-export type GuardianFields = BaseObjectFields & {
-	state: number?,
-	biomeIndex: number,
-	homeCFrame: CFrame,
-	targetDragon: any?,
-	isForcedEncounter: boolean?,
-	wakeCheckElapsedSec: number?,
-	wakeCheckConnect: RBXScriptConnection?,
-	telegraphTimer: Timer?,
-	chaseStartTime: number?,
-	chaseConnect: RBXScriptConnection?,
-	returnTween: Tween?,
-}
-
--- inherited and overridden members come from BaseObject; only members new to Guardian are listed here
-export type Guardian = BaseObject & {
-	state: number?,
-	biomeIndex: number,
-	homeCFrame: CFrame,
-	targetDragon: any?,
-	isForcedEncounter: boolean?,
-	wakeCheckElapsedSec: number?,
-	wakeCheckConnect: RBXScriptConnection?,
-	telegraphTimer: Timer?,
-	chaseStartTime: number?,
-	chaseConnect: RBXScriptConnection?,
-	returnTween: Tween?,
-
-	beginChasing: (self: Guardian, dragon: any) -> (),
-	beginReturning: (self: Guardian) -> (),
-	beginSleeping: (self: Guardian) -> (),
-	beginState: (self: Guardian, state: number?, data: any) -> (),
-	beginTelegraphing: (self: Guardian, dragon: any) -> (),
-	beginWakeCheck: (self: Guardian) -> (),
-	cleanupChasing: (self: Guardian) -> (),
-	cleanupReturning: (self: Guardian) -> (),
-	cleanupSleeping: (self: Guardian) -> (),
-	cleanupTelegraphing: (self: Guardian) -> (),
-	cleanupWakeCheck: (self: Guardian) -> (),
-	endState: (self: Guardian) -> (),
-	findCarrierInBiome: (self: Guardian) -> any?,
-	forceReset: (self: Guardian) -> (),
-	forceWake: (self: Guardian, dragon: any) -> (),
-	getBiomeIndex: (self: Guardian) -> number,
-	notifyCaughtDragon: (self: Guardian, dragon: any) -> (),
-	notifyTelegraphComplete: (self: Guardian) -> (),
-	setState: (self: Guardian, state: number?, data: any) -> (),
-	stepChasing: (self: Guardian, dragon: any, objectData: any, deltaTime: number) -> (),
-}
-
 export type ChestFields = BaseObjectFields & {
 	state: number?,
 }
@@ -803,9 +744,6 @@ export type CritterObjectType = ObjectType
 -- inherited and overridden members come from ObjectType; only members new to NestObjectType are listed here
 export type NestObjectType = ObjectType
 
--- inherited and overridden members come from ObjectType; only members new to GuardianObjectType are listed here
-export type GuardianObjectType = ObjectType
-
 export type ItemMover = {
 	itemId: number,
 	beginCFrame: CFrame,
@@ -888,7 +826,6 @@ export type UpAndOverItemMover = ItemMover & {
 export type GameController = {
 	addPrimaryElementXpToPlayer: (self: GameController, player: Player?, primaryElement: number, xpDiff: number, part: any) -> (),
 	addRemoteEventHandler: (self: GameController, remoteEventName: string, funcName: string) -> (),
-	applyHitToCarrier: (self: GameController, attackerPlayer: Player, attackerDragon: ShadowDragon, targetDragon: ShadowDragon) -> (),
 	areChestIslandsEnabled: (self: GameController) -> boolean,
 	areProceduralIslandsEnabled: (self: GameController) -> boolean,
 	calculateEatingSteps: (self: GameController, dragon: any, crop: any) -> (number, number),
@@ -898,7 +835,6 @@ export type GameController = {
 	createItemsFromItemCreationDataForPlayer: (self: GameController, itemCreationData: { [string]: number }, player: Player?) -> { any },
 	createPollTimer: (self: GameController) -> (),
 	endDragonsEatingCrop: (self: GameController, crop: any) -> (),
-	findNearestCarryingDragon: (self: GameController, attackerDragon: ShadowDragon, maxDistance: number?) -> ShadowDragon?,
 	getAllBlueprintNames: (self: GameController) -> { string },
 	getAllBuyableItemNames: (self: GameController) -> { string },
 	getAllCropNames: (self: GameController) -> { string },
@@ -929,7 +865,6 @@ export type GameController = {
 	getRemoteEventMetrics: (self: GameController) -> any,
 	grantCoinsForGemValue: (self: GameController, player: Player?, primaryElement: number, gemCount: number) -> (),
 	init: (self: GameController) -> (),
-	initBiomeGateSpeedConfig: (self: GameController) -> (),
 	initCollision: (self: GameController) -> (),
 	isIndexEnabled: (self: GameController) -> boolean,
 	isLocationInFreeFlyZone: (self: GameController, location: Vector3) -> boolean,
@@ -960,7 +895,7 @@ export type GameController = {
 	spawnItemsAtPosition: (self: GameController, items: { any }, position: Vector3) -> (),
 	spawnItemsAtPositionAndGoToPlayerBackpack: (self: GameController, items: { any }, position: Vector3, player: Player?) -> (),
 	spawnItemsInBackpack: (self: GameController, items: { any }) -> (),
-	tossEggToGroundPosition: (self: GameController, item: Item, groundPosition: Vector3, carryingDragon: ShadowDragon) -> (),
+	tossEggToGroundPosition: (self: GameController, item: Item, groundPosition: Vector3) -> (),
 	tryAcceptTrade: (self: GameController, player: Player, partnerPlayerName: any) -> (),
 	tryBeginDragonEatingCrop: (self: GameController, dragon: any, crop: any) -> (),
 	tryBeginDragonOpeningCrystal: (self: GameController, dragon: any, crystal: any) -> (),
@@ -984,13 +919,11 @@ export type GameController = {
 	tryDropEggAtPosition: (self: GameController, player: Player, position: any) -> (),
 	tryEatWhileRiding: (self: GameController, player: Player, cropItemId: any) -> (),
 	tryEndRideDragon: (self: GameController, player: Player, itemId: any) -> (),
-	tryEnforceBiomeGate: (self: GameController, dragon: ShadowDragon, cframe: CFrame) -> boolean,
 	tryEquipAbility: (self: GameController, player: Player, ability: any) -> (),
 	tryEquipDragon: (self: GameController, player: Player, itemId: any, stableSlotIndex: any) -> (),
 	tryEquipVanityComponent: (self: GameController, player: Player, vanityPlacement: any, vanityComponentName: any) -> (),
 	tryFuseAllDragons: (self: GameController, player: Player) -> (),
 	tryGrantPlayerRobuxProductId: (self: GameController, player: Player, productId: number) -> boolean,
-	tryHitCarrierEgg: (self: GameController, player: Player) -> (),
 	tryLoadPreProfileSaveData: (self: GameController, player: Player) -> any,
 	tryLockTradeOffer: (self: GameController, player: Player, partnerPlayerName: any, playerOffer: any) -> (),
 	tryLogAnalyticsEvent: (self: GameController, player: Player, eventName: any, properties: any) -> (),
@@ -1002,7 +935,6 @@ export type GameController = {
 	tryOpenCrate: (self: GameController, player: Player, crateItemId: any) -> (),
 	tryOpenPack: (self: GameController, player: Player, packItemId: any) -> (),
 	tryPickupEgg: (self: GameController, player: Player, objectId: any) -> (),
-	tryPickupFreeEgg: (self: GameController, player: Player, itemId: any) -> (),
 	tryPickupItem: (self: GameController, player: Player, itemId: any) -> (),
 	tryPlaceLuckBillboardForPlayer: (self: GameController, player: Player) -> (),
 	tryPutAwayRidingDragon: (self: GameController, player: Player) -> (),
@@ -1072,14 +1004,9 @@ export type ItemManager = {
 
 export type PlotsManager = {
 	addAllChildrenAndMapCFramesForPlotIndex: (self: PlotsManager, plotIndex: number, root: any, holder: Instance) -> (),
+	calculateTreeBounds: (self: PlotsManager, root: any) -> any,
 	createItemOnPlot: (self: PlotsManager, index: number, name: any, plotPosition: Vector3, userId: number) -> (),
 	equipVanityComponentForPlayerAtPlacement: (self: PlotsManager, player: Player, vanityPlacement: number, vanityComponentName: string) -> (),
-	getGroundPositionFromPlotPosition: (self: PlotsManager, plotPosition: Vector3, index: number) -> Vector3,
-	getPlotPositionFromWorldPositionForUserId: (self: PlotsManager, position: Vector3, userId: number) -> Vector3,
-	getWorldPositionFromPlotPositionForUserId: (self: PlotsManager, position: Vector3, userId: number) -> Vector3?,
-	isPositionInExpansionXZ: (self: PlotsManager, position: Vector3, vanityArea: number, plotIndex: number) -> boolean,
-	isPositionInExpansionXZByUserId: (self: PlotsManager, position: Vector3, vanityArea: number, userId: number) -> boolean,
-	calculateTreeBounds: (self: PlotsManager, root: any) -> any,
 	getAllExpansionInnerNames: (self: PlotsManager) -> { string },
 	getAllExpansionOuterNames: (self: PlotsManager) -> { string },
 	getAllFenceNames: (self: PlotsManager) -> { string },
@@ -1089,20 +1016,25 @@ export type PlotsManager = {
 	getCategoryVanityComponentNames: (self: PlotsManager, vanityComponentName: string) -> { string },
 	getClosestPlotIndexByPosition: (self: PlotsManager, position: Vector3) -> any,
 	getEndCapCFrame: (self: PlotsManager, endCapIndex: number) -> CFrame,
+	getGroundPositionFromPlotPosition: (self: PlotsManager, plotPosition: Vector3, index: number) -> Vector3,
 	getNumEndCaps: (self: PlotsManager) -> number,
 	getNumPlots: (self: PlotsManager) -> number,
 	getPlotCFrameForUserId: (self: PlotsManager, userId: number) -> CFrame?,
 	getPlotCFrameFromWorldCFrameForUserId: (self: PlotsManager, cframe: CFrame, userId: number) -> CFrame,
 	getPlotIndexByUserId: (self: PlotsManager, userId: number) -> number?,
 	getPlotItemRecoveryPositionByUserId: (self: PlotsManager, userId: number) -> Vector3?,
+	getPlotPositionFromWorldPositionForUserId: (self: PlotsManager, position: Vector3, userId: number) -> Vector3,
 	getRandomLocationInMainPlot: (self: PlotsManager, plotIndex: number) -> Vector3,
 	getRandomLocationInMainPlotByUserId: (self: PlotsManager, userId: number) -> Vector3?,
 	getVanityComponentDataByName: (self: PlotsManager, vanityComponentName: string) -> any,
 	getVanityComponentNameForBlueprintName: (self: PlotsManager, blueprintItemName: string) -> string?,
 	getWorldCFrameFromPlotCFrameForUserId: (self: PlotsManager, cframe: CFrame, userId: number) -> CFrame?,
+	getWorldPositionFromPlotPositionForUserId: (self: PlotsManager, position: Vector3, userId: number) -> Vector3?,
 	init: (self: PlotsManager) -> (),
 	initVanityData: (self: PlotsManager) -> (),
 	isPlotIndexOccupied: (self: PlotsManager, plotIndex: number) -> boolean,
+	isPositionInExpansionXZ: (self: PlotsManager, position: Vector3, vanityArea: number, plotIndex: number) -> boolean,
+	isPositionInExpansionXZByUserId: (self: PlotsManager, position: Vector3, vanityArea: number, userId: number) -> boolean,
 	isPositionInMainPlotXZ: (self: PlotsManager, position: Vector3, plotIndex: number) -> boolean,
 	isPositionInMainPlotXZByUserId: (self: PlotsManager, position: Vector3, userId: number) -> boolean,
 	notifyAddUserId: (self: PlotsManager, userId: number) -> number?,
@@ -1269,7 +1201,6 @@ export type PlayerData = {
 	getIsFriend: (self: PlayerData, userId: number) -> (),
 	getIsInPlot: (self: PlayerData) -> (),
 	getItemForPlayer: (self: PlayerData, itemName: any) -> Item?,
-	getLastSwingAttemptTime: (self: PlayerData) -> number,
 	getLatestRidingItemId: (self: PlayerData) -> (),
 	getLuckPercent: (self: PlayerData) -> (),
 	getLuckTimeRange: (self: PlayerData) -> (),
@@ -1288,7 +1219,6 @@ export type PlayerData = {
 	getStableDragonInSlot: (self: PlayerData, stableSlotIndex: number) -> number?,
 	getStableSlots: (self: PlayerData) -> any,
 	getStarterOfferProgress: (self: PlayerData) -> (),
-	getSwingBlockedUntil: (self: PlayerData) -> number,
 	getTimeLuckPercent: (self: PlayerData) -> (),
 	getTotalDragonPower: (self: PlayerData) -> number,
 	getTotalLevel: (self: PlayerData) -> (),
@@ -1362,7 +1292,6 @@ export type PlayerData = {
 	setFirstSessionOfferState: (self: PlayerData, firstSessionOfferState: any) -> (),
 	setFtueProgress: (self: PlayerData, ftueProgress: any) -> (),
 	setIfSaveOnExit: (self: PlayerData, saveOnExit: any) -> (),
-	setLastSwingAttemptTime: (self: PlayerData, lastSwingAttemptTime: number) -> (),
 	setMergeData: (self: PlayerData, data: any) -> (),
 	setPlayerVariable: (self: PlayerData, attributeName: any, value: any) -> (),
 	setPurchasedSlotUnlock: (self: PlayerData, primaryElement: any) -> (),
@@ -1370,7 +1299,6 @@ export type PlayerData = {
 	setRiding: (self: PlayerData, itemId: any, playerRelativeToDragonCFrame: any) -> (),
 	setStableDragonInSlot: (self: PlayerData, stableSlotIndex: number, itemId: number) -> (),
 	setStarterOfferProgress: (self: PlayerData, starterOfferProgress: any) -> (),
-	setSwingBlockedUntil: (self: PlayerData, swingBlockedUntil: number) -> (),
 	setVanityState: (self: PlayerData, vanityState: any) -> (),
 	shouldSaveOnExit: (self: PlayerData) -> (),
 	syncDefaultExpansionVanityAreaIfNeeded: (self: PlayerData, vanityArea: any) -> (),

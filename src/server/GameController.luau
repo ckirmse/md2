@@ -25,8 +25,6 @@ local ftueManager = require("./FtueManager")
 local gameDataVerifier = require("./GameDataVerifier")
 local Gem = require("./Gem")
 local Crate = require("./Crate")
-local Guardian = require("./Guardian")
-local guardianManager = require("./GuardianManager")
 local incomeManager = require("./IncomeManager")
 local indexManager = require("./IndexManager")
 local Item = require("./Item")
@@ -74,7 +72,6 @@ local CrystalHits = ParticleEffects:WaitForChild("CrystalHits") :: Part
 
 local Abilities = require("@game/ReplicatedStorage/Shared/Abilities")
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
-local BiomeData = require("@game/ReplicatedStorage/Shared/BiomeData")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
@@ -110,7 +107,6 @@ local WelcomeBack = require("@game/ReplicatedStorage/Shared/WelcomeBack")
 local crystalTimeData = require("@game/ServerScriptService/GameData/Control/CrystalTime")
 local dragonSpeedData = require("@game/ServerScriptService/GameData/Control/DragonSpeed")
 local eatingTimeData = require("@game/ServerScriptService/GameData/Control/EatingTime")
-local pvpHitData = require("@game/ServerScriptService/GameData/Control/PvpHit")
 local starterOfferData = require("@game/ServerScriptService/GameData/Control/StarterOffer")
 local vanityAreasData = require("@game/ServerScriptService/GameData/Control/VanityAreas")
 
@@ -485,32 +481,6 @@ local freeFlyCornerA = Vector3.new(-168.4, 0, 460.4)
 local freeFlyCornerB = Vector3.new(165.9, 0, 5.6)
 function GameController.isLocationInFreeFlyZone(self: GameController, location: Vector3): boolean
 	return utils.isLocationInRectangleXZ(location, freeFlyCornerA, freeFlyCornerB)
-end
-
-function GameController.initBiomeGateSpeedConfig(self: GameController)
-	local biomeGateConfig = Instance.new("Folder")
-	biomeGateConfig.Name = "BiomeGateConfig"
-
-	for biomeIndex, speedGate in dragonSpeedData.speedGateByBiome do
-		BiomeData.setSpeedGateForBiome(biomeIndex, speedGate)
-
-		local gateConfig = Instance.new("Configuration")
-		gateConfig:SetAttribute(Attributes.BIOME_INDEX, biomeIndex)
-		gateConfig:SetAttribute(Attributes.SPEED_GATE, speedGate)
-		gateConfig.Parent = biomeGateConfig
-	end
-
-	biomeGateConfig.Parent = ReplicatedStorage
-end
-
-function GameController.tryEnforceBiomeGate(self: GameController, dragon: Types.ShadowDragon, cframe: CFrame): boolean
-	local gate = BiomeData.getGoverningGate(cframe.Position)
-	if not gate then
-		return true
-	end
-
-	local speedStat = dragon:getObj():GetAttribute(Attributes.DRAGON_SPEED_STAT) :: number?
-	return gate.speedGate ~= nil and speedStat ~= nil and speedStat >= gate.speedGate
 end
 
 function GameController.getCountEatingCrop(self: GameController, crop: any): number
@@ -2242,10 +2212,6 @@ function GameController.tryEndRideDragon(self: GameController, player: Player, i
 	end
 
 	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if dragon and BiomeData.isInBiomeLevels(dragon:getObj():GetPivot().Position) then
-		self:sendSystemMessageToPlayer(player, "You can't dismount inside a biome")
-		return
-	end
 	if dragon and dragon:getObj():GetAttribute(Attributes.IS_CARRYING) then
 		self:sendSystemMessageToPlayer(player, "You can't dismount while carrying an egg")
 		return
@@ -2432,9 +2398,6 @@ function GameController.trySetRidingItemCFrame(self: GameController, player: Pla
 	end
 
 	local dragon = item :: Types.ShadowDragon
-	if not self:tryEnforceBiomeGate(dragon, cframe) then
-		return
-	end
 
 	local stunnedUntil = dragon:getObj():GetAttribute(Attributes.STUNNED_UNTIL) :: number?
 	if stunnedUntil and workspace:GetServerTimeNow() < stunnedUntil then
@@ -2533,157 +2496,10 @@ function GameController.tryDropEggAtPosition(self: GameController, player: Playe
 	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
 
 	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", true)
-	self:tossEggToGroundPosition(item, groundPosition, dragon)
+	self:tossEggToGroundPosition(item, groundPosition)
 end
 
-function GameController.findNearestCarryingDragon(self: GameController, attackerDragon: Types.ShadowDragon, maxDistance: number?): Types.ShadowDragon?
-	local attackerPosition = attackerDragon:getObj():GetPivot().Position
-
-	local nearestTargetDragon: Types.ShadowDragon? = nil
-	local nearestDistance = maxDistance or math.huge
-	for _, dragon in itemManager:getAllDragons() do
-		if dragon == attackerDragon then
-			continue
-		end
-		if not dragon:getObj():GetAttribute(Attributes.IS_CARRYING) then
-			continue
-		end
-
-		local distance = (dragon:getObj():GetPivot().Position - attackerPosition).Magnitude
-		if distance <= nearestDistance then
-			nearestTargetDragon = dragon
-			nearestDistance = distance
-		end
-	end
-
-	return nearestTargetDragon
-end
-
-function GameController.applyHitToCarrier(self: GameController, attackerPlayer: Player, attackerDragon: Types.ShadowDragon, targetDragon: Types.ShadowDragon): ()
-	local targetPlayer = targetDragon:getPlayer()
-	if not targetPlayer then
-		return
-	end
-
-	local eggItemId = targetDragon:getObj():GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) :: number?
-	if not eggItemId then
-		return
-	end
-
-	local item = itemManager:getItemById(eggItemId)
-	if not item then
-		return
-	end
-
-	local now = workspace:GetServerTimeNow()
-
-	targetDragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
-	targetDragon:getObj():SetAttribute(Attributes.CARRY_SPEED_MULT, nil)
-	targetDragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
-	targetDragon:getObj():SetAttribute(Attributes.STUNNED_UNTIL, now + pvpHitData.carrierStunSec)
-
-	local attackerPosition = attackerDragon:getObj():GetPivot().Position
-	local targetPosition = targetDragon:getObj():GetPivot().Position
-	local flingDirection = targetPosition - attackerPosition
-	if flingDirection.Magnitude < 1 then
-		flingDirection = targetDragon:getObj():GetPivot().LookVector
-	end
-	flingDirection = flingDirection.Unit
-
-	local flingDistance = pvpHitData.eggFlingDistanceMin
-		+ (pvpHitData.eggFlingDistanceMax - pvpHitData.eggFlingDistanceMin) * math.random()
-	local rawLandingPosition = targetPosition + flingDirection * flingDistance
-	local groundPosition = utils.getGroundPositionForLocation(rawLandingPosition) + Vector3.new(0, item:getPart().Size.Y / 2, 0)
-
-	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", true)
-	item:getObj():PivotTo(CFrame.new(groundPosition))
-
-	item:setUserId(Constants.UNOWNED_USER_ID)
-	item:getObj():SetAttribute(Attributes.FREE_FOR_PICKUP, true)
-
-	self:getPlayerData(targetPlayer):setSwingBlockedUntil(now + pvpHitData.recaptureGuardSec)
-
-	self:sendSystemMessageToPlayer(attackerPlayer, "You knocked the egg loose!")
-	self:sendSystemMessageToPlayer(targetPlayer, "You got hit and lost the egg!")
-end
-
-function GameController.tryHitCarrierEgg(self: GameController, player: Player): ()
-	if not rideMixin:isPlayerRiding(player) then
-		return
-	end
-
-	local attackerDragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if not attackerDragon then
-		return
-	end
-
-	local now = workspace:GetServerTimeNow()
-	local playerData = self:getPlayerData(player)
-
-	if playerData:getSwingBlockedUntil() > now then
-		return
-	end
-
-	if playerData:getLastSwingAttemptTime() + pvpHitData.attackerSwingCooldownSec > now then
-		return
-	end
-	playerData:setLastSwingAttemptTime(now)
-
-	local targetDragon = self:findNearestCarryingDragon(attackerDragon, pvpHitData.hitRange)
-	if not targetDragon then
-		return
-	end
-
-	self:applyHitToCarrier(player, attackerDragon, targetDragon)
-end
-
-function GameController.tryPickupFreeEgg(self: GameController, player: Player, itemId: any): ()
-	if not rideMixin:isPlayerRiding(player) then
-		return
-	end
-
-	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if not dragon then
-		return
-	end
-
-	if dragon:getObj():GetAttribute(Attributes.IS_CARRYING) then
-		return
-	end
-
-	if typeof(itemId) ~= "number" then
-		return
-	end
-
-	local item = itemManager:getItemById(itemId)
-	if not item then
-		return
-	end
-
-	if not item:getObj():GetAttribute(Attributes.FREE_FOR_PICKUP) then
-		return
-	end
-
-	local distance = (dragon:getObj():GetPivot().Position - item:getObj():GetPivot().Position).Magnitude
-	if distance > Constants.PICKUP_EGG_DISTANCE * 1.1 then
-		return
-	end
-
-	item:setUserId(player.UserId)
-	item:getObj():SetAttribute(Attributes.FREE_FOR_PICKUP, nil)
-
-	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", false)
-	utils.setPropertyTreeBaseParts(item:getObj(), "CanCollide", false)
-
-	local biomeIndex = item:getObj():GetAttribute(Attributes.SOURCE_BIOME_INDEX) :: number?
-	local carrySpeedMult = dragonSpeedData.carrySpeedMultByBiome[biomeIndex or 1] or 1
-
-	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, true)
-	dragon:getObj():SetAttribute(Attributes.CARRY_SPEED_MULT, carrySpeedMult)
-	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, itemId)
-end
-
-function GameController.tossEggToGroundPosition(self: GameController, item: Types.Item, groundPosition: Vector3, carryingDragon: Types.ShadowDragon)
+function GameController.tossEggToGroundPosition(self: GameController, item: Types.Item, groundPosition: Vector3)
 	local TOSS_SPEED = 45
 	local FALL_SPEED = 60
 
@@ -2702,7 +2518,7 @@ function GameController.tossEggToGroundPosition(self: GameController, item: Type
 		local fallTween = PivotToTween(item:getObj(), fallTweenInfo, CFrame.new(groundPosition))
 
 		fallTween.Completed:Connect(function()
-			(item :: Types.DragonEgg):notifyPlacedInPlot(carryingDragon)
+			(item :: Types.DragonEgg):notifyPlacedInPlot()
 		end)
 		fallTween:Play()
 	end)
@@ -2798,10 +2614,6 @@ function GameController.tryPutAwayRidingDragon(self: GameController, player: Pla
 	end
 
 	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if dragon and BiomeData.isInBiomeLevels(dragon:getObj():GetPivot().Position) then
-		self:sendSystemMessageToPlayer(player, "You can't dismount inside a biome")
-		return
-	end
 	if dragon and dragon:getObj():GetAttribute(Attributes.IS_CARRYING) then
 		self:sendSystemMessageToPlayer(player, "You can't dismount while carrying an egg")
 		return
@@ -3592,8 +3404,6 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryClaimLuckBillboard", "tryClaimLuckBillboard")
 	self:addRemoteEventHandler("TryPickupEgg", "tryPickupEgg")
 	self:addRemoteEventHandler("TryDropEggAtPosition", "tryDropEggAtPosition")
-	self:addRemoteEventHandler("TryHitCarrierEgg", "tryHitCarrierEgg")
-	self:addRemoteEventHandler("TryPickupFreeEgg", "tryPickupFreeEgg")
 end
 
 function GameController.processPollTimer(self: GameController): ()
@@ -3794,8 +3604,6 @@ function GameController.init(self: GameController): ()
 
 	lootTableManager:init()
 
-	self:initBiomeGateSpeedConfig()
-
 	self:initCollision()
 
 	game.RunService.PreSimulation:Connect(function(deltaTime)
@@ -3824,7 +3632,6 @@ function GameController.init(self: GameController): ()
 	vanityStoreManager:init()
 	islandManager:init()
 	nestManager:init()
-	guardianManager:init()
 	stableManager:init()
 
 	processReceipt:init()
@@ -3883,7 +3690,6 @@ local function initClasses(gameController: GameController): ()
 	indexManager.initClass(deps)
 	islandManager.initClass(deps)
 	nestManager.initClass(deps)
-	guardianManager.initClass(deps)
 	plotsManager.initClass(deps)
 	lootTableManager.initClass(deps)
 
@@ -3902,7 +3708,6 @@ local function initClasses(gameController: GameController): ()
 	Chest.initClass(deps)
 	Critter.initClass(deps)
 	Nest.initClass(deps)
-	Guardian.initClass(deps)
 
 	ItemMover.initClass(deps)
 	PlayerData.initClass(deps)

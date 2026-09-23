@@ -51,11 +51,6 @@ module = {
 
 	NEST = "Nest",
 	NEST_SPAWN = "NestSpawn",
-
-	GUARDIAN = "Guardian",
-	GUARDIAN_SPAWN = "GuardianSpawn",
-
-	BIOME_GATE_SPAWN = "BiomeGateSpawn",
 }
 
 return module
