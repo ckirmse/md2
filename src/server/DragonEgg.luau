@@ -13,6 +13,7 @@ local players = game:GetService("Players")
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local lootTableManager = require("./LootTableManager")
 local pickupMixin = require("./PickupMixin")
 local plotsManager = require("./PlotsManager")
 local Timer = require("./Timer")
@@ -25,25 +26,7 @@ local utils = require("@game/ReplicatedStorage/Shared/utils")
 local carryingData = require("@game/ServerScriptService/GameData/Control/Carrying")
 local hatchingData = require("@game/ServerScriptService/GameData/Control/Hatching")
 
-local RARITY_COUNT = enums.getCount(enums.Rarity)
 local MUTATION_COUNT = enums.getCount(enums.Mutations)
-
-local function rollRarity(random: Random, biomeIndex: number): number
-	local odds = hatchingData.rarityOddsByBiome[biomeIndex] or hatchingData.rarityOddsByBiome[1]
-	local roll = random:NextNumber()
-	local cumulative = 0
-	for rarity = 1, RARITY_COUNT do
-		local chance = odds[rarity]
-		if not chance then
-			continue
-		end
-		cumulative += chance
-		if roll < cumulative then
-			return rarity
-		end
-	end
-	return enums.Rarity.COMMON
-end
 
 local function rollMutation(random: Random): number
 	local roll = random:NextNumber()
@@ -273,14 +256,14 @@ function DragonEgg.finishHatching(self: DragonEgg)
 	self.hatchTimer = nil
 	self:getObj():SetAttribute(Attributes.HATCH_COMPLETE_TIME, nil)
 
-	local biomeIndex = self.incubatingBiomeIndex or 1
-	local rarity = rollRarity(self.random, biomeIndex)
 	local mutation = rollMutation(self.random)
 
-	local hatchDragonNames = self:getItemData().hatchDragonNames
-	local dragonItemName = hatchDragonNames and hatchDragonNames[rarity]
+	local hatchLootTableName = self:getItemData().hatchLootTableName
+	local lootEntries = hatchLootTableName and lootTableManager:calculateLootResults(hatchLootTableName)
+	local itemCreationData = lootEntries and lootTableManager:getItemCreationDataFromItemLootResults(lootEntries)
+	local dragonItemName = itemCreationData and next(itemCreationData)
 	if not dragonItemName then
-		warn("egg has no hatchDragonNames entry for rolled rarity, cannot hatch", self:getItemName(), rarity)
+		warn("egg has no hatch loot table results, cannot hatch", self:getItemName())
 		return
 	end
 
