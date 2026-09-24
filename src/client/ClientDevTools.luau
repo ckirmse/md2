@@ -402,6 +402,14 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
+			local carryExpireItemId = Iris.State(0)
+			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = carryExpireItemId })
+			Iris.SameLine()
+			if Iris.Button({ "Force Expire Carry Timer" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("forceExpireCarry", carryExpireItemId:get())
+			end
+			Iris.End()
+
 			if Iris.Button({ "Dump Server Trading State" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpServerTradingState")
 			end

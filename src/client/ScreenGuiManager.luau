@@ -30,6 +30,7 @@ local overlayTracker = require("./OverlayTracker")
 local ParticleEmitter: any = require("./Libs/ParticleEmitter/ParticleEmitter") :: any
 local Satchel = require("./Satchel")
 local Types = require("./Types")
+local clientDragonEggManager: Types.ClientDragonEggManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local clientFtueManager: Types.ClientFtueManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local clientIndexManager = require("./ClientIndexManager")
 local clientRideController: Types.ClientRideController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
@@ -70,6 +71,9 @@ type ScreenGuiManagerFields = {
 	coinsFrameBasePosition: UDim2,
 	optionButtonFrameBasePosition: UDim2,
 	tradePlayerListOpenFrameBasePosition: UDim2,
+	carryBarTween: Tween?,
+	carryBarTargetItemId: number?,
+	carryBarTargetSecBucket: number?,
 }
 
 export type ScreenGuiManager = typeof(setmetatable({} :: ScreenGuiManagerFields, ScreenGuiManager))
@@ -664,10 +668,65 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 		return
 	end
 
+	local isCarryingUnsafeEgg = clientRideController:isRiding() and clientRideController:isCarryingUnsafeEgg()
+
+	local DropEggButton = ScreenGui:WaitForChild("DropEggButton")
+	DropEggButton.Visible = isCarryingUnsafeEgg
+
+	local CarryBreakBar = ScreenGui:WaitForChild("CarryBreakBar")
+	CarryBreakBar.Visible = isCarryingUnsafeEgg
+	if isCarryingUnsafeEgg then
+		local ridingObj: any = clientRideController:getRidingObj()
+		local carriedItemId = ridingObj:GetAttribute(Attributes.CARRIED_EGG_ITEM_ID)
+		local eggInst: any = carriedItemId and clientDragonEggManager:getInstanceByItemId(carriedItemId)
+		local totalSec = eggInst and eggInst:GetAttribute(Attributes.CARRY_TOTAL_SEC)
+		local expiresTime = eggInst and eggInst:GetAttribute(Attributes.CARRY_EXPIRES_TIME)
+
+		if totalSec and expiresTime and totalSec > 0 then
+			local remainingSecFloat = math.max(0, expiresTime - now)
+			local secBucket = math.ceil(remainingSecFloat)
+
+			if self.carryBarTargetItemId ~= carriedItemId or self.carryBarTargetSecBucket ~= secBucket then
+				self.carryBarTargetItemId = carriedItemId
+				self.carryBarTargetSecBucket = secBucket
+
+				if self.carryBarTween then
+					self.carryBarTween:Cancel()
+					self.carryBarTween = nil
+				end
+
+				local fill: any = utils.findFirstDescendant(CarryBreakBar, "Fill")
+
+				local currentFrac = math.clamp(remainingSecFloat / totalSec, 0, 1)
+				fill.Size = UDim2.new(UDim.new(currentFrac, 0), fill.Size.Y :: UDim)
+
+				local nextBucket = math.max(0, secBucket - 1)
+				local nextFrac = math.clamp(nextBucket / totalSec, 0, 1)
+				local tweenDuration = math.clamp(remainingSecFloat - nextBucket, 0.05, 1)
+
+				local tween = tweenService:Create(
+					fill,
+					TweenInfo.new(tweenDuration, Enum.EasingStyle.Linear),
+					{ Size = UDim2.new(UDim.new(nextFrac, 0), fill.Size.Y :: UDim) }
+				)
+				self.carryBarTween = tween
+				tween:Play()
+			end
+
+			local barText: any = utils.findFirstDescendant(CarryBreakBar, "BarText")
+			barText.Text = string.format("%ds", secBucket)
+		end
+	elseif self.carryBarTween then
+		self.carryBarTween:Cancel()
+		self.carryBarTween = nil
+		self.carryBarTargetItemId = nil
+		self.carryBarTargetSecBucket = nil
+	end
+
 	local isRiding = clientRideController:isRiding()
 	if isRiding and (clientRideController:getRidingObj() :: any):GetAttribute(Attributes.PICKUP_NAME) ~= nil then
 		self.latestEquippedItemId = nil
-		local canPutAwayRidingDragon = clientRideController:isRidingAndControllingAndInFreeFlyZone() and not clientRideController:isCarryingEgg()
+		local canPutAwayRidingDragon = clientRideController:isRidingAndControllingAndInFreeFlyZone() and not clientRideController:isCarryingUnsafeEgg()
 		PutAwayButton.Visible = canPutAwayRidingDragon
 		return
 	end
@@ -776,7 +835,7 @@ end
 function ScreenGuiManager.processPutAwayButtonActivated(self: ScreenGuiManager)
 	local isRiding = clientRideController:isRiding()
 	if isRiding then
-		if clientRideController:isCarryingEgg() then
+		if clientRideController:isCarryingUnsafeEgg() then
 			return
 		end
 
@@ -786,6 +845,14 @@ function ScreenGuiManager.processPutAwayButtonActivated(self: ScreenGuiManager)
 	end
 
 	self:toggleHeldItem()
+end
+
+function ScreenGuiManager.processDropEggButtonActivated(self: ScreenGuiManager)
+	if not clientRideController:isCarryingEgg() then
+		return
+	end
+
+	RemoteEvents.TryDropEggFromBasket:FireServer()
 end
 
 function ScreenGuiManager.showTradeButton(self: ScreenGuiManager, reason: string?)
@@ -898,6 +965,12 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 	local button: any = utils.findFirstDescendant(PutAwayButton, "ImageButton")
 	button.Activated:Connect(function()
 		self:processPutAwayButtonActivated()
+	end)
+
+	local DropEggButton = ScreenGui:WaitForChild("DropEggButton")
+	local dropEggButtonText: any = utils.findFirstDescendant(DropEggButton, "TextButton")
+	dropEggButtonText.Activated:Connect(function()
+		self:processDropEggButtonActivated()
 	end)
 
 	local unequipKeyCode = Enum.KeyCode.R
@@ -1110,6 +1183,7 @@ function ScreenGuiManager.new(): ScreenGuiManager
 end
 
 function ScreenGuiManager.initClass(deps: any)
+	clientDragonEggManager = deps.clientDragonEggManager
 	clientFtueManager = deps.clientFtueManager
 	clientRideController = deps.clientRideController
 	clientTradePlayerList = deps.clientTradePlayerList

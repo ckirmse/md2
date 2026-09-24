@@ -23,28 +23,30 @@ type ClientScatterZoneManagerFields = {
 
 export type ClientScatterZoneManager = typeof(setmetatable({} :: ClientScatterZoneManagerFields, ClientScatterZoneManager))
 
--- only pickable while mounted and actively controlling the dragon, not already carrying an egg,
--- and only while the egg itself is still unowned (someone else may have just taken it)
 function ClientScatterZoneManager.configurePrompt(self: ClientScatterZoneManager, egg: Instance)
 	local indicatorData = self.indicatorMap[egg]
 	if not indicatorData then
 		return
 	end
 
+	-- scatter-zone-sourced eggs are always eligible; any other egg only once it's been dropped
+	-- from a basket mid-carry (FREE_FOR_PICKUP) -- a fresh, untaken nest egg is neither
+	local isEligibleSource = egg:GetAttribute(Attributes.SOURCE_SCATTER_ZONE_ID) ~= nil
+		or egg:GetAttribute(Attributes.FREE_FOR_PICKUP) == true
+
+	-- ownership stays unowned for the whole carry now, so CARRY_EXPIRES_TIME (only set while
+	-- actively carried) is what actually distinguishes "free to grab" from "being carried"
 	local isStillFree = egg:GetAttribute(Attributes.USER_ID) == Constants.UNOWNED_USER_ID
+		and egg:GetAttribute(Attributes.CARRY_EXPIRES_TIME) == nil
+
 	local isRidingAndControlling = clientRideController:isRiding() and clientRideController:isRidingAndControlling()
 	local isCarrying = clientRideController:isCarryingEgg()
 
-	indicatorData.prompt.Enabled = isStillFree and isRidingAndControlling and not isCarrying
+	indicatorData.prompt.Enabled = isEligibleSource and isStillFree and isRidingAndControlling and not isCarrying
 end
 
 function ClientScatterZoneManager.notifyNewInstance(self: ClientScatterZoneManager, egg: Instance)
 	if self.indicatorMap[egg] then
-		return
-	end
-
-	-- only scatter-zone-sourced eggs get this attribute; nest eggs and already-owned eggs never do
-	if egg:GetAttribute(Attributes.SOURCE_SCATTER_ZONE_ID) == nil then
 		return
 	end
 

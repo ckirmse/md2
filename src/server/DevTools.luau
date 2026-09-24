@@ -302,6 +302,22 @@ function DevTools.forceHatchEgg(self: DevTools, player: Player, itemId: any)
 	item:forceHatchNow()
 end
 
+function DevTools.forceExpireCarry(self: DevTools, player: Player, itemId: any)
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not dragon then
+		warn("dev tool cannot force-expire carry timer, player is not riding a dragon", player)
+		return
+	end
+
+	if dragon:getObj():GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) ~= itemId then
+		warn("dev tool cannot force-expire carry timer, item is not being carried by this player's dragon", itemId, player)
+		return
+	end
+
+	local item = itemManager:getItemById(itemId) :: Types.DragonEgg
+	item:notifyCarryExpired()
+end
+
 function DevTools.dumpNests(self: DevTools, player: Player)
 	for _, nest in nestManager:getAllNests() do
 		print(

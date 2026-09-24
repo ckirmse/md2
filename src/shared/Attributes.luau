@@ -60,6 +60,9 @@ module = {
 	RESPAWN_SEC = "RespawnSec",
 	MIN_EGG_SPACING = "MinEggSpacing",
 	SOURCE_SCATTER_ZONE_ID = "SourceScatterZoneId",
+	CARRY_EXPIRES_TIME = "CarryExpiresTime",
+	CARRY_TOTAL_SEC = "CarryTotalSec",
+	FREE_FOR_PICKUP = "FreeForPickup",
 
 	-- sellable items need this so client knows what it is
 	SELL_NAME = "SellName",

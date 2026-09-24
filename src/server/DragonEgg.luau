@@ -8,6 +8,7 @@ local DragonEgg = {}
 DragonEgg.__index = setmetatable(DragonEgg, super)
 
 local collectionService = game:GetService("CollectionService")
+local players = game:GetService("Players")
 
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
@@ -21,6 +22,7 @@ local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
+local carryingData = require("@game/ServerScriptService/GameData/Control/Carrying")
 local hatchingData = require("@game/ServerScriptService/GameData/Control/Hatching")
 
 local RARITY_COUNT = enums.getCount(enums.Rarity)
@@ -61,6 +63,10 @@ end
 
 local function computeHatchDurationSec(biomeIndex: number): number
 	return hatchingData.hatchSecByBiome[biomeIndex] or hatchingData.hatchSecByBiome[1]
+end
+
+local function computeCarryReturnSec(distanceFromHub: number): number
+	return carryingData.baseCarryReturnSec + distanceFromHub * carryingData.carryReturnSecPerStud
 end
 
 
@@ -127,13 +133,13 @@ function DragonEgg.notifyMergingWithTriggerItem(self: DragonEgg, triggerItem: an
 
 end
 
--- only pickable on foot once incubating in a plot; not while unclaimed at a nest or being carried
--- (those are dragon-only, via the nest pickup/carry flow)
 function DragonEgg.canBePickedUp(self: DragonEgg): boolean
-	return self.hatchTimer ~= nil
+	return false
 end
 
 function DragonEgg.notifyPlacedInPlot(self: DragonEgg)
+	self:cleanupCarrying()
+
 	if self.hatchTimer then
 		warn("egg is already incubating, ignoring second placement", self:getItemName())
 		return
@@ -183,6 +189,72 @@ function DragonEgg.pauseIncubating(self: DragonEgg)
 	self.pausedRemainingSec = self.hatchTimer:getTimeLeft() or 0
 
 	self:cleanupIncubating()
+end
+
+function DragonEgg.beginCarrying(self: DragonEgg, dragon: Types.ShadowDragon)
+	self.carryingDragonItemId = dragon:getItemId()
+
+	local carryReturnSec: number
+	if self.pausedCarryRemainingSec then
+		carryReturnSec = self.pausedCarryRemainingSec
+		self.pausedCarryRemainingSec = nil
+	else
+		local pickupPosition = self:getObj():GetPivot().Position
+		local plotCenter = plotsManager:getPlotItemRecoveryPositionByUserId(dragon:getUserId())
+		local distanceFromPlotCenter = plotCenter and (pickupPosition - plotCenter).Magnitude or 0
+		carryReturnSec = computeCarryReturnSec(distanceFromPlotCenter)
+		self:getObj():SetAttribute(Attributes.CARRY_TOTAL_SEC, carryReturnSec)
+	end
+
+	self:getObj():SetAttribute(Attributes.CARRY_EXPIRES_TIME, workspace:GetServerTimeNow() + carryReturnSec)
+
+	self.carryTimer = Timer.new(carryReturnSec, function()
+		self:notifyCarryExpired()
+	end)
+end
+
+function DragonEgg.pauseCarrying(self: DragonEgg)
+	if self.carryTimer then
+		self.pausedCarryRemainingSec = self.carryTimer:getTimeLeft() or 0
+		self.carryTimer:cancel()
+		self.carryTimer = nil
+	end
+
+	self.carryingDragonItemId = nil
+	self:getObj():SetAttribute(Attributes.CARRY_EXPIRES_TIME, nil)
+end
+
+function DragonEgg.cleanupCarrying(self: DragonEgg)
+	if self.carryTimer then
+		self.carryTimer:cancel()
+		self.carryTimer = nil
+	end
+
+	self.pausedCarryRemainingSec = nil
+	self.carryingDragonItemId = nil
+	self:getObj():SetAttribute(Attributes.CARRY_TOTAL_SEC, nil)
+	self:getObj():SetAttribute(Attributes.CARRY_EXPIRES_TIME, nil)
+end
+
+function DragonEgg.notifyCarryExpired(self: DragonEgg)
+	self.carryTimer = nil
+	self:getObj():SetAttribute(Attributes.CARRY_TOTAL_SEC, nil)
+	self:getObj():SetAttribute(Attributes.CARRY_EXPIRES_TIME, nil)
+
+	local dragon = self.carryingDragonItemId and itemManager:getItemById(self.carryingDragonItemId)
+	self.carryingDragonItemId = nil
+
+	if dragon then
+		dragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
+		dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
+
+		local player = players:GetPlayerByUserId(dragon:getUserId())
+		if player then
+			gameController:sendSystemMessageToPlayer(player, "The egg broke on the way back!")
+		end
+	end
+
+	itemManager:destroyItem(self)
 end
 
 function DragonEgg.forceHatchNow(self: DragonEgg)
@@ -281,6 +353,7 @@ end
 
 function DragonEgg.destroy(self: DragonEgg)
 	self:cleanupIncubating()
+	self:cleanupCarrying()
 
 	super.destroy(self)
 end

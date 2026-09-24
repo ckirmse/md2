@@ -2213,8 +2213,11 @@ function GameController.tryEndRideDragon(self: GameController, player: Player, i
 	end
 
 	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if dragon and dragon:getObj():GetAttribute(Attributes.IS_CARRYING) then
-		self:sendSystemMessageToPlayer(player, "You can't dismount while carrying an egg")
+	if not dragon then
+		return
+	end
+
+	if not self:tryDeliverCarriedEggBeforeDismount(player, dragon) then
 		return
 	end
 
@@ -2410,6 +2413,20 @@ function GameController.trySetRidingItemCFrame(self: GameController, player: Pla
 	-- which is the case here with shadow dragons)
 	self:getPlayerData(player):notifyRidingItemCFrame(cframe, playerRelativeToDragonCFrame)
 
+	if dragon:getObj():GetAttribute(Attributes.IS_CARRYING) and typeof(cframe) == "CFrame" then
+		local eggItemId = dragon:getObj():GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) :: number?
+		local egg = eggItemId and itemManager:getItemById(eggItemId)
+		if
+			egg
+			and egg:getObj():GetAttribute(Attributes.CARRY_EXPIRES_TIME)
+			and plotsManager:isPositionInMainPlotXZByUserId((cframe :: CFrame).Position, player.UserId)
+		then
+			(egg :: Types.DragonEgg):cleanupCarrying()
+			egg:setUserId(player.UserId)
+			self:sendSystemMessageToPlayer(player, "Your egg is safe! It can now be placed for hatching.")
+		end
+	end
+
 	dragon:trySetRidingItemCFrame(time, cframe)
 end
 
@@ -2442,7 +2459,6 @@ function GameController.tryPickupEgg(self: GameController, player: Player, objec
 		return
 	end
 
-	item:setUserId(player.UserId)
 	nest:notifyEggTaken()
 
 	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", false)
@@ -2450,6 +2466,8 @@ function GameController.tryPickupEgg(self: GameController, player: Player, objec
 
 	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, true)
 	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, eggItemId)
+
+	;(item :: Types.DragonEgg):beginCarrying(dragon)
 end
 
 function GameController.tryPickupScatteredEgg(self: GameController, player: Player, itemId: any): ()
@@ -2479,7 +2497,9 @@ function GameController.tryPickupScatteredEgg(self: GameController, player: Play
 		return
 	end
 
-	if item:getUserId() ~= Constants.UNOWNED_USER_ID then
+	-- CARRY_EXPIRES_TIME is only set while actively being carried by someone; ownership itself
+	-- stays unowned throughout a carry, so it can't be used to detect an in-progress carry
+	if item:getObj():GetAttribute(Attributes.CARRY_EXPIRES_TIME) then
 		return
 	end
 
@@ -2488,19 +2508,21 @@ function GameController.tryPickupScatteredEgg(self: GameController, player: Play
 		return
 	end
 
-	item:setUserId(player.UserId)
-
 	local zoneObjectId = item:getObj():GetAttribute(Attributes.SOURCE_SCATTER_ZONE_ID) :: number?
 	local zone = zoneObjectId and scatterZoneManager:getZoneByObjectId(zoneObjectId)
 	if zone then
 		zone:notifyEggTaken(itemId)
 	end
 
+	item:getObj():SetAttribute(Attributes.FREE_FOR_PICKUP, nil)
+
 	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", false)
 	utils.setPropertyTreeBaseParts(item:getObj(), "CanCollide", false)
 
 	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, true)
 	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, itemId)
+
+	;(item :: Types.DragonEgg):beginCarrying(dragon)
 end
 
 function GameController.tryDropEggAtPosition(self: GameController, player: Player, position: any): ()
@@ -2542,6 +2564,9 @@ function GameController.tryDropEggAtPosition(self: GameController, player: Playe
 	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
 	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
 
+	;(item :: Types.DragonEgg):cleanupCarrying()
+	item:setUserId(player.UserId)
+
 	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", true)
 	self:tossEggToGroundPosition(item, groundPosition)
 end
@@ -2570,6 +2595,42 @@ function GameController.tossEggToGroundPosition(self: GameController, item: Type
 		fallTween:Play()
 	end)
 	tossTween:Play()
+end
+
+-- releases the carried egg where the dragon currently is, as a free unowned world item; the
+-- break timer pauses (not cancels) so a later pickup, by anyone, resumes with the time left
+function GameController.tryDropEggFromBasket(self: GameController, player: Player): ()
+	if not rideMixin:isPlayerRiding(player) then
+		return
+	end
+
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not dragon then
+		return
+	end
+
+	local eggItemId = dragon:getObj():GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) :: number?
+	if not eggItemId then
+		return
+	end
+
+	local item = itemManager:getItemById(eggItemId)
+	if not item then
+		return
+	end
+
+	if not item:getObj():GetAttribute(Attributes.CARRY_EXPIRES_TIME) then
+		return
+	end
+
+	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
+	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
+
+	item:setUserId(Constants.UNOWNED_USER_ID)
+	;(item :: Types.DragonEgg):pauseCarrying()
+
+	item:getObj():SetAttribute(Attributes.FREE_FOR_PICKUP, true)
+	utils.setPropertyTreeBaseParts(item:getObj(), "CanCollide", true)
 end
 
 function GameController.tryShootFireballAtCrop(self: GameController, player: Player, cropItemId: any): ()
@@ -2654,6 +2715,29 @@ function GameController.tryChargeUpRidingDragon(self: GameController, player: Pl
 	dragon:notifyShouldChargeUp()
 end
 
+function GameController.tryDeliverCarriedEggBeforeDismount(self: GameController, player: Player, dragon: Types.ShadowDragon): boolean
+	local eggItemId = dragon:getObj():GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) :: number?
+	local egg = eggItemId and itemManager:getItemById(eggItemId)
+	if not egg then
+		return true
+	end
+
+	local isInOwnPlot = plotsManager:isPositionInMainPlotXZByUserId(dragon:getObj():GetPivot().Position, player.UserId)
+	if not isInOwnPlot then
+		self:sendSystemMessageToPlayer(player, "You can't dismount while carrying an egg")
+		return false
+	end
+
+	(egg :: Types.DragonEgg):cleanupCarrying()
+	egg:setUserId(player.UserId)
+
+	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
+	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
+	egg:putInBackpack()
+
+	return true
+end
+
 function GameController.tryPutAwayRidingDragon(self: GameController, player: Player): ()
 	-- same as dismounting: notifyRideEnd returns the dragon to the backpack
 	if not rideMixin:isPlayerRiding(player) then
@@ -2661,8 +2745,11 @@ function GameController.tryPutAwayRidingDragon(self: GameController, player: Pla
 	end
 
 	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if dragon and dragon:getObj():GetAttribute(Attributes.IS_CARRYING) then
-		self:sendSystemMessageToPlayer(player, "You can't dismount while carrying an egg")
+	if not dragon then
+		return
+	end
+
+	if not self:tryDeliverCarriedEggBeforeDismount(player, dragon) then
 		return
 	end
 
@@ -3451,6 +3538,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryClaimLuckBillboard", "tryClaimLuckBillboard")
 	self:addRemoteEventHandler("TryPickupEgg", "tryPickupEgg")
 	self:addRemoteEventHandler("TryDropEggAtPosition", "tryDropEggAtPosition")
+	self:addRemoteEventHandler("TryDropEggFromBasket", "tryDropEggFromBasket")
 	self:addRemoteEventHandler("TryPickupScatteredEgg", "tryPickupScatteredEgg")
 end
 

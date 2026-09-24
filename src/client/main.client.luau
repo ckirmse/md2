@@ -75,6 +75,7 @@ local function initClasses()
 	local deps = {
 		clientAudioManager = clientAudioManager,
 		clientBuyStore = clientBuyStore,
+		clientDragonEggManager = clientDragonEggManager,
 		clientDragonManager = clientDragonManager,
 		clientFtueManager = clientFtueManager,
 		clientPlayerAnimationManager = clientPlayerAnimationManager,

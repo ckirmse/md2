@@ -22,6 +22,7 @@ local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local Types = require("./Types")
+local clientDragonEggManager: Types.ClientDragonEggManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local clientDragonManager: Types.ClientDragonManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local clientPlayerAnimationManager: Types.ClientPlayerAnimationManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local clientPlayerVariables = require("./ClientPlayerVariables")
@@ -1355,6 +1356,17 @@ function ClientRideController.isCarryingEgg(self: ClientRideController): boolean
 	return self.shadow:GetAttribute(Attributes.IS_CARRYING) == true
 end
 
+function ClientRideController.isCarryingUnsafeEgg(self: ClientRideController): boolean
+	if not self:isCarryingEgg() then
+		return false
+	end
+
+	local carriedItemId = self.shadow:GetAttribute(Attributes.CARRIED_EGG_ITEM_ID)
+	local eggInst: any = carriedItemId and clientDragonEggManager:getInstanceByItemId(carriedItemId)
+
+	return not (eggInst and eggInst:GetAttribute(Attributes.CARRY_EXPIRES_TIME) == nil)
+end
+
 -- when player decides to stop
 function ClientRideController.tryEndRiding(self: ClientRideController)
 	if not self:isRiding() then
@@ -1533,6 +1545,7 @@ function ClientRideController.new(): ClientRideController
 end
 
 function ClientRideController.initClass(deps: any)
+	clientDragonEggManager = deps.clientDragonEggManager
 	clientDragonManager = deps.clientDragonManager
 	clientPlayerAnimationManager = deps.clientPlayerAnimationManager
 end

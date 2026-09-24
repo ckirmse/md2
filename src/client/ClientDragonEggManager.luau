@@ -31,6 +31,13 @@ type ClientDragonEggManagerFields = {
 
 export type ClientDragonEggManager = typeof(setmetatable({} :: ClientDragonEggManagerFields, ClientDragonEggManager))
 
+-- lets other client managers resolve a dragon egg's world Instance by item id (e.g. to read
+-- carry-related attributes off the specific egg a player is currently carrying)
+function ClientDragonEggManager.getInstanceByItemId(self: ClientDragonEggManager, itemId: number): any?
+	local indicatorData = self.indicatorMap[itemId]
+	return indicatorData and indicatorData.instance
+end
+
 function ClientDragonEggManager.updateBillboardByItemId(self: ClientDragonEggManager, itemId: number)
 	local indicatorData = self.indicatorMap[itemId]
 	if not indicatorData then
