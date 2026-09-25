@@ -96,6 +96,21 @@ function DragonEggObjectType.new(): DragonEggObjectType
 			type = "string",
 			optional = true,
 		},
+
+		eggBaseLuck = {
+			type = "nonnegativeNumber",
+			optional = true,
+		},
+
+		minEggSize = {
+			type = "nonnegativeNumber",
+			optional = true,
+		},
+
+		maxEggSize = {
+			type = "nonnegativeNumber",
+			optional = true,
+		},
 	}
 
 	return self

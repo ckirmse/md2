@@ -394,6 +394,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			Iris.End()
 
 			Iris.SeparatorText({ "Hatching" })
+			if Iris.Button({ "Dump Egg Loot Weights" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpEggLootWeights")
+			end
 			local hatchEggItemId = Iris.State(0)
 			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = hatchEggItemId })
 			Iris.SameLine()

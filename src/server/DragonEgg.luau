@@ -14,6 +14,7 @@ local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local lootTableManager = require("./LootTableManager")
+local objectDataStore = require("./ObjectDataStore")
 local pickupMixin = require("./PickupMixin")
 local plotsManager = require("./PlotsManager")
 local Timer = require("./Timer")
@@ -46,6 +47,40 @@ end
 
 local function computeHatchDurationSec(biomeIndex: number): number
 	return hatchingData.hatchSecByBiome[biomeIndex] or hatchingData.hatchSecByBiome[1]
+end
+
+function DragonEgg.computeLuckMultiplier(eggBaseLuck: number?): number
+	local plotLuckMultiplier = 1 -- Plot Luck purchases are deferred
+
+	return (eggBaseLuck or 1) * plotLuckMultiplier
+end
+
+function DragonEgg.applyLuckBiasToLootTable(lootTable: any, luckMultiplier: number): { any }
+	if luckMultiplier == 1 then
+		return lootTable
+	end
+
+	local biasedLootTable = {}
+	for _, lootEntry in lootTable do
+		local itemName = lootEntry.result and lootEntry.result.itemName
+		local resultItemData = itemName and objectDataStore:getObjectDataByName(itemName)
+		local rarity = (resultItemData and resultItemData.rarity) or enums.Rarity.COMMON
+		local rarityTier = rarity - enums.Rarity.COMMON
+
+		local biasedLootEntry = table.clone(lootEntry)
+		biasedLootEntry.weight = lootEntry.weight * luckMultiplier ^ rarityTier
+		table.insert(biasedLootTable, biasedLootEntry)
+	end
+
+	return biasedLootTable
+end
+
+local function rollEggSize(random: Random, minSize: number?, maxSize: number?): number
+	if not minSize or not maxSize then
+		return 1
+	end
+
+	return minSize + random:NextNumber() * (maxSize - minSize)
 end
 
 local function computeCarryReturnSec(distanceFromHub: number): number
@@ -258,8 +293,12 @@ function DragonEgg.finishHatching(self: DragonEgg)
 
 	local mutation = rollMutation(self.random)
 
-	local hatchLootTableName = self:getItemData().hatchLootTableName
-	local lootEntries = hatchLootTableName and lootTableManager:calculateLootResults(hatchLootTableName)
+	local itemData = self:getItemData()
+	local hatchLootTableName = itemData.hatchLootTableName
+	local rawLootTable = hatchLootTableName and lootTableManager:getLootTable(hatchLootTableName)
+	local luckMultiplier = DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck)
+	local biasedLootTable = rawLootTable and DragonEgg.applyLuckBiasToLootTable(rawLootTable, luckMultiplier)
+	local lootEntries = biasedLootTable and lootTableManager:calculateLootResultsByTableAndRandom(biasedLootTable, self.random)
 	local itemCreationData = lootEntries and lootTableManager:getItemCreationDataFromItemLootResults(lootEntries)
 	local dragonItemName = itemCreationData and next(itemCreationData)
 	if not dragonItemName then
@@ -276,7 +315,9 @@ function DragonEgg.finishHatching(self: DragonEgg)
 		return
 	end
 
-	(dragonItem :: Types.MItem):setMutation(mutation)
+	local hatchedDragon = dragonItem :: Types.ShadowDragon
+	hatchedDragon:setMutation(mutation)
+	hatchedDragon:setDragonSize(self.eggSize)
 
 	itemManager:destroyItem(self)
 
@@ -296,6 +337,7 @@ function DragonEgg.getSaveData(self: DragonEgg, itemIdMap: any): any
 	local retval = super.getSaveData(self, itemIdMap)
 
 	retval.type = "dragonEgg"
+	retval.eggSize = self.eggSize
 
 	if self.hatchTimer then
 		retval.hatch = {
@@ -315,9 +357,18 @@ end
 
 function DragonEgg.loadSaveData(self: DragonEgg, itemSaveData: any, itemIdMap: any)
 	super.loadSaveData(self, itemSaveData, itemIdMap)
+
+	if itemSaveData.eggSize then
+		self.eggSize = itemSaveData.eggSize
+	end
 end
 
 function DragonEgg.notifyLoadComplete(self: DragonEgg, itemSaveData: any, itemIdMap: any, offlineElapsedSec: number?)
+	local obj = self:getObj()
+	if obj:IsA("Model") then
+		obj:ScaleTo(self.eggSize)
+	end
+
 	if not itemSaveData.hatch then
 		return
 	end
@@ -351,6 +402,14 @@ function DragonEgg.notifyNewClone(self: DragonEgg)
 	self.random = Random.new()
 
 	self:getObj():SetAttribute(Attributes.PRIMARY_ELEMENT, itemData.primaryElement)
+	self:getObj():SetAttribute(Attributes.EGG_BASE_LUCK, itemData.eggBaseLuck or 1)
+	self:getObj():SetAttribute(Attributes.NAME_PLATE_EXTRA_TEXT, string.format("Luck: %s", tostring(itemData.eggBaseLuck or 1)))
+
+	self.eggSize = rollEggSize(self.random, itemData.minEggSize, itemData.maxEggSize)
+	local obj = self:getObj()
+	if obj:IsA("Model") then
+		obj:ScaleTo(self.eggSize)
+	end
 
 	collectionService:AddTag(self:getObj(), Tags.DRAGON_EGG)
 end
@@ -363,6 +422,14 @@ function DragonEgg.new(itemId: number, itemName: string, userId: number): Dragon
 	self.random = Random.new()
 
 	self:getObj():SetAttribute(Attributes.PRIMARY_ELEMENT, itemData.primaryElement)
+	self:getObj():SetAttribute(Attributes.EGG_BASE_LUCK, itemData.eggBaseLuck or 1)
+	self:getObj():SetAttribute(Attributes.NAME_PLATE_EXTRA_TEXT, string.format("Luck: %s", tostring(itemData.eggBaseLuck or 1)))
+
+	self.eggSize = rollEggSize(self.random, itemData.minEggSize, itemData.maxEggSize)
+	local obj = self:getObj()
+	if obj:IsA("Model") then
+		obj:ScaleTo(self.eggSize)
+	end
 
 	collectionService:AddTag(self:getObj(), Tags.DRAGON_EGG)
 

@@ -85,6 +85,15 @@ function ClientShadowManager.setupDragonCaster(self: ClientShadowManager, shadow
 
 	if not self.partMaps[caster.Name] then
 		local partMap = self:buildPartMap(caster.PrimaryPart, {})
+
+		-- normalize to a 1x baseline so it works across differently-sized dragons of the same species
+		local scale = (caster :: Model):GetScale()
+		for _, distances in partMap do
+			for name2, distance in distances do
+				distances[name2] = distance / scale
+			end
+		end
+
 		self.partMaps[caster.Name] = partMap
 	end
 end
@@ -132,6 +141,7 @@ function ClientShadowManager.testCasterIntegrity(self: ClientShadowManager, cast
 	end
 
 	local partMap = self.partMaps[caster.Name]
+	local scale = (caster :: Model):GetScale()
 	for name1, tbl in partMap do
 		local part1: any = utils.findFirstDescendant(caster, name1)
 		if not part1 then
@@ -149,7 +159,7 @@ function ClientShadowManager.testCasterIntegrity(self: ClientShadowManager, cast
 			end
 
 			local distance = ((part1.Position :: Vector3) - part2.Position).Magnitude
-			if distance > originalDistance * 1.2 then
+			if distance > originalDistance * scale * 1.2 then
 				--print("seems kinda far", caster, part1, part2, distance, originalDistance)
 				return false
 			end
@@ -213,6 +223,7 @@ function ClientShadowManager.createCaster(self: ClientShadowManager, itemId: num
 	local caster: any = casterTemplate:Clone()
 
 	if shadow:HasTag(Tags.SHADOW_DRAGON) then
+		caster:ScaleTo(shadow:GetAttribute(Attributes.DRAGON_SIZE) or 1)
 		self:setupDragonCaster(shadow, caster)
 	end
 

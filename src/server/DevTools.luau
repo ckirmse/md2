@@ -9,10 +9,13 @@ local contextualFtueManager = require("./ContextualFtueManager")
 local vanityStoreManager = require("./VanityStoreManager")
 local Types = require("./Types")
 local gameController: Types.GameController
+local DragonEgg = require("./DragonEgg")
 local indexManager = require("./IndexManager")
 local itemManager = require("./ItemManager")
+local lootTableManager = require("./LootTableManager")
 local mergeMixin = require("./MergeMixin")
 local nestManager = require("./NestManager")
+local objectDataStore = require("./ObjectDataStore")
 local playerAttributesManager = require("./PlayerAttributesManager")
 local plotsManager = require("./PlotsManager")
 local rideMixin = require("./RideMixin")
@@ -300,6 +303,52 @@ function DevTools.forceHatchEgg(self: DevTools, player: Player, itemId: any)
 
 	local item = itemManager:getItemById(itemId) :: Types.DragonEgg
 	item:forceHatchNow()
+end
+
+function DevTools.dumpEggLootWeights(self: DevTools, player: Player)
+	for _, eggItemName in objectDataStore:getAllObjectNamesByDataKeyValue("type", "dragonEgg") do
+		local itemData = objectDataStore:getObjectDataByName(eggItemName)
+		local hatchLootTableName = itemData.hatchLootTableName
+		if not hatchLootTableName then
+			continue
+		end
+
+		local rawLootTable = lootTableManager:getLootTable(hatchLootTableName)
+		if not rawLootTable or #rawLootTable == 0 then
+			continue
+		end
+
+		local luckMultiplier = DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck)
+		local biasedLootTable = DragonEgg.applyLuckBiasToLootTable(rawLootTable, luckMultiplier)
+
+		local baseTotal = 0
+		for _, entry in rawLootTable do
+			baseTotal += entry.weight
+		end
+
+		local biasedTotal = 0
+		for _, entry in biasedLootTable do
+			biasedTotal += entry.weight
+		end
+
+		print(string.format(
+			"egg %s: eggBaseLuck=%s luckMultiplier=%.2f loot table=%s",
+			eggItemName,
+			tostring(itemData.eggBaseLuck or 1),
+			luckMultiplier,
+			hatchLootTableName
+		))
+
+		for i, entry in rawLootTable do
+			local biasedEntry = biasedLootTable[i]
+			print(string.format(
+				"  %s: base %.2f%% -> biased %.2f%%",
+				entry.result.itemName,
+				entry.weight / baseTotal * 100,
+				biasedEntry.weight / biasedTotal * 100
+			))
+		end
+	end
 end
 
 function DevTools.forceExpireCarry(self: DevTools, player: Player, itemId: any)

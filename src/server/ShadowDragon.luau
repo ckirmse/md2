@@ -1483,6 +1483,7 @@ function ShadowDragon.getSaveData(self: ShadowDragon, itemIdMap: any): any
 
 	retval.state = self.state
 	retval.stableSlotIndex = self.stableSlotIndex
+	retval.dragonSize = self.dragonSize
 	if self.state == enums.DragonState.OPENING then
 		--print("saving data remapping an item id for dragon target", self.opening.crystalItemId, itemIdMap[self.opening.crystalItemId])
 		retval.opening = {}
@@ -1509,6 +1510,7 @@ function ShadowDragon.loadSaveData(self: ShadowDragon, itemSaveData: any, itemId
 	super.loadSaveData(self, itemSaveData, itemIdMap)
 
 	self.stableSlotIndex = itemSaveData.stableSlotIndex
+	self.dragonSize = itemSaveData.dragonSize or self.dragonSize
 
 	-- saved in this state: itemSaveData.state but we put every dragon in idle to start with; they were saved with idle locations
 
@@ -1517,6 +1519,8 @@ function ShadowDragon.loadSaveData(self: ShadowDragon, itemSaveData: any, itemId
 end
 
 function ShadowDragon.notifyLoadComplete(self: ShadowDragon, itemSaveData: any, itemIdMap: any, offlineElapsedSec: number?)
+	self:getObj():SetAttribute(Attributes.DRAGON_SIZE, self.dragonSize)
+
 	if itemSaveData.state == enums.DragonState.OPENING then
 		-- we do this here as we have a reference to another item that needs to exist and be in the workspace when we initialize OPENING state
 
@@ -1698,6 +1702,15 @@ function ShadowDragon.destroy(self: ShadowDragon)
 	super.destroy(self)
 end
 
+function ShadowDragon.setDragonSize(self: ShadowDragon, size: number)
+	self.dragonSize = size
+	self:getObj():SetAttribute(Attributes.DRAGON_SIZE, size)
+end
+
+function ShadowDragon.getDragonSize(self: ShadowDragon): number
+	return self.dragonSize or 1
+end
+
 function ShadowDragon.recomputePower(self: ShadowDragon)
 	local itemData = self:getItemData()
 
@@ -1809,6 +1822,7 @@ function ShadowDragon.init(self: ShadowDragon)
 	self.lastKnownGoodOutsidePosition = nil
 
 	self.stableSlotIndex = nil
+	self.dragonSize = 1
 
 	local periodDivisor, amplitudeMultiplier = self:getFlapDataForCurrentState()
 	self:setFlapData(periodDivisor, amplitudeMultiplier)
@@ -1816,6 +1830,7 @@ function ShadowDragon.init(self: ShadowDragon)
 	self:getObj():SetAttribute(Attributes.DRAGON_STAMINA, self.stamina)
 
 	self:getObj():SetAttribute(Attributes.PRIMARY_ELEMENT, itemData.primaryElement)
+	self:getObj():SetAttribute(Attributes.DRAGON_SIZE, self.dragonSize)
 
 	self:getObj():SetAttribute(Attributes.USER_ID, self:getUserId())
 	self:getObj():SetAttribute(Attributes.CASTER_PATH, itemData.casterPath)
