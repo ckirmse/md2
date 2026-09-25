@@ -45,6 +45,7 @@ local clientOptionsManager = require("./ClientOptionsManager")
 local clientPickupController = require("./ClientPickupController")
 local clientPlayerManager = require("./ClientPlayerManager")
 local clientPlayerAnimationManager = require("./ClientPlayerAnimationManager")
+local clientPlotLuckManager = require("./ClientPlotLuckManager")
 local clientPremiumStore = require("./ClientPremiumStore")
 local clientPromptGroupManager = require("./ClientPromptGroupManager")
 local clientScatterZoneManager = require("./ClientScatterZoneManager")
@@ -202,6 +203,7 @@ local function init()
 
 	clientShadowManager:init()
 	clientStablesManager:init()
+	clientPlotLuckManager:init()
 
 	clientNamePlateManager:init()
 

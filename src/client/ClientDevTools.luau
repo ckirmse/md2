@@ -413,6 +413,24 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
+			Iris.SeparatorText({ "Plot Luck" })
+			if Iris.Button({ "Dump Plot Luck" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpPlotLuck")
+			end
+			local plotLuckLevel = Iris.State(1)
+			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = plotLuckLevel })
+			Iris.SameLine()
+			if Iris.Button({ "Set Plot Luck Level" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("setPlotLuckLevel", plotLuckLevel:get())
+			end
+			Iris.End()
+			if Iris.Button({ "Upgrade Plot Luck" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("tryUpgradePlotLuck", false)
+			end
+			if Iris.Button({ "Upgrade Plot Luck To Max" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("tryUpgradePlotLuck", true)
+			end
+
 			if Iris.Button({ "Dump Server Trading State" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpServerTradingState")
 			end

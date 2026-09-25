@@ -49,8 +49,8 @@ local function computeHatchDurationSec(biomeIndex: number): number
 	return hatchingData.hatchSecByBiome[biomeIndex] or hatchingData.hatchSecByBiome[1]
 end
 
-function DragonEgg.computeLuckMultiplier(eggBaseLuck: number?): number
-	local plotLuckMultiplier = 1 -- Plot Luck purchases are deferred
+function DragonEgg.computeLuckMultiplier(eggBaseLuck: number?, userId: number): number
+	local plotLuckMultiplier = gameController:getPlotLuckMultiplierForUserId(userId)
 
 	return (eggBaseLuck or 1) * plotLuckMultiplier
 end
@@ -293,10 +293,12 @@ function DragonEgg.finishHatching(self: DragonEgg)
 
 	local mutation = rollMutation(self.random)
 
+	local userId = self:getUserId()
+
 	local itemData = self:getItemData()
 	local hatchLootTableName = itemData.hatchLootTableName
 	local rawLootTable = hatchLootTableName and lootTableManager:getLootTable(hatchLootTableName)
-	local luckMultiplier = DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck)
+	local luckMultiplier = DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck, userId)
 	local biasedLootTable = rawLootTable and DragonEgg.applyLuckBiasToLootTable(rawLootTable, luckMultiplier)
 	local lootEntries = biasedLootTable and lootTableManager:calculateLootResultsByTableAndRandom(biasedLootTable, self.random)
 	local itemCreationData = lootEntries and lootTableManager:getItemCreationDataFromItemLootResults(lootEntries)
@@ -307,7 +309,6 @@ function DragonEgg.finishHatching(self: DragonEgg)
 	end
 
 	local position = self:getObj():GetPivot().Position
-	local userId = self:getUserId()
 
 	local dragonItem = itemManager:createItem(dragonItemName, userId)
 	if not dragonItem then

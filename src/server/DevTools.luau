@@ -351,6 +351,28 @@ function DevTools.dumpEggLootWeights(self: DevTools, player: Player)
 	end
 end
 
+function DevTools.dumpPlotLuck(self: DevTools, player: Player)
+	local playerData = gameController:getPlayerData(player)
+	local level = playerData:getPlotLuckLevel()
+	local nextCost = gameController:getPlotLuckUpgradeCost(level)
+
+	print(string.format(
+		"plot luck for %s: level %d (x%d multiplier), cost to next level: %s",
+		player.Name,
+		level,
+		playerData:getPlotLuckMultiplier(),
+		tostring(nextCost)
+	))
+end
+
+function DevTools.setPlotLuckLevel(self: DevTools, player: Player, level: any)
+	gameController:getPlayerData(player):setPlotLuckLevel(level)
+end
+
+function DevTools.tryUpgradePlotLuck(self: DevTools, player: Player, toMax: any)
+	gameController:tryUpgradePlotLuck(player, toMax)
+end
+
 function DevTools.forceExpireCarry(self: DevTools, player: Player, itemId: any)
 	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
 	if not dragon then

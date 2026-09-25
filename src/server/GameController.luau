@@ -108,6 +108,7 @@ local WelcomeBack = require("@game/ReplicatedStorage/Shared/WelcomeBack")
 
 local crystalTimeData = require("@game/ServerScriptService/GameData/Control/CrystalTime")
 local eatingTimeData = require("@game/ServerScriptService/GameData/Control/EatingTime")
+local plotLuckData = require("@game/ServerScriptService/GameData/Control/PlotLuck")
 local starterOfferData = require("@game/ServerScriptService/GameData/Control/StarterOffer")
 local vanityAreasData = require("@game/ServerScriptService/GameData/Control/VanityAreas")
 
@@ -3401,6 +3402,75 @@ function GameController.tryClaimLuckBillboard(self: GameController, player: Play
 	RemoteEvents.NotifyLuckBillboardResult:FireClient(player, isInGroup)
 end
 
+function GameController.getPlotLuckUpgradeCost(self: GameController, level: number): number?
+	if level >= plotLuckData.maxLevel then
+		return nil
+	end
+
+	return math.floor(plotLuckData.baseCoinsCost * plotLuckData.coinsGrowthRate ^ (level - 1))
+end
+
+function GameController.computePlotLuckMaxUpgrade(self: GameController, level: number, coins: number): (number, number)
+	local totalCost = 0
+	local newLevel = level
+	while true do
+		local cost = self:getPlotLuckUpgradeCost(newLevel)
+		if not cost or totalCost + cost > coins then
+			break
+		end
+
+		totalCost += cost
+		newLevel += 1
+	end
+
+	return newLevel, totalCost
+end
+
+function GameController.tryUpgradePlotLuck(self: GameController, player: Player, toMax: any): ()
+	local playerData = self:getPlayerData(player)
+	local level = playerData:getPlotLuckLevel()
+
+	if toMax then
+		local coins = playerAttributesManager:get(player, PlayerAttributeKeys.COINS)
+		local newLevel, totalCost = self:computePlotLuckMaxUpgrade(level, coins)
+
+		if newLevel == level then
+			print("player cannot afford any plot luck upgrade", player)
+			return
+		end
+
+		-- no yields between the checks above and this commit, so check-and-commit is atomic
+		playerData:setPlotLuckLevel(newLevel)
+		playerAttributesManager:subtractWholeNumber(player, PlayerAttributeKeys.COINS, totalCost)
+
+		return
+	end
+
+	local cost = self:getPlotLuckUpgradeCost(level)
+	if not cost then
+		print("player already at max plot luck level, cannot upgrade", player)
+		return
+	end
+
+	if playerAttributesManager:get(player, PlayerAttributeKeys.COINS) < cost then
+		print("player doesn't have enough coins to upgrade plot luck", player)
+		return
+	end
+
+	-- no yields between the checks above and this commit, so check-and-commit is atomic
+	playerData:setPlotLuckLevel(level + 1)
+	playerAttributesManager:subtractWholeNumber(player, PlayerAttributeKeys.COINS, cost)
+end
+
+function GameController.getPlotLuckMultiplierForUserId(self: GameController, userId: number): number
+	local player = playersService:GetPlayerByUserId(userId)
+	if not player then
+		return 1
+	end
+
+	return self:getPlayerData(player):getPlotLuckMultiplier()
+end
+
 function GameController.tryClaimWelcomeBackGift(self: GameController, player: Player): ()
 	--print("player trying to claim welcome back gift", player)
 
@@ -3536,6 +3606,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryCheckGroup", "tryCheckGroup")
 	self:addRemoteEventHandler("TryClaimWelcomeBackGift", "tryClaimWelcomeBackGift")
 	self:addRemoteEventHandler("TryClaimLuckBillboard", "tryClaimLuckBillboard")
+	self:addRemoteEventHandler("TryUpgradePlotLuck", "tryUpgradePlotLuck")
 	self:addRemoteEventHandler("TryPickupEgg", "tryPickupEgg")
 	self:addRemoteEventHandler("TryDropEggAtPosition", "tryDropEggAtPosition")
 	self:addRemoteEventHandler("TryDropEggFromBasket", "tryDropEggFromBasket")
@@ -3591,6 +3662,7 @@ function GameController.processPollTimer(self: GameController): ()
 		playerData:updatePlayerIsInPlot()
 
 		incomeManager:tickPlayer(player, playerData, elapsedSec)
+		playerData:tickPlotLuckDisplay()
 
 		if doResetTradeRequestCount then
 			playerData:resetTradeRequestCount()

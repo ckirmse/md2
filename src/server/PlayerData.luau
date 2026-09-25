@@ -60,6 +60,7 @@ local ADMIN_GROUP_ID = 571203718
 local COMMUNITY_GROUP_ID = 114515609
 
 local CAPACITY_SIGN_NAME = "CapacitySign"
+local LUCK_SIGN_NAME = "LuckSign"
 
 -- nearly all of this state is heterogeneous persisted save data, so the fields stay untyped
 type PlayerDataFields = {
@@ -91,6 +92,8 @@ type PlayerDataFields = {
 	isInCommunityGroup: boolean,
 	hasClaimedGroupLuck: boolean,
 	luckTimer: any,
+	plotLuckLevel: number,
+	lastPlotLuckDisplayCoins: number?,
 	latestPromptGroupTime: number,
 	tradeRequestCount: number,
 	pendingWelcomeBackCoinCount: number,
@@ -952,6 +955,78 @@ function PlayerData.resetLuckBillboard(self: PlayerData)
 	self.hasClaimedGroupLuck = false
 	self.isInCommunityGroup = false
 	self:updateLuckInGuiData()
+end
+
+function PlayerData.getPlotLuckLevel(self: PlayerData): number
+	return self.plotLuckLevel
+end
+
+function PlayerData.getPlotLuckMultiplier(self: PlayerData): number
+	return self.plotLuckLevel
+end
+
+function PlayerData.setPlotLuckLevel(self: PlayerData, level: number)
+	self.plotLuckLevel = level
+	self:updatePlotLuckDisplay()
+end
+
+function PlayerData.updatePlotLuckButtonState(self: PlayerData, button: any, cost: number?, coins: number)
+	if not cost then
+		button.Text = "MAX"
+		button.Active = false
+		button.AutoButtonColor = false
+		button.BackgroundTransparency = 0.6
+		button.TextTransparency = 0.6
+		return
+	end
+
+	button.Text = tostring(cost)
+
+	local canAfford = coins >= cost
+	button.Active = canAfford
+	button.AutoButtonColor = canAfford
+	button.BackgroundTransparency = if canAfford then 0 else 0.6
+	button.TextTransparency = if canAfford then 0 else 0.6
+end
+
+function PlayerData.tickPlotLuckDisplay(self: PlayerData)
+	local coins = playerAttributesManager:get(self.player, PlayerAttributeKeys.COINS)
+	if coins == self.lastPlotLuckDisplayCoins then
+		return
+	end
+
+	self:updatePlotLuckDisplay()
+end
+
+function PlayerData.updatePlotLuckDisplay(self: PlayerData)
+	local Level = workspace:WaitForChild("Level")
+
+	local plotIndex = plotsManager:getPlotIndexByUserId(self.player.UserId)
+
+	local level = self.plotLuckLevel
+	local coins = playerAttributesManager:get(self.player, PlayerAttributeKeys.COINS)
+	self.lastPlotLuckDisplayCoins = coins
+
+	local luckSign: any =
+		utils.findFirstDescendantWithNameAndAttribute(Level, LUCK_SIGN_NAME, Attributes.INDEX, plotIndex)
+	luckSign:SetAttribute("PlotLuckLevel", level)
+
+	local nextCost = gameController:getPlotLuckUpgradeCost(level)
+
+	local luckUpgradeLabel = utils.findFirstDescendant(luckSign, "LuckUpgrade") :: GuiObject & { Text: string }
+	if nextCost then
+		luckUpgradeLabel.Text = string.format("%dx  >  %dx", level, level + 1)
+	else
+		luckUpgradeLabel.Text = string.format("%dx (MAX)", level)
+	end
+
+	local upgradeButton = utils.findFirstDescendant(luckSign, "UpgradeButton")
+	self:updatePlotLuckButtonState(upgradeButton, nextCost, coins)
+
+	local maxNewLevel, maxTotalCost = gameController:computePlotLuckMaxUpgrade(level, coins)
+	local maxButtonCost = if maxNewLevel > level then maxTotalCost else nextCost
+	local upgradeMaxButton = utils.findFirstDescendant(luckSign, "UpgradeMaxButton")
+	self:updatePlotLuckButtonState(upgradeMaxButton, maxButtonCost, coins)
 end
 
 function PlayerData.setDefaultStats(self: PlayerData)
@@ -1835,6 +1910,8 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 	end
 
 	self.hasClaimedGroupLuck = (saveData and saveData.hasClaimedGroupLuck) or false
+	self.plotLuckLevel = (saveData and saveData.plotLuckLevel) or 1
+	self:updatePlotLuckDisplay()
 	if self.hasClaimedGroupLuck then
 		self.isInCommunityGroup = true
 		self:updateLuckInGuiData()
@@ -2163,6 +2240,7 @@ function PlayerData.getSaveData(self: PlayerData): any
 	saveData.vanityAreaStates = self.vanityAreaStates
 	saveData.latestPromptGroupTime = self.latestPromptGroupTime
 	saveData.hasClaimedGroupLuck = self.hasClaimedGroupLuck
+	saveData.plotLuckLevel = self.plotLuckLevel
 
 	return saveData
 end
@@ -3140,6 +3218,7 @@ function PlayerData.new(player: Player?): PlayerData
 	self.canUseDevTools = false
 	self.isInCommunityGroup = false
 	self.hasClaimedGroupLuck = false
+	self.plotLuckLevel = 1
 
 	self.isInPlot = false
 
