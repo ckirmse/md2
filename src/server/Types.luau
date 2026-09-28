@@ -653,6 +653,7 @@ export type ScatterZone = BaseObject & {
 	getMaxEggsInZone: (self: ScatterZone) -> number,
 	getMinEggSpacing: (self: ScatterZone) -> number,
 	getRandomPositionInBounds: (self: ScatterZone) -> Vector3,
+	getSpawnedEggItemIds: (self: ScatterZone) -> { number },
 	getRespawnSec: (self: ScatterZone) -> number,
 	notifyEggTaken: (self: ScatterZone, itemId: number) -> (),
 	topUp: (self: ScatterZone) -> boolean,

@@ -446,6 +446,13 @@ end
 
 function DevTools.dumpScatterZones(self: DevTools, player: Player)
 	for _, zone in scatterZoneManager:getAllZones() do
+		local rarityNames = {}
+		for _, itemId in zone:getSpawnedEggItemIds() do
+			local item = itemManager:getItemById(itemId)
+			local rarity = item and (item:getObj():GetAttribute(Attributes.RARITY) :: number?)
+			table.insert(rarityNames, if rarity then enums.getName(enums.Rarity, rarity) else "unknown")
+		end
+
 		print(
 			"scatter zone",
 			zone:getObjectId(),
@@ -455,7 +462,9 @@ function DevTools.dumpScatterZones(self: DevTools, player: Player)
 			"eggs",
 			zone:getCurrentEggCount(),
 			"/",
-			zone:getMaxEggsInZone()
+			zone:getMaxEggsInZone(),
+			"rarities",
+			table.concat(rarityNames, ", ")
 		)
 	end
 end

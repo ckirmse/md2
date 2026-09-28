@@ -55,6 +55,14 @@ function ScatterZone.getCurrentEggCount(self: ScatterZone): number
 	return count
 end
 
+function ScatterZone.getSpawnedEggItemIds(self: ScatterZone): { number }
+	local ids = {}
+	for itemId in self.spawnedEggItemIds do
+		table.insert(ids, itemId)
+	end
+	return ids
+end
+
 function ScatterZone.getRandomPositionInBounds(self: ScatterZone): Vector3
 	local part = self:getObj() :: BasePart
 	local halfSize = part.Size / 2
