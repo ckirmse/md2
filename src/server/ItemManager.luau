@@ -17,6 +17,7 @@ local Gem = require("./Gem")
 local Key = require("./Key")
 local objectDataStore = require("./ObjectDataStore")
 local Pack = require("./Pack")
+local Radar = require("./Radar")
 
 local itemTypeClassMap: { [string]: any } = {
 	blueprint = Blueprint,
@@ -27,6 +28,7 @@ local itemTypeClassMap: { [string]: any } = {
 	gem = Gem,
 	key = Key,
 	pack = Pack,
+	radar = Radar,
 	shadowDragon = ShadowDragon,
 }
 
@@ -154,6 +156,17 @@ function ItemManager.getAllDragons(self: ItemManager): { Types.ShadowDragon }
 	local retval = {}
 	for _, item in self.items do
 		if item:getType() ~= "shadowDragon" then
+			continue
+		end
+		table.insert(retval, item)
+	end
+	return retval
+end
+
+function ItemManager.getAllDragonEggs(self: ItemManager): { Types.DragonEgg }
+	local retval = {}
+	for _, item in self.items do
+		if item:getType() ~= "dragonEgg" then
 			continue
 		end
 		table.insert(retval, item)

@@ -512,6 +512,17 @@ export type Key = NumberItem & {
 
 }
 
+export type RadarFields = NumberItemFields & {
+	doPreventSettling: boolean?,
+}
+
+-- inherited and overridden members come from NumberItem; only members new to Radar are listed here
+export type Radar = NumberItem & {
+	doPreventSettling: boolean?,
+
+	notifyToolActivated: (self: Radar) -> (),
+}
+
 export type BlueprintFields = NumberItemFields & {
 	doPreventSettling: boolean?,
 }
@@ -761,6 +772,9 @@ export type PackObjectType = ObjectType
 
 -- inherited and overridden members come from ObjectType; only members new to KeyObjectType are listed here
 export type KeyObjectType = ObjectType
+
+-- inherited and overridden members come from ObjectType; only members new to RadarObjectType are listed here
+export type RadarObjectType = ObjectType
 
 -- inherited and overridden members come from ObjectType; only members new to BlueprintObjectType are listed here
 export type BlueprintObjectType = ObjectType
@@ -1018,6 +1032,7 @@ export type ItemManager = {
 	createItem: (self: ItemManager, itemName: string, userId: any) -> Item?,
 	createItemRaw: (self: ItemManager, itemId: number, itemData: any, userId: any) -> Item?,
 	destroyItem: (self: ItemManager, item: Item) -> boolean,
+	getAllDragonEggs: (self: ItemManager) -> { DragonEgg },
 	getAllDragons: (self: ItemManager) -> { ShadowDragon },
 	getAllGems: (self: ItemManager) -> { Gem },
 	getAvailableDragonsToEatForPlayer: (self: ItemManager, player: Player) -> { ShadowDragon },

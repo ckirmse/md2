@@ -377,6 +377,15 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
+			Iris.SeparatorText({ "Radar" })
+			local radarItemId = Iris.State(0)
+			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = radarItemId })
+			Iris.SameLine()
+			if Iris.Button({ "Force Activate Radar" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("forceActivateRadar", radarItemId:get())
+			end
+			Iris.End()
+
 			Iris.SeparatorText({ "Scatter Zones" })
 			if Iris.Button({ "Dump Scatter Zones" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpScatterZones")

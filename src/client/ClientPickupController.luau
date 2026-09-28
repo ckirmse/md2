@@ -276,7 +276,9 @@ function ClientPickupController.handleClick(self: ClientPickupController, positi
 
 	if tool then
 		--print("activating tool")
-		tool:Activate()
+		if tool:GetAttribute(Attributes.ITEM_TYPE) ~= "radar" then
+			tool:Activate()
+		end
 	else
 		if hasClosest then
 			--print("click while have closest")

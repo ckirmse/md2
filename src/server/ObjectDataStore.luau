@@ -15,6 +15,7 @@ local KeyObjectType = require("./KeyObjectType")
 local NestObjectType = require("./NestObjectType")
 local NodeObjectType = require("./NodeObjectType")
 local PackObjectType = require("./PackObjectType")
+local RadarObjectType = require("./RadarObjectType")
 local ScatterZoneObjectType = require("./ScatterZoneObjectType")
 local ShadowDragonObjectType = require("./ShadowDragonObjectType")
 
@@ -31,6 +32,7 @@ local dataTypeClassMap: { [string]: any } = {
 	gem = GemObjectType,
 	key = KeyObjectType,
 	pack = PackObjectType,
+	radar = RadarObjectType,
 	shadowDragon = ShadowDragonObjectType,
 
 	chest = ChestObjectType,

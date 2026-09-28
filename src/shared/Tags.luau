@@ -38,6 +38,8 @@ module = {
 
 	KEY = "Key",
 
+	RADAR = "Radar",
+
 	BLUEPRINT = "Blueprint",
 
 	CHEST = "Chest",

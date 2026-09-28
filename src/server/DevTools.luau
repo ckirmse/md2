@@ -391,16 +391,37 @@ end
 
 function DevTools.dumpNests(self: DevTools, player: Player)
 	for _, nest in nestManager:getAllNests() do
+		local eggItemId = nest:getEggItemId()
+		local eggRarity = if eggItemId then itemManager:getItemById(eggItemId):getObj():GetAttribute(Attributes.RARITY) else nil
+
 		print(
 			"nest",
 			nest:getObjectId(),
 			nest:getObjectName(),
 			"state",
 			enums.getName(enums.NestState, nest.state),
+			"egg rarity",
+			if eggRarity then enums.getName(enums.Rarity, eggRarity) else "none",
 			"respawns at",
 			nest:getObj():GetAttribute(Attributes.NEST_RESPAWN_COMPLETE_TIME)
 		)
 	end
+end
+
+function DevTools.forceActivateRadar(self: DevTools, player: Player, itemId: any)
+	if not Validate.isItemIdForPlayer(player, itemId) then
+		print("invalid item id by", player, "item id", itemId)
+		return
+	end
+
+	local item = itemManager:getItemById(itemId) :: Types.Item
+	if item:getType() ~= "radar" then
+		print("invalid item, non-radar by", player, "item id", itemId)
+		return
+	end
+
+	local radar = item :: Types.Radar
+	radar:notifyToolActivated()
 end
 
 function DevTools.forceTakeNestEgg(self: DevTools, player: Player, objectId: any)

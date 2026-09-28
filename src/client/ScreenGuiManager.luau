@@ -24,6 +24,7 @@ local utils = require("@game/ReplicatedStorage/Shared/utils")
 local clientLuckInfoManager = require("./ClientLuckInfoManager")
 local clientOptionsManager = require("./ClientOptionsManager")
 local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
+local clientRadarManager = require("./ClientRadarManager")
 local NumberLabelAnimator = require("./NumberLabelAnimator")
 local overlayTracker = require("./OverlayTracker")
 -- vendored library (out of scope per CLAUDE.md); crosses this boundary untyped
@@ -744,6 +745,22 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 
 	PutAwayButton.Visible = (currentItemPart ~= nil)
 
+	local RadarActivateFrame = ScreenGui:WaitForChild("RadarActivateFrame")
+	local isHoldingRadar = isToolEquipped and (tool :: any):GetAttribute(Attributes.ITEM_TYPE) == "radar"
+
+	local heldRadarRarity: number? = nil
+	if isHoldingRadar then
+		heldRadarRarity = (tool :: any):GetAttribute(Attributes.RARITY)
+	end
+
+	local isHeldRadarActive = heldRadarRarity ~= nil and clientRadarManager:hasActiveGuidanceForRarity(heldRadarRarity :: number)
+
+	RadarActivateFrame.Visible = isHoldingRadar and not isHeldRadarActive
+	if isHoldingRadar and not isHeldRadarActive then
+		local radarActivateButton: any = utils.findFirstDescendant(RadarActivateFrame, "RadarActivateButton")
+		radarActivateButton.BackgroundColor3 = utils.getColorForRarity(heldRadarRarity)
+	end
+
 	if currentItemPart ~= self.prevItemPart then
 		local mutationConnect = self.mutationConnect
 		if mutationConnect then
@@ -758,7 +775,7 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 		end
 
 		local inst: any
-		if currentItemPart then
+		if currentItemPart and (tool :: any):GetAttribute(Attributes.ITEM_TYPE) ~= "radar" then
 			if currentItemPart:HasTag(Tags.SHADOW) then
 				inst = currentItemPart
 			else
@@ -845,6 +862,15 @@ function ScreenGuiManager.processPutAwayButtonActivated(self: ScreenGuiManager)
 	end
 
 	self:toggleHeldItem()
+end
+
+function ScreenGuiManager.processRadarActivateButtonActivated(self: ScreenGuiManager)
+	local tool: any = utils.getHoldingToolWithHandle(player)
+	if not tool or tool:GetAttribute(Attributes.ITEM_TYPE) ~= "radar" then
+		return
+	end
+
+	tool:Activate()
 end
 
 function ScreenGuiManager.processDropEggButtonActivated(self: ScreenGuiManager)
@@ -971,6 +997,12 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 	local dropEggButtonText: any = utils.findFirstDescendant(DropEggButton, "TextButton")
 	dropEggButtonText.Activated:Connect(function()
 		self:processDropEggButtonActivated()
+	end)
+
+	local RadarActivateFrame = ScreenGui:WaitForChild("RadarActivateFrame")
+	local radarActivateButton: any = utils.findFirstDescendant(RadarActivateFrame, "RadarActivateButton")
+	radarActivateButton.Activated:Connect(function()
+		self:processRadarActivateButtonActivated()
 	end)
 
 	local unequipKeyCode = Enum.KeyCode.R
