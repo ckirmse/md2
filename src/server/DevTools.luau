@@ -305,6 +305,16 @@ function DevTools.forceHatchEgg(self: DevTools, player: Player, itemId: any)
 	item:forceHatchNow()
 end
 
+function DevTools.forceMakeEggReadyToHatch(self: DevTools, player: Player, itemId: any)
+	if not Validate.isItemIdForPlayer(player, itemId) then
+		warn("dev tool cannot force-ready item not owned by this player", itemId, player)
+		return
+	end
+
+	local item = itemManager:getItemById(itemId) :: Types.DragonEgg
+	item:notifyHatchReady()
+end
+
 function DevTools.dumpEggLootWeights(self: DevTools, player: Player)
 	for _, eggItemName in objectDataStore:getAllObjectNamesByDataKeyValue("type", "dragonEgg") do
 		local itemData = objectDataStore:getObjectDataByName(eggItemName)

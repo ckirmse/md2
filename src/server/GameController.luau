@@ -2363,6 +2363,35 @@ function GameController.tryOpenPack(self: GameController, player: Player, packIt
 	pack:notifyShouldOpen()
 end
 
+function GameController.tryHatchEgg(self: GameController, player: Player, eggItemId: any): ()
+	if not Validate.isItemIdForPlayer(player, eggItemId) then
+		return
+	end
+
+	-- the id was validated above, so the item exists
+	local item = itemManager:getItemById(eggItemId) :: Types.Item
+	if item:getType() ~= "dragonEgg" then
+		return
+	end
+
+	local egg = item :: Types.DragonEgg
+	if not egg:isReadyToHatch() then
+		return
+	end
+
+	local character = player.Character
+	if not character then
+		return
+	end
+
+	local distance = ((character :: any).HumanoidRootPart.Position - egg:getObj():GetPivot().Position).Magnitude
+	if distance > Constants.HATCH_EGG_DISTANCE * 1.1 then
+		return
+	end
+
+	egg:finishHatching()
+end
+
 function GameController.tryOpenCrate(self: GameController, player: Player, crateItemId: any): ()
 	if not Validate.isItemIdForPlayer(player, crateItemId) then
 		print("invalid item id by", player, "item id", crateItemId)
@@ -3576,6 +3605,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TrySummonDragonToMine", "trySummonDragonToMine")
 	self:addRemoteEventHandler("TryMineWhileRiding", "tryMineWhileRiding")
 	self:addRemoteEventHandler("TryOpenPack", "tryOpenPack")
+	self:addRemoteEventHandler("TryHatchEgg", "tryHatchEgg")
 	self:addRemoteEventHandler("TryOpenCrate", "tryOpenCrate")
 	self:addRemoteEventHandler("TrySetRidingItemCFrame", "trySetRidingItemCFrame")
 	self:addRemoteEventHandler("TryShootFireballAtCrop", "tryShootFireballAtCrop")

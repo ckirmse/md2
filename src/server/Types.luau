@@ -297,6 +297,8 @@ export type DragonEgg = MItem & {
 	beginIncubating: (self: DragonEgg, durationSec: number) -> (),
 	cleanupIncubating: (self: DragonEgg) -> (),
 	pauseIncubating: (self: DragonEgg) -> (),
+	notifyHatchReady: (self: DragonEgg) -> (),
+	isReadyToHatch: (self: DragonEgg) -> boolean,
 	finishHatching: (self: DragonEgg) -> (),
 	forceHatchNow: (self: DragonEgg) -> (),
 	notifyPlacedInPlot: (self: DragonEgg) -> (),

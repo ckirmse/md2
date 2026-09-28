@@ -11,16 +11,21 @@ local GameAssets = ReplicatedStorage:WaitForChild("GameAssets")
 local UX = GameAssets:WaitForChild("UX")
 -- the billboard template's shape only exists in Studio, so it is untyped here
 local CountdownBillboard: any = UX:WaitForChild("CountdownBillboard")
+local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
+local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local player = game:GetService("Players").LocalPlayer :: Player
+
+local HATCH_PROMPT_NAME = "HatchEggProxPrompt"
 
 type IndicatorData = {
 	instance: any, -- world egg Model; its shape only exists at runtime
 	billboard: any?, -- CountdownBillboard clone
+	hatchPrompt: ProximityPrompt?,
 	runConnect: RBXScriptConnection?,
 	hatchCompleteTimeChangedConnect: RBXScriptConnection?,
 }
@@ -126,6 +131,51 @@ function ClientDragonEggManager.cleanupHatchCountdown(self: ClientDragonEggManag
 	end
 end
 
+function ClientDragonEggManager.createHatchPrompt(self: ClientDragonEggManager, inst: any)
+	if inst:GetAttribute(Attributes.USER_ID) ~= player.UserId then
+		return
+	end
+
+	local itemId = inst:GetAttribute(Attributes.ITEM_ID)
+	local indicatorData = self.indicatorMap[itemId]
+	if not indicatorData then
+		return
+	end
+
+	local part = utils.getMainPart(inst)
+	if not part then
+		return
+	end
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = HATCH_PROMPT_NAME
+	prompt.Style = Enum.ProximityPromptStyle.Custom
+	prompt.RequiresLineOfSight = false
+	prompt.ActionText = "Hatch Egg"
+	prompt.HoldDuration = 1
+	prompt.MaxActivationDistance = Constants.HATCH_EGG_DISTANCE
+	prompt.Parent = part
+
+	prompt.Triggered:Connect(function()
+		RemoteEvents.TryHatchEgg:FireServer(itemId)
+	end)
+
+	indicatorData.hatchPrompt = prompt
+end
+
+function ClientDragonEggManager.removeHatchPrompt(self: ClientDragonEggManager, inst: any)
+	local itemId = inst:GetAttribute(Attributes.ITEM_ID)
+	local indicatorData = self.indicatorMap[itemId]
+	if not indicatorData then
+		return
+	end
+
+	if indicatorData.hatchPrompt then
+		indicatorData.hatchPrompt:Destroy()
+		indicatorData.hatchPrompt = nil
+	end
+end
+
 function ClientDragonEggManager.notifyNewInstance(self: ClientDragonEggManager, inst: any)
 	local itemId = inst:GetAttribute(Attributes.ITEM_ID)
 	if self.indicatorMap[itemId] then
@@ -187,6 +237,17 @@ function ClientDragonEggManager.init(self: ClientDragonEggManager)
 
 	for _, inst in collectionService:GetTagged(Tags.DRAGON_EGG) do
 		self:notifyNewInstance(inst)
+	end
+
+	collectionService:GetInstanceAddedSignal(Tags.HATCHABLE_EGG):Connect(function(inst)
+		self:createHatchPrompt(inst)
+	end)
+	collectionService:GetInstanceRemovedSignal(Tags.HATCHABLE_EGG):Connect(function(inst)
+		self:removeHatchPrompt(inst)
+	end)
+
+	for _, inst in collectionService:GetTagged(Tags.HATCHABLE_EGG) do
+		self:createHatchPrompt(inst)
 	end
 end
 

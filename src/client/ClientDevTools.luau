@@ -412,6 +412,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			if Iris.Button({ "Force Hatch Egg" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("forceHatchEgg", hatchEggItemId:get())
 			end
+			if Iris.Button({ "Force Ready To Hatch" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("forceMakeEggReadyToHatch", hatchEggItemId:get())
+			end
 			Iris.End()
 
 			local carryExpireItemId = Iris.State(0)

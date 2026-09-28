@@ -14,6 +14,7 @@ module = {
 	CONSUMABLE_CROP = "ConsumableCrop",
 
 	DRAGON_EGG = "DragonEgg",
+	HATCHABLE_EGG = "HatchableEgg",
 
 	SHADOW = "Shadow",
 

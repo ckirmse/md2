@@ -177,17 +177,32 @@ function DragonEgg.notifyPlacedInPlot(self: DragonEgg)
 end
 
 function DragonEgg.beginIncubating(self: DragonEgg, durationSec: number)
+	self:setVenueWorkspaceAvailable()
+
+	if durationSec <= 0 then
+		self:notifyHatchReady()
+		return
+	end
+
 	self.hatchCompleteTime = workspace:GetServerTimeNow() + durationSec
 
 	self:getObj():SetAttribute(Attributes.HATCH_COMPLETE_TIME, self.hatchCompleteTime)
 
-	self:setVenueWorkspaceAvailable()
-
 	self.hatchTimer = Timer.new(durationSec,
 		function()
-			self:finishHatching()
+			self:notifyHatchReady()
 		end
 	)
+end
+
+function DragonEgg.notifyHatchReady(self: DragonEgg)
+	self.hatchTimer = nil
+	self:getObj():SetAttribute(Attributes.HATCH_COMPLETE_TIME, nil)
+	collectionService:AddTag(self:getObj(), Tags.HATCHABLE_EGG)
+end
+
+function DragonEgg.isReadyToHatch(self: DragonEgg): boolean
+	return collectionService:HasTag(self:getObj(), Tags.HATCHABLE_EGG)
 end
 
 function DragonEgg.cleanupIncubating(self: DragonEgg)
@@ -276,13 +291,15 @@ function DragonEgg.notifyCarryExpired(self: DragonEgg)
 end
 
 function DragonEgg.forceHatchNow(self: DragonEgg)
-	if not self.hatchTimer then
-		warn("egg is not incubating, cannot force hatch", self:getItemName())
+	if not self.hatchTimer and not self:isReadyToHatch() then
+		warn("egg is not incubating or ready, cannot force hatch", self:getItemName())
 		return
 	end
 
-	self.hatchTimer:cancel()
-	self.hatchTimer = nil
+	if self.hatchTimer then
+		self.hatchTimer:cancel()
+		self.hatchTimer = nil
+	end
 
 	self:finishHatching()
 end
@@ -340,7 +357,12 @@ function DragonEgg.getSaveData(self: DragonEgg, itemIdMap: any): any
 	retval.type = "dragonEgg"
 	retval.eggSize = self.eggSize
 
-	if self.hatchTimer then
+	if self:isReadyToHatch() then
+		retval.hatch = {
+			biomeIndex = self.incubatingBiomeIndex,
+			isReady = true,
+		}
+	elseif self.hatchTimer then
 		retval.hatch = {
 			biomeIndex = self.incubatingBiomeIndex,
 			remainingSec = self.hatchTimer:getTimeLeft() or 0,
@@ -375,6 +397,11 @@ function DragonEgg.notifyLoadComplete(self: DragonEgg, itemSaveData: any, itemId
 	end
 
 	self.incubatingBiomeIndex = itemSaveData.hatch.biomeIndex
+
+	if itemSaveData.hatch.isReady then
+		self:notifyHatchReady()
+		return
+	end
 
 	if itemSaveData.hatch.isPaused then
 		self.pausedRemainingSec = itemSaveData.hatch.remainingSec
