@@ -88,6 +88,7 @@ type PlayerDataFields = {
 	ridingItemId: any,
 	latestRidingItemId: any,
 	lastUnequippedItemId: any,
+	dragonReleaseInProgress: boolean,
 	playerRelativeToDragonCFrame: any,
 	isInPlot: boolean,
 	isInCommunityGroup: boolean,
@@ -903,6 +904,14 @@ end
 
 function PlayerData.setLastUnequippedItemId(self: PlayerData, itemId: any)
 	self.lastUnequippedItemId = itemId
+end
+
+function PlayerData.setIsProcessingDragonRelease(self: PlayerData, isProcessing: boolean)
+	self.dragonReleaseInProgress = isProcessing
+end
+
+function PlayerData.isProcessingDragonRelease(self: PlayerData): boolean
+	return self.dragonReleaseInProgress == true
 end
 
 function PlayerData.getLastUnequippedItemId(self: PlayerData): any
@@ -3236,6 +3245,7 @@ function PlayerData.new(player: Player?): PlayerData
 	self.ridingItemId = nil
 	self.latestRidingItemId = nil
 	self.lastUnequippedItemId = nil
+	self.dragonReleaseInProgress = false
 
 	self.mergeData = nil
 

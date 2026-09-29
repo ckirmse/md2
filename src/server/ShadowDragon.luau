@@ -1,6 +1,5 @@
 --!strict
 
-
 local MItem = require("./MItem")
 local super = MItem
 
@@ -38,8 +37,9 @@ local dragonPowerValues = require("@game/ServerScriptService/GameData/Control/Dr
 
 local analyticsManager = require("./AnalyticsManager")
 
-
 local DRAGON_IDEAL_MINING_DISTANCE = 20
+-- compensates for the ride seat sitting behind the model's pivot (approximate)
+local SEAT_OFFSET_FROM_PIVOT_STUDS = 4
 
 export type ShadowDragonFields = Types.ShadowDragonFields
 export type ShadowDragon = Types.ShadowDragon
@@ -154,23 +154,20 @@ function ShadowDragon.notifyItemMoverDone(self: ShadowDragon)
 		self.movingToMine.isComplete = true
 
 		self:notifyShouldChargeUp()
-		task.delay(Constants.FIREBALL_CHARGE_SEC,
-			function()
-				if self.state ~= enums.DragonState.MOVING_TO_MINE then
-					-- we were already destroyed or otherwise changed
-					return
-				end
-
-				self:notifyShouldMineNode(node)
+		task.delay(Constants.FIREBALL_CHARGE_SEC, function()
+			if self.state ~= enums.DragonState.MOVING_TO_MINE then
+				-- we were already destroyed or otherwise changed
+				return
 			end
-		)
+
+			self:notifyShouldMineNode(node)
+		end)
 		return
 	elseif self.state == enums.DragonState.MOVING_TO_OUTSIDE then
 		self:setState(enums.DragonState.OUTSIDE)
 	else
 		warn("item mover while in unexpected state", self, self.state)
 	end
-
 end
 
 function ShadowDragon.setupIdleInWorkspace(self: ShadowDragon)
@@ -189,7 +186,15 @@ function ShadowDragon.setupIdleInWorkspace(self: ShadowDragon)
 	--print("dragon setupIdleInWorkspace", self:getItemId(), "at", self:getPart().Position)
 
 	-- add a little randomness to period so they won't all be in sync
-	self:getObj():SetAttribute(Attributes.DRAGON_PULSE_DATA, string.format("%.3f %.1f %.1f", itemData.idle.pulsePeriodSec + self.random:NextNumber(0, 0.3), itemData.idle.pulseAmplitudePlayerFar, itemData.idle.pulseAmplitudePlayerNear or 0))
+	self:getObj():SetAttribute(
+		Attributes.DRAGON_PULSE_DATA,
+		string.format(
+			"%.3f %.1f %.1f",
+			itemData.idle.pulsePeriodSec + self.random:NextNumber(0, 0.3),
+			itemData.idle.pulseAmplitudePlayerFar,
+			itemData.idle.pulseAmplitudePlayerNear or 0
+		)
+	)
 
 	self:setVenueWorkspaceAvailable()
 end
@@ -295,7 +300,8 @@ function ShadowDragon.beginMovingToIdleWithPosition(self: ShadowDragon, position
 		self.movingToIdle.itemMover = DirectFlyItemMover.new(self:getItemId(), self.movingToIdle.destCFrame)
 	else
 		-- pick random orientation if moving elsewhere
-		local destCFrame = CFrame.new(position) * CFrame.fromEulerAnglesXYZ(0, self.random:NextNumber(0, math.pi * 2), 0)
+		local destCFrame = CFrame.new(position)
+			* CFrame.fromEulerAnglesXYZ(0, self.random:NextNumber(0, math.pi * 2), 0)
 		self.movingToIdle.destCFrame = destCFrame
 
 		local minRadius = self:getItemData().movement.minRadius
@@ -305,8 +311,8 @@ function ShadowDragon.beginMovingToIdleWithPosition(self: ShadowDragon, position
 
 	if not self.movingToIdle.itemMover:tryBegin() then
 		self:setState(enums.DragonState.IDLE)
-        return
-    end
+		return
+	end
 end
 
 -- fly to an exact CFrame: dubins to a point in front of it (facing it, so no orbit), then
@@ -449,29 +455,27 @@ function ShadowDragon.beginMovingToEat(self: ShadowDragon, crop: any)
 	cframe = aimDown.Rotation * cframe.Rotation + cframe.Position
 
 	self.movingToEat.itemMover = UpAndOverItemMover.new(self:getItemId(), cframe)
-	self.movingToEat.itemMover:setStepCallback(
-		function(cframe)
-			if not self.isRiding then
-				return
-			end
-			local player = self:getPlayer()
-			if not player then
-				return
-			end
-			local playerData = gameController:getPlayerData(player)
-			if not playerData then
-				return
-			end
-			playerData:notifyRidingItemCFrame(cframe)
+	self.movingToEat.itemMover:setStepCallback(function(cframe)
+		if not self.isRiding then
+			return
 		end
-	)
+		local player = self:getPlayer()
+		if not player then
+			return
+		end
+		local playerData = gameController:getPlayerData(player)
+		if not playerData then
+			return
+		end
+		playerData:notifyRidingItemCFrame(cframe)
+	end)
 
 	--print("dragon moving to eat", self:getItemName(), self:getPart().Position, crop:getItemName(), crop:getPart().Position)
 
 	if not self.movingToEat.itemMover:tryBegin() then
- 		self:setState(enums.DragonState.MOVING_TO_IDLE)
-        return
-    end
+		self:setState(enums.DragonState.MOVING_TO_IDLE)
+		return
+	end
 end
 
 function ShadowDragon.cleanupMovingToEat(self: ShadowDragon)
@@ -519,28 +523,26 @@ function ShadowDragon.beginMovingToOpen(self: ShadowDragon, crystal: any)
 	cframe = aimDown.Rotation * cframe.Rotation + cframe.Position
 
 	self.movingToOpen.itemMover = UpAndOverItemMover.new(self:getItemId(), cframe)
-	self.movingToOpen.itemMover:setStepCallback(
-		function(cframe)
-			if not self.isRiding then
-				return
-			end
-			local player = self:getPlayer()
-			if not player then
-				return
-			end
-			local playerData = gameController:getPlayerData(player)
-			if not playerData then
-				return
-			end
-			playerData:notifyRidingItemCFrame(cframe)
+	self.movingToOpen.itemMover:setStepCallback(function(cframe)
+		if not self.isRiding then
+			return
 		end
-	)
+		local player = self:getPlayer()
+		if not player then
+			return
+		end
+		local playerData = gameController:getPlayerData(player)
+		if not playerData then
+			return
+		end
+		playerData:notifyRidingItemCFrame(cframe)
+	end)
 	--print("dragon moving to open", self:getItemName(), self:getPart().Position, crystal:getItemName(), crystal:getPart().Position)
 
 	if not self.movingToOpen.itemMover:tryBegin() then
- 		self:setState(enums.DragonState.MOVING_TO_IDLE)
-        return
-    end
+		self:setState(enums.DragonState.MOVING_TO_IDLE)
+		return
+	end
 end
 
 function ShadowDragon.cleanupMovingToOpen(self: ShadowDragon)
@@ -596,7 +598,8 @@ function ShadowDragon.beginMovingToMine(self: ShadowDragon, node: any)
 
 	local inclinationAngle = math.rad(45)
 
-	local flatTowardsDragon = Vector3.new(dragonPosition.X - nodeTargetPosition.X, 0, dragonPosition.Z - nodeTargetPosition.Z)
+	local flatTowardsDragon =
+		Vector3.new(dragonPosition.X - nodeTargetPosition.X, 0, dragonPosition.Z - nodeTargetPosition.Z)
 	local inclinedY = flatTowardsDragon.Magnitude * math.tan(inclinationAngle)
 	local towardsDragon = Vector3.new(flatTowardsDragon.X, inclinedY, flatTowardsDragon.Z).Unit
 	--print("inclined Y an extra", inclinedY)
@@ -611,28 +614,26 @@ function ShadowDragon.beginMovingToMine(self: ShadowDragon, node: any)
 	cframe = aimDown.Rotation * cframe.Rotation + cframe.Position
 
 	self.movingToMine.itemMover = UpAndOverItemMover.new(self:getItemId(), cframe)
-	self.movingToMine.itemMover:setStepCallback(
-		function(cframe)
-			if not self.isRiding then
-				return
-			end
-			local player = self:getPlayer()
-			if not player then
-				return
-			end
-			local playerData = gameController:getPlayerData(player)
-			if not playerData then
-				return
-			end
-			playerData:notifyRidingItemCFrame(cframe)
+	self.movingToMine.itemMover:setStepCallback(function(cframe)
+		if not self.isRiding then
+			return
 		end
-	)
+		local player = self:getPlayer()
+		if not player then
+			return
+		end
+		local playerData = gameController:getPlayerData(player)
+		if not playerData then
+			return
+		end
+		playerData:notifyRidingItemCFrame(cframe)
+	end)
 
 	--print("dragon moving to mine", self:getItemName(), self:getPart().Position, node, nodeTargetPosition)
 
 	if not self.movingToMine.itemMover:tryBegin() then
- 		self:setState(enums.DragonState.MOVING_TO_IDLE)
-        return
+		self:setState(enums.DragonState.MOVING_TO_IDLE)
+		return
 	end
 end
 
@@ -650,7 +651,15 @@ function ShadowDragon.beginOutside(self: ShadowDragon, data: any)
 
 	local itemData = self:getItemData()
 
-	self:getObj():SetAttribute(Attributes.DRAGON_PULSE_DATA, string.format("%.1f %.1f %.1f", itemData.idle.pulsePeriodSec, itemData.idle.pulseAmplitudePlayerFar / 2, itemData.idle.pulseAmplitudePlayerNear / 2 or 0))
+	self:getObj():SetAttribute(
+		Attributes.DRAGON_PULSE_DATA,
+		string.format(
+			"%.1f %.1f %.1f",
+			itemData.idle.pulsePeriodSec,
+			itemData.idle.pulseAmplitudePlayerFar / 2,
+			itemData.idle.pulseAmplitudePlayerNear / 2 or 0
+		)
+	)
 end
 
 function ShadowDragon.cleanupOutside(self: ShadowDragon)
@@ -674,19 +683,20 @@ function ShadowDragon.beginMovingToOutside(self: ShadowDragon, data: any)
 		self.movingToOutside.itemMover = DirectFlyItemMover.new(self:getItemId(), self.movingToOutside.destCFrame)
 	else
 		-- pick random orientation if moving elsewhere
-		local destCFrame = CFrame.new(destPosition) * CFrame.fromEulerAnglesXYZ(0, self.random:NextNumber(0, math.pi * 2), 0)
+		local destCFrame = CFrame.new(destPosition)
+			* CFrame.fromEulerAnglesXYZ(0, self.random:NextNumber(0, math.pi * 2), 0)
 		self.movingToOutside.destCFrame = destCFrame
 
 		--print("dubins move to outside to", self.movingToOutside.destCFrame.Position)
 		local minRadius = self:getItemData().movement.minRadius
-		self.movingToOutside.itemMover = DubinsItemMover.new(self:getItemId(), self.movingToOutside.destCFrame, minRadius)
+		self.movingToOutside.itemMover =
+			DubinsItemMover.new(self:getItemId(), self.movingToOutside.destCFrame, minRadius)
 	end
 
 	if not self.movingToOutside.itemMover:tryBegin() then
 		self:setState(enums.DragonState.OUTSIDE)
-        return
-    end
-
+		return
+	end
 end
 
 function ShadowDragon.cleanupMovingToOutside(self: ShadowDragon)
@@ -743,43 +753,42 @@ function ShadowDragon.beginSettling(self: ShadowDragon)
 
 	local extraRepulsors = nil
 	if self:getItemData().mixins.pickup.equip == false then
-		extraRepulsors = (
+		extraRepulsors = {
 			{
-				{
-					position = (self:getPlayer() :: any).Character.HumanoidRootPart.Position,
-					boardSpacing = 25,
-				}
-			}
-		)
+				position = (self:getPlayer() :: any).Character.HumanoidRootPart.Position,
+				boardSpacing = 25,
+			},
+		}
 	end
 
-	self:settleOnGroundInWorkspace(
-		function()
-			if not self:getObj() then
-				return
-			end
+	self:settleOnGroundInWorkspace(function()
+		if not self:getObj() then
+			return
+		end
 
-			local currentPosition = self:getObj():GetPivot().Position
-			self.lastKnownGoodIdleLocation = Vector3.new(currentPosition.X, 0, currentPosition.Z)
+		local currentPosition = self:getObj():GetPivot().Position
+		self.lastKnownGoodIdleLocation = Vector3.new(currentPosition.X, 0, currentPosition.Z)
 
-			self:setVenueWorkspaceAvailable()
+		self:setVenueWorkspaceAvailable()
 
-			self:setState(enums.DragonState.IDLE)
-		end,
-		extraRepulsors
-	)
+		self:setState(enums.DragonState.IDLE)
+	end, extraRepulsors)
 end
 
-function ShadowDragon.cleanupSettling(self: ShadowDragon)
-end
-
+function ShadowDragon.cleanupSettling(self: ShadowDragon) end
 
 function ShadowDragon.notifyShouldMineNode(self: ShadowDragon, node: any)
 	--print("dragon should now mine a node")
 
 	local nodeTargetPosition = node:getMineTargetPosition()
 
-	local attributeStr = string.format("%s %.2f %.2f %.2f", self:getItemData().fireballPath, nodeTargetPosition.X, nodeTargetPosition.Y, nodeTargetPosition.Z)
+	local attributeStr = string.format(
+		"%s %.2f %.2f %.2f",
+		self:getItemData().fireballPath,
+		nodeTargetPosition.X,
+		nodeTargetPosition.Y,
+		nodeTargetPosition.Z
+	)
 	--print("full attribute is", attributeStr)
 	self:getObj():SetAttribute(Attributes.ANIMATION_SHOOT_FIREBALL, attributeStr)
 
@@ -787,35 +796,32 @@ function ShadowDragon.notifyShouldMineNode(self: ShadowDragon, node: any)
 
 	local animationSec = Constants.FIREBALL_TRAVEL_SEC
 
-	task.delay(animationSec,
-		function()
-			if not self.state then
-				-- we were already destroyed
+	task.delay(animationSec, function()
+		if not self.state then
+			-- we were already destroyed
+			return
+		end
+		self:getObj():SetAttribute(Attributes.ANIMATION_SHOOT_FIREBALL, nil)
+
+		local node = islandManager:getNodeByObjectId(nodeObjectId)
+		if node then
+			local player = self:getPlayer()
+			if not player then
 				return
 			end
-			self:getObj():SetAttribute(Attributes.ANIMATION_SHOOT_FIREBALL, nil)
 
-			local node = islandManager:getNodeByObjectId(nodeObjectId)
-			if node then
-				local player = self:getPlayer()
-				if not player then
-					return
-				end
-
-				-- yay, actually mine it!
-				node:notifyMinedByDragon(self)
-			end
-
-			if self.isRiding then
-				self:setState(enums.DragonState.IDLE)
-			elseif self.lastKnownGoodOutsidePosition then
-				self:setState(enums.DragonState.MOVING_TO_OUTSIDE)
-			else
-				self:setState(enums.DragonState.MOVING_TO_IDLE)
-			end
-
+			-- yay, actually mine it!
+			node:notifyMinedByDragon(self)
 		end
-	)
+
+		if self.isRiding then
+			self:setState(enums.DragonState.IDLE)
+		elseif self.lastKnownGoodOutsidePosition then
+			self:setState(enums.DragonState.MOVING_TO_OUTSIDE)
+		else
+			self:setState(enums.DragonState.MOVING_TO_IDLE)
+		end
+	end)
 end
 
 function ShadowDragon.notifyShouldShootFireballAtCrop(self: ShadowDragon, crop: any)
@@ -823,7 +829,13 @@ function ShadowDragon.notifyShouldShootFireballAtCrop(self: ShadowDragon, crop: 
 
 	local targetPosition = crop:getObj():GetPivot().Position
 
-	local attributeStr = string.format("%s %.2f %.2f %.2f", self:getItemData().fireballPath, targetPosition.X, targetPosition.Y, targetPosition.Z)
+	local attributeStr = string.format(
+		"%s %.2f %.2f %.2f",
+		self:getItemData().fireballPath,
+		targetPosition.X,
+		targetPosition.Y,
+		targetPosition.Z
+	)
 	--print("full attribute is", attributeStr)
 	self:getObj():SetAttribute(Attributes.ANIMATION_SHOOT_FIREBALL, attributeStr)
 
@@ -831,77 +843,93 @@ function ShadowDragon.notifyShouldShootFireballAtCrop(self: ShadowDragon, crop: 
 
 	local animationSec = Constants.FIREBALL_TRAVEL_SEC
 
-	task.delay(animationSec,
-		function()
-			if not self.obj then
-				-- we were already destroyed
+	task.delay(animationSec, function()
+		if not self.obj then
+			-- we were already destroyed
+			return
+		end
+
+		self:getObj():SetAttribute(Attributes.ANIMATION_SHOOT_FIREBALL, nil)
+
+		local crop = itemManager:getItemById(cropItemId) :: Types.Crop?
+		if crop then
+			if crop:getObj().Parent ~= workspace then
 				return
 			end
 
-			self:getObj():SetAttribute(Attributes.ANIMATION_SHOOT_FIREBALL, nil)
+			local dragonPlayer = self:getPlayer()
+			if not dragonPlayer then
+				return
+			end
 
-			local crop = itemManager:getItemById(cropItemId) :: Types.Crop?
-			if crop then
-				if crop:getObj().Parent ~= workspace then
-					return
-				end
+			local cropPlayer = crop:getPlayer()
+			if not cropPlayer then
+				return
+			end
 
-				local dragonPlayer = self:getPlayer()
-				if not dragonPlayer then
-					return
-				end
+			local primaryElement = self:getItemData().primaryElement
+			local modification = Elements.getFireballModificationForPrimaryElement(primaryElement)
 
-				local cropPlayer = crop:getPlayer()
-				if not cropPlayer then
-					return
-				end
+			--print("telling crop fireball hit")
+			utils.pulseAttribute(crop:getObj(), Attributes.ANIMATION_FIREBALL_HIT, string.format("%i", primaryElement))
 
-				local primaryElement = self:getItemData().primaryElement
-				local modification = Elements.getFireballModificationForPrimaryElement(primaryElement)
+			if crop:doesHaveModification(modification) then
+				return
+			end
 
-				--print("telling crop fireball hit")
-				utils.pulseAttribute(crop:getObj(), Attributes.ANIMATION_FIREBALL_HIT, string.format("%i", primaryElement))
+			-- yay, actually add modification
 
-				if crop:doesHaveModification(modification) then
-					return
-				end
+			crop:addModification(modification)
 
-				-- yay, actually add modification
+			local color = utils.get2DColorForPrimaryElement(primaryElement)
+			local colorStr: string = color:ToHex()
+			local modificationName: string = tostring(enums.getPublicName(enums.Modifications, modification))
 
-				crop:addModification(modification)
+			local cropPlayerName: string = cropPlayer.Name
+			local cropDisplayName: string = crop:getDisplayName()
 
-				local color = utils.get2DColorForPrimaryElement(primaryElement)
-				local colorStr: string = color:ToHex()
-				local modificationName: string = tostring(enums.getPublicName(enums.Modifications, modification))
-
-				local cropPlayerName: string = cropPlayer.Name
-				local cropDisplayName: string = crop:getDisplayName()
-
-				gameController:sendSystemMessageToPlayer(dragonPlayer, string.format("You added a <font color=\"#%s\">%s</font> modifier to %s's %s", colorStr, modificationName, cropPlayerName, cropDisplayName))
-
-				gameController:sendSystemMessageToPlayer(cropPlayer, string.format("%s added a <font color=\"#%s\">%s</font> modifier to your %s", dragonPlayer.Name, colorStr, modificationName, cropDisplayName))
-
-				playerAttributesManager:addWholeNumber(dragonPlayer, Elements.getApplyFlameKeyForPrimaryElement(primaryElement), 1)
-
-				analyticsManager:logEvent(dragonPlayer, analyticsManager.Events.ApplyFlame,
-					{
-						objectName = self:getItemName(),
-						cropObjectName = crop:getItemName(),
-					}
+			gameController:sendSystemMessageToPlayer(
+				dragonPlayer,
+				string.format(
+					'You added a <font color="#%s">%s</font> modifier to %s\'s %s',
+					colorStr,
+					modificationName,
+					cropPlayerName,
+					cropDisplayName
 				)
+			)
 
-			end
+			gameController:sendSystemMessageToPlayer(
+				cropPlayer,
+				string.format(
+					'%s added a <font color="#%s">%s</font> modifier to your %s',
+					dragonPlayer.Name,
+					colorStr,
+					modificationName,
+					cropDisplayName
+				)
+			)
 
-			if self.isRiding then
-				self:setState(enums.DragonState.IDLE)
-			elseif self.lastKnownGoodOutsidePosition then
-				self:setState(enums.DragonState.MOVING_TO_OUTSIDE)
-			else
-				self:setState(enums.DragonState.MOVING_TO_IDLE)
-			end
+			playerAttributesManager:addWholeNumber(
+				dragonPlayer,
+				Elements.getApplyFlameKeyForPrimaryElement(primaryElement),
+				1
+			)
 
+			analyticsManager:logEvent(dragonPlayer, analyticsManager.Events.ApplyFlame, {
+				objectName = self:getItemName(),
+				cropObjectName = crop:getItemName(),
+			})
 		end
-	)
+
+		if self.isRiding then
+			self:setState(enums.DragonState.IDLE)
+		elseif self.lastKnownGoodOutsidePosition then
+			self:setState(enums.DragonState.MOVING_TO_OUTSIDE)
+		else
+			self:setState(enums.DragonState.MOVING_TO_IDLE)
+		end
+	end)
 end
 
 function ShadowDragon.notifyShouldShootFireballAtCritter(self: ShadowDragon, critter: any)
@@ -911,41 +939,44 @@ function ShadowDragon.notifyShouldShootFireballAtCritter(self: ShadowDragon, cri
 
 	local targetPosition = critter:getFuturePosition(animationSec)
 
-	local attributeStr = string.format("%s %.2f %.2f %.2f", self:getItemData().fireballPath, targetPosition.X, targetPosition.Y, targetPosition.Z)
+	local attributeStr = string.format(
+		"%s %.2f %.2f %.2f",
+		self:getItemData().fireballPath,
+		targetPosition.X,
+		targetPosition.Y,
+		targetPosition.Z
+	)
 	--print("full attribute is", attributeStr)
 	self:getObj():SetAttribute(Attributes.ANIMATION_SHOOT_FIREBALL, attributeStr)
 
 	local critterObjectId = critter:getObjectId()
 
-	task.delay(animationSec,
-		function()
-			if not self.state then
-				-- we were already destroyed
+	task.delay(animationSec, function()
+		if not self.state then
+			-- we were already destroyed
+			return
+		end
+		self:getObj():SetAttribute(Attributes.ANIMATION_SHOOT_FIREBALL, nil)
+
+		local critter = islandManager:getCritterByObjectId(critterObjectId)
+		if critter then
+			local player = self:getPlayer()
+			if not player then
 				return
 			end
-			self:getObj():SetAttribute(Attributes.ANIMATION_SHOOT_FIREBALL, nil)
 
-			local critter = islandManager:getCritterByObjectId(critterObjectId)
-			if critter then
-				local player = self:getPlayer()
-				if not player then
-					return
-				end
-
-				-- yay, actually did it it!
-				critter:notifyShotByDragon(self)
-			end
-
-			if self.isRiding then
-				self:setState(enums.DragonState.IDLE)
-			elseif self.lastKnownGoodOutsidePosition then
-				self:setState(enums.DragonState.MOVING_TO_OUTSIDE)
-			else
-				self:setState(enums.DragonState.MOVING_TO_IDLE)
-			end
-
+			-- yay, actually did it it!
+			critter:notifyShotByDragon(self)
 		end
-	)
+
+		if self.isRiding then
+			self:setState(enums.DragonState.IDLE)
+		elseif self.lastKnownGoodOutsidePosition then
+			self:setState(enums.DragonState.MOVING_TO_OUTSIDE)
+		else
+			self:setState(enums.DragonState.MOVING_TO_IDLE)
+		end
+	end)
 end
 
 function ShadowDragon.notifyPlayerReturnedToPlot(self: ShadowDragon)
@@ -972,7 +1003,24 @@ function ShadowDragon.setClientControlMotion(self: ShadowDragon)
 
 	-- so we send our current position when client control takes over, so the client can move to this spot
 	local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = obj:GetPivot():GetComponents()
-	obj:SetAttribute(Attributes.CLIENT_CONTROL, string.format("%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f", x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22))
+	obj:SetAttribute(
+		Attributes.CLIENT_CONTROL,
+		string.format(
+			"%.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f",
+			x,
+			y,
+			z,
+			r00,
+			r01,
+			r02,
+			r10,
+			r11,
+			r12,
+			r20,
+			r21,
+			r22
+		)
+	)
 end
 
 function ShadowDragon.getMovingToEatItemId(self: ShadowDragon): any
@@ -1050,7 +1098,6 @@ function ShadowDragon.isInFreeFlyZone(self: ShadowDragon): boolean
 	end
 
 	return gameController:isLocationInFreeFlyZone(position) or playerData:isLocationInPlotOrUnlockedExpansions(position)
-
 end
 
 function ShadowDragon.getMaxStamina(self: ShadowDragon): number
@@ -1112,14 +1159,12 @@ function ShadowDragon.notifyRideEnd(self: ShadowDragon)
 	-- ridingBeginTime is always set while riding; report a zero duration if it somehow is not
 	local rideDuration = if ridingBeginTime then workspace:GetServerTimeNow() - ridingBeginTime else 0
 	if self:getPlayer() then
-		analyticsManager:logEvent(self:getPlayer(), analyticsManager.Events.RideDragon,
-			{
-				objectName = self:getItemName(),
-				duration = rideDuration,
-				primaryElement = enums.getPublicName(enums.PrimaryElements, self:getItemData().primaryElement),
-				rarity = enums.getPublicName(enums.Rarity, self:getItemData().rarity),
-			}
-		)
+		analyticsManager:logEvent(self:getPlayer(), analyticsManager.Events.RideDragon, {
+			objectName = self:getItemName(),
+			duration = rideDuration,
+			primaryElement = enums.getPublicName(enums.PrimaryElements, self:getItemData().primaryElement),
+			rarity = enums.getPublicName(enums.Rarity, self:getItemData().rarity),
+		})
 	end
 
 	self.ridingBeginTime = nil
@@ -1142,8 +1187,7 @@ end
 
 function ShadowDragon.notifyEndEating(self: ShadowDragon)
 	if self:getObj().Parent == workspace and not self.isRiding then
- 		if self.state ~= enums.DragonState.MOVING_TO_EAT then
-
+		if self.state ~= enums.DragonState.MOVING_TO_EAT then
 			self:setState(enums.DragonState.MOVING_TO_IDLE)
 		end
 	else
@@ -1238,7 +1282,6 @@ function ShadowDragon.trySetRidingItemCFrame(self: ShadowDragon, time: number, c
 		return
 	end
 
-
 	if time < self.lastRidingUpdateTime then
 		--print("throwing away older riding item cframe time", player, time, self.lastRidingUpdateTime)
 		return
@@ -1258,7 +1301,6 @@ function ShadowDragon.trySetRidingItemCFrame(self: ShadowDragon, time: number, c
 	-- always allow first move onto the dragon; it's often a few studs
 	-- both times are always set while riding
 	if (self.lastRidingUpdateTime :: number) > (self.ridingBeginTime :: number) then
-
 		-- perform security/teleportation checks
 
 		-- letting fly fast duration potentially last an extra half second to make sure we don't calculate poorly across the transition;
@@ -1310,7 +1352,10 @@ function ShadowDragon.isAvailableToEat(self: ShadowDragon): boolean
 		return false
 	end
 
-	return self.state == enums.DragonState.IDLE or self.state == enums.DragonState.MOVING_TO_IDLE or self.state == enums.DragonState.OUTSIDE or self.state == enums.DragonState.MOVING_TO_OUTSIDE
+	return self.state == enums.DragonState.IDLE
+		or self.state == enums.DragonState.MOVING_TO_IDLE
+		or self.state == enums.DragonState.OUTSIDE
+		or self.state == enums.DragonState.MOVING_TO_OUTSIDE
 end
 
 function ShadowDragon.isAvailableToOpen(self: ShadowDragon): boolean
@@ -1319,7 +1364,10 @@ function ShadowDragon.isAvailableToOpen(self: ShadowDragon): boolean
 		return false
 	end
 
-	return self.state == enums.DragonState.IDLE or self.state == enums.DragonState.MOVING_TO_IDLE or self.state == enums.DragonState.OUTSIDE or self.state == enums.DragonState.MOVING_TO_OUTSIDE
+	return self.state == enums.DragonState.IDLE
+		or self.state == enums.DragonState.MOVING_TO_IDLE
+		or self.state == enums.DragonState.OUTSIDE
+		or self.state == enums.DragonState.MOVING_TO_OUTSIDE
 end
 
 function ShadowDragon.isAvailableToMine(self: ShadowDragon): boolean
@@ -1332,16 +1380,34 @@ function ShadowDragon.isAvailableToMine(self: ShadowDragon): boolean
 		return false
 	end
 
-	return self.state == enums.DragonState.IDLE or self.state == enums.DragonState.MOVING_TO_IDLE or self.state == enums.DragonState.OUTSIDE or self.state == enums.DragonState.MOVING_TO_OUTSIDE
+	return self.state == enums.DragonState.IDLE
+		or self.state == enums.DragonState.MOVING_TO_IDLE
+		or self.state == enums.DragonState.OUTSIDE
+		or self.state == enums.DragonState.MOVING_TO_OUTSIDE
 end
 
 function ShadowDragon.notifyUnequippableEquipped(self: ShadowDragon, previousUnequippedItemId: any)
-	--(self:getPlayer() :: any).Character.Humanoid:UnequipTools()
+	local playerData = self:getPlayerData()
+	if playerData:isProcessingDragonRelease() then
+		return
+	end
 
-	--return gameController:isLocationInFreeFlyZone(self:getPart().Position)
+	playerData:setIsProcessingDragonRelease(true)
+	self:doNotifyUnequippableEquipped(previousUnequippedItemId)
+	playerData:setIsProcessingDragonRelease(false)
+end
+
+function ShadowDragon.doNotifyUnequippableEquipped(self: ShadowDragon, previousUnequippedItemId: any)
 	if not self:isInFreeFlyZone() then
 		gameController:sendSystemMessageToPlayer(self:getPlayer(), "You cannot release a ridable dragon out here")
 		return
+	end
+
+	local player = self:getPlayer() :: Player
+	if rideMixin:isPlayerRiding(player) then
+		if not gameController:tryStowRidingDragon(player) then
+			return
+		end
 	end
 
 	if self:getCount() > 1 then
@@ -1354,7 +1420,11 @@ function ShadowDragon.notifyUnequippableEquipped(self: ShadowDragon, previousUne
 
 		splitDragon:moveDragonFromBackpackToWorkspace();
 
-		(self:getPlayer() :: any).Character.Humanoid:UnequipTools()
+		(player :: any).Character.Humanoid:UnequipTools()
+		local playerData = self:getPlayerData()
+		if playerData then
+			playerData:setLastUnequippedItemId(nil)
+		end
 	else
 		--print("putting self dragon out in the world and killing the tool")
 		local tool = self:getObj().Parent
@@ -1371,9 +1441,12 @@ function ShadowDragon.notifyUnequippableEquipped(self: ShadowDragon, previousUne
 	-- since equipping this dragon's own tool forced it out of their hand along the way
 	if previousUnequippedItemId then
 		local previousItem = itemManager:getItemById(previousUnequippedItemId)
+		if previousItem and previousItem:getType() == "shadowDragon" then
+			previousItem = nil
+		end
 		local previousTool = previousItem and previousItem:findTool()
-		if previousTool and previousTool.Parent == (self:getPlayer() :: any).Backpack then
-			(self:getPlayer() :: any).Character.Humanoid:EquipTool(previousTool)
+		if previousTool and previousTool.Parent == (player :: any).Backpack then
+			(player :: any).Character.Humanoid:EquipTool(previousTool)
 		end
 	end
 end
@@ -1382,22 +1455,20 @@ function ShadowDragon.moveDragonFromBackpackToWorkspace(self: ShadowDragon)
 	--print("releasing unequippable dragon")
 
 	local playerCFrame = (self:getPlayer() :: any).Character.HumanoidRootPart:GetPivot()
-	local dragonCFrame = playerCFrame + Vector3.new(0, 6, 0)
-	--print("player at", playerCFrame.Position, "dragon going to", dragonCFrame.Position)
+	local spawnXZ = playerCFrame.Position + playerCFrame.LookVector * SEAT_OFFSET_FROM_PIVOT_STUDS
+	local idleY = self:calculateIdleHeightAtLocation(spawnXZ)
+	local dragonPosition = Vector3.new(spawnXZ.X, idleY, spawnXZ.Z)
+	local dragonCFrame = CFrame.new(dragonPosition) * playerCFrame.Rotation
 
-	-- to mimic the behavior of an item getting placed into workspace in the normal activation flow (from a tool),
-	-- we set parent to nil, and _then_ workspace
-	-- this is important because tags will all trigger events about being added to the instance
+	self:setPreventSettling()
+
 	self:getObj().Parent = nil
 	self:getObj():PivotTo(dragonCFrame)
-	-- let the notification of parenting change to nil happen
 	task.wait()
 	self:moveFromPlayerToWorkspace()
 
 	local playerData = self:getPlayerData()
-	if playerData:isLocationInPlotOrUnlockedExpansions(self.part.Position) then
-		-- when dragon was moved to workspace in IDLE state, it was already set to settling
-	else
+	if not playerData:isLocationInPlotOrUnlockedExpansions(self.part.Position) then
 		self:notifyShouldMoveToIdle()
 	end
 end
@@ -1528,7 +1599,12 @@ function ShadowDragon.loadSaveData(self: ShadowDragon, itemSaveData: any, itemId
 	-- notifyLoadComplete re-parks a dragon that was saved in a stable slot
 end
 
-function ShadowDragon.notifyLoadComplete(self: ShadowDragon, itemSaveData: any, itemIdMap: any, offlineElapsedSec: number?)
+function ShadowDragon.notifyLoadComplete(
+	self: ShadowDragon,
+	itemSaveData: any,
+	itemIdMap: any,
+	offlineElapsedSec: number?
+)
 	self:getObj():SetAttribute(Attributes.DRAGON_SIZE, self.dragonSize)
 
 	if itemSaveData.state == enums.DragonState.OPENING then
@@ -1543,10 +1619,13 @@ function ShadowDragon.notifyLoadComplete(self: ShadowDragon, itemSaveData: any, 
 		if crystal then
 			self:setState(enums.DragonState.OPENING, crystal)
 		else
-			print("dragon loading, handled data remapping an item id for dragon target, should be", itemSaveData.opening.crystalItemId, itemIdMap[itemSaveData.opening.crystalItemId])
+			print(
+				"dragon loading, handled data remapping an item id for dragon target, should be",
+				itemSaveData.opening.crystalItemId,
+				itemIdMap[itemSaveData.opening.crystalItemId]
+			)
 			print("but crystal is nil")
 		end
-
 	else
 		--print("loading dragon is already idle, leaving it alone", enums.getName(enums.DragonState, self.state))
 	end
@@ -1608,7 +1687,6 @@ function ShadowDragon.tryStepUpdateStaminaAndFreeFlyZone(self: ShadowDragon)
 	end
 
 	self:updateDataDump()
-
 end
 
 function ShadowDragon.endState(self: ShadowDragon)
@@ -1706,7 +1784,6 @@ function ShadowDragon.destroy(self: ShadowDragon)
 				gameController:getPlayerData(player):setRiding(nil, nil)
 			end
 		end
-
 	end
 
 	super.destroy(self)

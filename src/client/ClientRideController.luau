@@ -1206,7 +1206,7 @@ function ClientRideController.beginRiding(self: ClientRideController, shadow: an
 	self.event:Fire(isRiding)
 end
 
-function ClientRideController.cleanupRiding(self: ClientRideController)
+function ClientRideController.cleanupRiding(self: ClientRideController, skipLaunch: boolean?)
 	self.isShootingFireball = false
 
 	-- stop tracking targets
@@ -1264,10 +1264,11 @@ function ClientRideController.cleanupRiding(self: ClientRideController)
 		end
 	end
 
-	-- launch player vertically a bit
-	local launchRig: any = player.Character
-	local impulse = launchSpeed * launchRig.HumanoidRootPart.AssemblyMass * Vector3.yAxis
-	launchRig.HumanoidRootPart:ApplyImpulse(impulse)
+	if not skipLaunch then
+		local launchRig: any = player.Character
+		local impulse = launchSpeed * launchRig.HumanoidRootPart.AssemblyMass * Vector3.yAxis
+		launchRig.HumanoidRootPart:ApplyImpulse(impulse)
+	end
 
 	self.drivePart = nil
 
@@ -1366,15 +1367,17 @@ function ClientRideController.isCarryingUnsafeEgg(self: ClientRideController): b
 end
 
 -- when player decides to stop
-function ClientRideController.tryEndRiding(self: ClientRideController)
+function ClientRideController.tryEndRiding(self: ClientRideController, skipLaunch: boolean?, skipRemote: boolean?)
 	if not self:isRiding() then
 		return
 	end
 
-	RemoteEvents.TryEndRideDragon:FireServer(self.ridingItemId)
+	if not skipRemote then
+		RemoteEvents.TryEndRideDragon:FireServer(self.ridingItemId)
+	end
 
 	-- this calls back into us to cleanup too
-	clientDragonManager:cleanupRiding(self.ridingItemId)
+	clientDragonManager:cleanupRiding(self.ridingItemId, skipLaunch)
 end
 
 -- when server tells us (dragon ran out of stamina)
@@ -1486,8 +1489,8 @@ function ClientRideController.notifyBeginSitting(self: ClientRideController, sha
 	end)
 end
 
-function ClientRideController.notifyEndSitting(self: ClientRideController)
-	self:cleanupRiding()
+function ClientRideController.notifyEndSitting(self: ClientRideController, skipLaunch: boolean?)
+	self:cleanupRiding(skipLaunch)
 end
 
 function ClientRideController.getEvent(self: ClientRideController): RBXScriptSignal

@@ -2771,22 +2771,26 @@ function GameController.tryDeliverCarriedEggBeforeDismount(self: GameController,
 	return true
 end
 
-function GameController.tryPutAwayRidingDragon(self: GameController, player: Player): ()
-	-- same as dismounting: notifyRideEnd returns the dragon to the backpack
+function GameController.tryStowRidingDragon(self: GameController, player: Player): boolean
 	if not rideMixin:isPlayerRiding(player) then
-		return
+		return true
 	end
 
 	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
 	if not dragon then
-		return
+		return true
 	end
 
 	if not self:tryDeliverCarriedEggBeforeDismount(player, dragon) then
-		return
+		return false
 	end
 
 	rideMixin:stopPlayerRiding(player)
+	return true
+end
+
+function GameController.tryPutAwayRidingDragon(self: GameController, player: Player): ()
+	self:tryStowRidingDragon(player)
 end
 
 function GameController.tryEquipAbility(self: GameController, player: Player, ability: any): ()

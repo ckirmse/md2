@@ -616,6 +616,10 @@ function Item.processEquipped(self: Item)
 	--print("processing that we were equipped", self.itemName)
 
 	local playerData = self:getPlayerData()
+	if not playerData then
+		return
+	end
+
 	local previousUnequippedItemId = playerData:getLastUnequippedItemId()
 	playerData:setLastUnequippedItemId(nil)
 
@@ -648,7 +652,10 @@ end
 function Item.processUnequipped(self: Item)
 	--print("processing that we were equipped", self.itemName)
 
-	self:getPlayerData():setLastUnequippedItemId(self:getItemId())
+	local playerData = self:getPlayerData()
+	if playerData then
+		playerData:setLastUnequippedItemId(self:getItemId())
+	end
 
 	ftueManager:notifyItemUnequipped(self:getPlayer(), self:getItemId())
 end

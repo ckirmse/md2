@@ -127,25 +127,23 @@ function ClientDragonManager.tryBeginRidingDragonById(self: ClientDragonManager,
 	return true
 end
 
-function ClientDragonManager.cleanupRiding(self: ClientDragonManager, itemId: any)
+function ClientDragonManager.cleanupRiding(self: ClientDragonManager, itemId: any, skipLaunch: boolean?)
 	local indicatorData = self.indicatorMap[itemId]
-	if not indicatorData then
-		return
+	if indicatorData then
+		local caster = indicatorData.caster
+		if caster.PrimaryPart then
+			caster.PrimaryPart.Anchored = true
+		end
+
+		indicatorData.isRiding = false
+
+		-- rebuild an equipped dragon's ghost so it flies home from a clean pose, not the ride pose
+		if indicatorData.shadow:GetAttribute(Attributes.DRAGON_SLOT_INDEX) ~= nil then
+			clientShadowManager:recreateCaster(itemId)
+		end
 	end
 
-	local caster = indicatorData.caster
-	if caster.PrimaryPart then
-		caster.PrimaryPart.Anchored = true
-	end
-
-	clientRideController:notifyEndSitting()
-
-	indicatorData.isRiding = false
-
-	-- rebuild an equipped dragon's ghost so it flies home from a clean pose, not the ride pose
-	if indicatorData.shadow:GetAttribute(Attributes.DRAGON_SLOT_INDEX) ~= nil then
-		clientShadowManager:recreateCaster(itemId)
-	end
+	clientRideController:notifyEndSitting(skipLaunch)
 end
 
 function ClientDragonManager.findBodyParts(self: ClientDragonManager, itemId: any)
@@ -1594,16 +1592,17 @@ function ClientDragonManager.hookCharacterForAutoRide(self: ClientDragonManager,
 		if child:GetAttribute(Attributes.ITEM_TYPE) ~= "shadowDragon" then
 			return
 		end
-		if clientRideController:isRiding() then
-			return
-		end
 		if self.autoRidePending then
 			return
 		end
 
+		if clientRideController:isRiding() then
+			clientRideController:tryEndRiding(true, true)
+		end
+
 		self.autoRidePending = true
 		self.autoRideDeadline = workspace:GetServerTimeNow() + AUTO_RIDE_TIMEOUT_SEC
-		self.autoRideItemId = nil
+		self.autoRideItemId = child:GetAttribute(Attributes.ITEM_ID)
 	end)
 end
 
@@ -1686,7 +1685,7 @@ function ClientDragonManager.init(self: ClientDragonManager)
 			local bestDistance = nil
 
 			if self.autoRidePending then
-				if isRiding or workspace:GetServerTimeNow() > self.autoRideDeadline then
+				if workspace:GetServerTimeNow() > self.autoRideDeadline then
 					self.autoRidePending = false
 				elseif self.autoRideItemId then
 					if self:tryBeginRidingDragonById(self.autoRideItemId) then
