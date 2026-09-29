@@ -21,6 +21,7 @@ local PlayerOptionKeys = require("@game/ReplicatedStorage/Shared/PlayerOptionKey
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
+local clientDragonRosterManager = require("./ClientDragonRosterManager")
 local clientLuckInfoManager = require("./ClientLuckInfoManager")
 local clientOptionsManager = require("./ClientOptionsManager")
 local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
@@ -66,6 +67,8 @@ type ScreenGuiManagerFields = {
 	tradeButtonHideReasonMap: { [string]: boolean },
 	indexFrame: any?,
 	isIndexFeatureEnabled: boolean,
+	dragonRosterFrame: any?,
+	isInPlot: boolean,
 	isBackpackEnabled: boolean?,
 	gemsFrameBasePosition: UDim2,
 	luckFrameBasePosition: UDim2,
@@ -980,6 +983,19 @@ function ScreenGuiManager.setIndexFeatureEnabled(self: ScreenGuiManager, isEnabl
 	self:updateIndexFrameVisibility()
 end
 
+function ScreenGuiManager.updateDragonRosterFrameVisibility(self: ScreenGuiManager)
+	if not self.dragonRosterFrame then
+		return
+	end
+
+	(self.dragonRosterFrame :: any).Visible = self.isInPlot
+end
+
+function ScreenGuiManager.notifyIsInPlot(self: ScreenGuiManager, isInPlot: boolean)
+	self.isInPlot = isInPlot
+	self:updateDragonRosterFrameVisibility()
+end
+
 function ScreenGuiManager.init(self: ScreenGuiManager)
 	self:hideAllOtherGuis()
 
@@ -1077,6 +1093,14 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 
 	clientFtueManager:getIsEnabledEvent():Connect(function()
 		self:updateIndexFrameVisibility()
+	end)
+
+	local dragonRosterFrame: any = ScreenGui:WaitForChild("DragonRosterFrame")
+	self.dragonRosterFrame = dragonRosterFrame
+	self:updateDragonRosterFrameVisibility()
+
+	dragonRosterFrame:WaitForChild("DragonRosterButton").Activated:Connect(function()
+		clientDragonRosterManager:toggleRoster()
 	end)
 
 	local friendLuckBoostFrame = ScreenGui:FindFirstChild("FriendLuckBoostFrame")
@@ -1183,6 +1207,9 @@ function ScreenGuiManager.new(): ScreenGuiManager
 
 	self.indexFrame = nil
 	self.isIndexFeatureEnabled = true
+
+	self.dragonRosterFrame = nil
+	self.isInPlot = false
 
 	local ScreenGui: any = PlayerGui:WaitForChild("ScreenGui")
 

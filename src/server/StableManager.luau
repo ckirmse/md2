@@ -17,11 +17,12 @@ local plotsManager = require("./PlotsManager")
 local rideMixin = require("./RideMixin")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 -- fixed for M1; M9 plot upgrades make this a per-player value from plotUpgrades.slots
-local STABLE_SLOT_COUNT = 6
+local STABLE_SLOT_COUNT = StableConfig.STABLE_SLOT_COUNT
 
 type StableManagerFields = {}
 

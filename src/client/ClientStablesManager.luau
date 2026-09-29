@@ -15,13 +15,14 @@ local Level = workspace:WaitForChild("Level")
 local player = playersService.LocalPlayer :: Player
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local clientRideController = require("./ClientRideController")
 local teleporters = require("./Teleporters")
 
-local STABLE_SLOT_COUNT = 6
+local STABLE_SLOT_COUNT = StableConfig.STABLE_SLOT_COUNT
 local PROMPT_NAME = "StableSlotPrompt"
 local PROMPT_DISTANCE = 12
 local RESOLVE_ATTEMPTS = 40

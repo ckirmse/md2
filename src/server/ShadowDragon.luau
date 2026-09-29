@@ -13,6 +13,7 @@ local DubinsItemMover = require("./DubinsItemMover")
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local incomeManager = require("./IncomeManager")
 local islandManager = require("./IslandManager")
 local playerAttributesManager = require("./PlayerAttributesManager")
 local plotsManager = require("./PlotsManager")
@@ -34,6 +35,7 @@ local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local dragonPowerValues = require("@game/ServerScriptService/GameData/Control/DragonPowerValues")
+local dragonProgressionData = require("@game/ServerScriptService/GameData/Control/DragonProgression")
 
 local analyticsManager = require("./AnalyticsManager")
 
@@ -49,6 +51,7 @@ function ShadowDragon.getDataDumpString(self: ShadowDragon): string
 
 	local text = super.getDataDumpString(self)
 	text = text .. "\nState: " .. tostring(enums.getName(enums.DragonState, self.state))
+	text = text .. string.format("\nLevel %d (xp %.1f)", self.dragonLevel, self.dragonXp)
 	if itemData.mixins.ride then
 		text = text .. string.format("\nStamina %f", self.stamina)
 	end
@@ -1565,6 +1568,8 @@ function ShadowDragon.getSaveData(self: ShadowDragon, itemIdMap: any): any
 	retval.state = self.state
 	retval.stableSlotIndex = self.stableSlotIndex
 	retval.dragonSize = self.dragonSize
+	retval.dragonLevel = self.dragonLevel
+	retval.dragonXp = self.dragonXp
 	if self.state == enums.DragonState.OPENING then
 		--print("saving data remapping an item id for dragon target", self.opening.crystalItemId, itemIdMap[self.opening.crystalItemId])
 		retval.opening = {}
@@ -1592,6 +1597,8 @@ function ShadowDragon.loadSaveData(self: ShadowDragon, itemSaveData: any, itemId
 
 	self.stableSlotIndex = itemSaveData.stableSlotIndex
 	self.dragonSize = itemSaveData.dragonSize or self.dragonSize
+	self.dragonLevel = itemSaveData.dragonLevel or self.dragonLevel
+	self.dragonXp = itemSaveData.dragonXp or self.dragonXp
 
 	-- saved in this state: itemSaveData.state but we put every dragon in idle to start with; they were saved with idle locations
 
@@ -1605,7 +1612,10 @@ function ShadowDragon.notifyLoadComplete(
 	itemIdMap: any,
 	offlineElapsedSec: number?
 )
-	self:getObj():SetAttribute(Attributes.DRAGON_SIZE, self.dragonSize)
+	self:getObj():SetAttribute(Attributes.DRAGON_LEVEL, self.dragonLevel)
+	self:replicateXpAttributes()
+	self:recomputePower()
+	self:recomputeSize()
 
 	if itemSaveData.state == enums.DragonState.OPENING then
 		-- we do this here as we have a reference to another item that needs to exist and be in the workspace when we initialize OPENING state
@@ -1791,11 +1801,81 @@ end
 
 function ShadowDragon.setDragonSize(self: ShadowDragon, size: number)
 	self.dragonSize = size
-	self:getObj():SetAttribute(Attributes.DRAGON_SIZE, size)
+	self:recomputeSize()
 end
 
 function ShadowDragon.getDragonSize(self: ShadowDragon): number
 	return self.dragonSize or 1
+end
+
+function ShadowDragon.recomputeSize(self: ShadowDragon)
+	local sizeMult = 1 + dragonProgressionData.levelSizeMultPerLevel * (self.dragonLevel - 1)
+	self:getObj():SetAttribute(Attributes.DRAGON_SIZE, self:getDragonSize() * sizeMult)
+end
+
+function ShadowDragon.getDragonLevel(self: ShadowDragon): number
+	return self.dragonLevel
+end
+
+function ShadowDragon.getDragonXp(self: ShadowDragon): number
+	return self.dragonXp
+end
+
+function ShadowDragon.getNextLevelXp(self: ShadowDragon, level: number): number?
+	if level >= dragonProgressionData.maxDragonLevel then
+		return nil
+	end
+
+	return math.floor(dragonProgressionData.baseXpPerLevel * dragonProgressionData.xpGrowthRate ^ (level - 1))
+end
+
+function ShadowDragon.replicateXpAttributes(self: ShadowDragon)
+	self:getObj():SetAttribute(Attributes.DRAGON_XP, self.dragonXp)
+	self:getObj():SetAttribute(Attributes.DRAGON_NEXT_LEVEL_XP, self:getNextLevelXp(self.dragonLevel))
+end
+
+function ShadowDragon.addDragonXp(self: ShadowDragon, amount: number)
+	if self:getNextLevelXp(self.dragonLevel) == nil then
+		-- already at max level
+		return
+	end
+
+	self.dragonXp += amount
+
+	local didLevelUp = false
+	while true do
+		local nextLevelXp = self:getNextLevelXp(self.dragonLevel)
+		if not nextLevelXp or self.dragonXp < nextLevelXp then
+			break
+		end
+
+		self.dragonXp -= nextLevelXp
+		self.dragonLevel += 1
+		didLevelUp = true
+
+		if self:getNextLevelXp(self.dragonLevel) == nil then
+			-- hit max level; matches the player-leveling convention of clamping leftover xp to 0
+			self.dragonXp = 0
+			break
+		end
+	end
+
+	if not didLevelUp then
+		self:replicateXpAttributes()
+		return
+	end
+
+	self:getObj():SetAttribute(Attributes.DRAGON_LEVEL, self.dragonLevel)
+	self:replicateXpAttributes()
+	self:recomputePower()
+	self:recomputeSize()
+
+	if self.stableSlotIndex ~= nil then
+		local playerData = self:getPlayerData()
+		if playerData then
+			playerData:recomputeTotalDragonPower()
+		end
+	end
 end
 
 function ShadowDragon.recomputePower(self: ShadowDragon)
@@ -1807,13 +1887,14 @@ function ShadowDragon.recomputePower(self: ShadowDragon)
 
 	local mutationBonus = MItem.getMutationBonus(self.mutation)
 
-	-- weather traits and mastery aren't in the game yet
+	-- weather traits aren't in the game yet
 	local traitBonus = 0
-	local masteryMult = DragonPower.masteryMult(dragonPowerValues.masteryPerLevel, 0)
+	local masteryMult = DragonPower.masteryMult(dragonProgressionData.levelIncomeMultPerLevel, self.dragonLevel - 1)
 
 	self.power = DragonPower.compute(base, mutationBonus, traitBonus, masteryMult)
 
 	self:getObj():SetAttribute(Attributes.DRAGON_POWER, self.power)
+	self:getObj():SetAttribute(Attributes.DRAGON_INCOME_PER_SEC, incomeManager:getDragonIncomePerSec(self))
 end
 
 function ShadowDragon.getPower(self: ShadowDragon): number
@@ -1910,14 +1991,19 @@ function ShadowDragon.init(self: ShadowDragon)
 
 	self.stableSlotIndex = nil
 	self.dragonSize = 1
+	self.dragonLevel = 1
+	self.dragonXp = 0
 
 	local periodDivisor, amplitudeMultiplier = self:getFlapDataForCurrentState()
 	self:setFlapData(periodDivisor, amplitudeMultiplier)
 
 	self:getObj():SetAttribute(Attributes.DRAGON_STAMINA, self.stamina)
 
+	self:getObj():SetAttribute(Attributes.ITEM_NAME, self:getItemName())
 	self:getObj():SetAttribute(Attributes.PRIMARY_ELEMENT, itemData.primaryElement)
-	self:getObj():SetAttribute(Attributes.DRAGON_SIZE, self.dragonSize)
+	self:getObj():SetAttribute(Attributes.DRAGON_LEVEL, self.dragonLevel)
+	self:replicateXpAttributes()
+	self:recomputeSize()
 
 	self:getObj():SetAttribute(Attributes.USER_ID, self:getUserId())
 	self:getObj():SetAttribute(Attributes.CASTER_PATH, itemData.casterPath)

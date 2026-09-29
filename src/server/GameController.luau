@@ -3941,6 +3941,7 @@ local function initClasses(gameController: GameController): ()
 	scatterZoneManager.initClass(deps)
 	plotsManager.initClass(deps)
 	lootTableManager.initClass(deps)
+	incomeManager.initClass(deps)
 
 	Item.initClass(deps)
 	NumberItem.initClass(deps)

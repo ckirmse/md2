@@ -4,11 +4,14 @@ local IncomeManager = {}
 IncomeManager.__index = IncomeManager
 
 local Types = require("./Types")
+local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local playerAttributesManager = require("./PlayerAttributesManager")
+local rideMixin = require("./RideMixin")
 
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 
 local incomeData = require("@game/ServerScriptService/GameData/Control/Income")
+local dragonProgressionData = require("@game/ServerScriptService/GameData/Control/DragonProgression")
 
 type IncomeManagerFields = {
 	-- fractional gold carried between 1 s ticks so nothing is lost to flooring
@@ -19,6 +22,10 @@ export type IncomeManager = typeof(setmetatable({} :: IncomeManagerFields, Incom
 
 function IncomeManager.getIncomePerSec(self: IncomeManager, playerData: Types.PlayerData): number
 	return playerData:getTotalDragonPower() * incomeData.incomeCoeff
+end
+
+function IncomeManager.getDragonIncomePerSec(self: IncomeManager, dragon: Types.ShadowDragon): number
+	return dragon:getPower() * incomeData.incomeCoeff
 end
 
 function IncomeManager.tickPlayer(self: IncomeManager, player: Player, playerData: Types.PlayerData, elapsedSec: number)
@@ -32,6 +39,24 @@ function IncomeManager.tickPlayer(self: IncomeManager, player: Player, playerDat
 
 	if whole > 0 then
 		playerAttributesManager:addWholeNumber(player, PlayerAttributeKeys.COINS, whole)
+	end
+
+	self:tickDragonXp(player, playerData, elapsedSec)
+end
+
+function IncomeManager.tickDragonXp(self: IncomeManager, player: Player, playerData: Types.PlayerData, elapsedSec: number)
+	for _, itemId in playerData:getStableSlots() do
+		local item = itemManager:getItemById(itemId)
+		if not item or item:getType() ~= "shadowDragon" then
+			continue
+		end
+
+		(item :: Types.ShadowDragon):addDragonXp(dragonProgressionData.assignXpPerSec * elapsedSec)
+	end
+
+	local ridingDragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if ridingDragon then
+		ridingDragon:addDragonXp(dragonProgressionData.assignXpPerSec * dragonProgressionData.rideXpMultiplier * elapsedSec)
 	end
 end
 
@@ -47,6 +72,10 @@ function IncomeManager.new(): IncomeManager
 	local self = setmetatable({}, IncomeManager)
 	self.incomeRemainder = {}
 	return self
+end
+
+function IncomeManager.initClass(deps: any)
+	itemManager = deps.itemManager
 end
 
 function IncomeManager.init(self: IncomeManager) end

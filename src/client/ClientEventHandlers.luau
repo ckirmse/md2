@@ -527,6 +527,7 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 		--print("got is in plot")
 
 		clientMergeController:notifyIsInPlot(isInPlot)
+		screenGuiManager:notifyIsInPlot(isInPlot)
 	end)
 
 	RemoteEvents.NotifySetOptions.OnClientEvent:Connect(function(options)

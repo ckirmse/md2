@@ -280,6 +280,8 @@ function DevTools.dumpDragonPower(self: DevTools, player: Player)
 
 		print(
 			" ",
+			"itemId",
+			dragon:getItemId(),
 			dragon:getItemName(),
 			"rarity",
 			enums.getName(enums.Rarity, itemData.rarity),
@@ -381,6 +383,48 @@ end
 
 function DevTools.tryUpgradePlotLuck(self: DevTools, player: Player, toMax: any)
 	gameController:tryUpgradePlotLuck(player, toMax)
+end
+
+function DevTools.feedDragon(self: DevTools, player: Player, itemId: any, amount: any)
+	if not Validate.isItemIdForPlayer(player, itemId) then
+		warn("dev tool cannot feed item not owned by this player", itemId, player)
+		return
+	end
+
+	local item = itemManager:getItemById(itemId) :: Types.Item
+	if item:getType() ~= "shadowDragon" then
+		warn("dev tool cannot feed a non-dragon item", itemId, player)
+		return
+	end
+
+	(item :: Types.ShadowDragon):addDragonXp(amount)
+end
+
+function DevTools.dumpDragonLevel(self: DevTools, player: Player, itemId: any)
+	if not Validate.isItemIdForPlayer(player, itemId) then
+		warn("dev tool cannot dump item not owned by this player", itemId, player)
+		return
+	end
+
+	local item = itemManager:getItemById(itemId) :: Types.Item
+	if item:getType() ~= "shadowDragon" then
+		warn("dev tool cannot dump a non-dragon item", itemId, player)
+		return
+	end
+
+	local dragon = item :: Types.ShadowDragon
+	local level = dragon:getDragonLevel()
+	local nextLevelXp = dragon:getNextLevelXp(level)
+
+	print(string.format(
+		"dragon %s level %d xp %.1f/%s power %.2f size %.2f",
+		tostring(itemId),
+		level,
+		dragon:getDragonXp(),
+		nextLevelXp and string.format("%.1f", nextLevelXp) or "MAX",
+		dragon:getPower(),
+		dragon:getDragonSize()
+	))
 end
 
 function DevTools.forceExpireCarry(self: DevTools, player: Player, itemId: any)

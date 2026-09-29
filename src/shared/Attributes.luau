@@ -43,6 +43,10 @@ module = {
 	DRAGON_RIDER = "DragonRider",
 
 	DRAGON_POWER = "DragonPower",
+	DRAGON_LEVEL = "DragonLevel",
+	DRAGON_XP = "DragonXp",
+	DRAGON_NEXT_LEVEL_XP = "DragonNextLevelXp",
+	DRAGON_INCOME_PER_SEC = "DragonIncomePerSec",
 	DRAGON_SLOT_INDEX = "DragonSlotIndex",
 
 	IS_CARRYING = "IsCarrying",

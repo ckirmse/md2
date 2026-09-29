@@ -425,6 +425,22 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
+			Iris.SeparatorText({ "Dragon Leveling" })
+			local dragonLevelItemId = Iris.State(0)
+			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = dragonLevelItemId })
+			Iris.SameLine()
+			if Iris.Button({ "Dump Dragon Level" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpDragonLevel", dragonLevelItemId:get())
+			end
+			Iris.End()
+			local feedDragonXp = Iris.State(0)
+			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = feedDragonXp })
+			Iris.SameLine()
+			if Iris.Button({ "Feed Dragon" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("feedDragon", dragonLevelItemId:get(), feedDragonXp:get())
+			end
+			Iris.End()
+
 			Iris.SeparatorText({ "Plot Luck" })
 			if Iris.Button({ "Dump Plot Luck" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpPlotLuck")

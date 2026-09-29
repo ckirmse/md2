@@ -29,6 +29,7 @@ type IndicatorData = {
 	runConnect: RBXScriptConnection?,
 	cframeChangedConnect: RBXScriptConnection?,
 	clientControlChangedConnect: RBXScriptConnection?,
+	dragonSizeChangedConnect: RBXScriptConnection?,
 }
 
 type ClientShadowManagerFields = {
@@ -292,6 +293,12 @@ function ClientShadowManager.removeIndicators(self: ClientShadowManager, itemId:
 		indicatorData.clientControlChangedConnect = nil
 	end
 
+	local dragonSizeChangedConnect = indicatorData.dragonSizeChangedConnect
+	if dragonSizeChangedConnect then
+		dragonSizeChangedConnect:Disconnect()
+		indicatorData.dragonSizeChangedConnect = nil
+	end
+
 	local casterRecreatedEvent = indicatorData.casterRecreatedEvent
 	if casterRecreatedEvent then
 		casterRecreatedEvent:Destroy()
@@ -361,6 +368,14 @@ function ClientShadowManager.notifyNewInstance(self: ClientShadowManager, shadow
 	indicatorData.casterTemplate = casterTemplate
 
 	self:createCaster(itemId)
+
+	if shadow:HasTag(Tags.SHADOW_DRAGON) then
+		indicatorData.dragonSizeChangedConnect = shadow:GetAttributeChangedSignal(Attributes.DRAGON_SIZE):Connect(
+			function()
+				self:recreateCaster(itemId)
+			end
+		)
+	end
 
 	local caster = indicatorData.caster
 
