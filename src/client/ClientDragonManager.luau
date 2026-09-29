@@ -1681,8 +1681,6 @@ function ClientDragonManager.init(self: ClientDragonManager)
 	runService.PostSimulation:Connect(
 		function(deltaTime: number)
 			-- find closest ridable item; only it can be ridden on jump
-			local tool = utils.getHoldingToolWithHandle(player)
-			local isToolEquipped = tool ~= nil
 			local isRiding = clientRideController:isRiding()
 			local bestItemId = nil
 			local bestDistance = nil
@@ -1713,7 +1711,7 @@ function ClientDragonManager.init(self: ClientDragonManager)
 				local seatPosition = indicatorData.seatLocation.Position
 				-- this needs to match computation in RideMixin:canRideItem
 				local distance = utils.getMagnitudeXZ(playerPosition - seatPosition)
-				if not isRiding and not isToolEquipped and distance <= Constants.BEGIN_RIDE_DISTANCE then
+				if not isRiding and distance <= Constants.BEGIN_RIDE_DISTANCE then
 					if not bestDistance or distance < bestDistance then
 						bestItemId = itemId
 						bestDistance = distance

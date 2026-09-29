@@ -615,15 +615,18 @@ end
 function Item.processEquipped(self: Item)
 	--print("processing that we were equipped", self.itemName)
 
+	local playerData = self:getPlayerData()
+	local previousUnequippedItemId = playerData:getLastUnequippedItemId()
+	playerData:setLastUnequippedItemId(nil)
+
 	if self:getItemData().mixins.pickup.equip == false then
 		-- intention is for ridable dragons to get here as of 2026-march-5
-		local playerData = self:getPlayerData()
 		if not playerData:doAllowActivateItem(self) then
 			return
 		end
 
 		-- notifyUnequippableEquipped is defined by the subclasses this path applies to
-		(self :: any):notifyUnequippableEquipped()
+		(self :: any):notifyUnequippableEquipped(previousUnequippedItemId)
 		return
 	end
 
@@ -644,6 +647,8 @@ end
 -- this is when the system decides to unequip an item, such as user clicking on item in backpack when it had been equipped
 function Item.processUnequipped(self: Item)
 	--print("processing that we were equipped", self.itemName)
+
+	self:getPlayerData():setLastUnequippedItemId(self:getItemId())
 
 	ftueManager:notifyItemUnequipped(self:getPlayer(), self:getItemId())
 end

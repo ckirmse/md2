@@ -111,9 +111,6 @@ function RideMixin.notifyPlayerBeginRideDragon(self: RideMixin, player: Player, 
 	-- the documented prerequisite: canRideItem returned true, so the dragon exists
 	local item = itemManager:getItemById(itemId) :: Types.ShadowDragon;
 
-	-- a missing character crashed here before typing too
-	(player.Character :: any).Humanoid:UnequipTools()
-
 	item:notifyRideBegin()
 
 	local playerData = gameController:getPlayerData(player)

@@ -725,11 +725,12 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 	end
 
 	local isRiding = clientRideController:isRiding()
-	if isRiding and (clientRideController:getRidingObj() :: any):GetAttribute(Attributes.PICKUP_NAME) ~= nil then
+	local isRidingPickupable = isRiding and (clientRideController:getRidingObj() :: any):GetAttribute(Attributes.PICKUP_NAME) ~= nil
+
+	if isRidingPickupable then
 		self.latestEquippedItemId = nil
 		local canPutAwayRidingDragon = clientRideController:isRidingAndControllingAndInFreeFlyZone() and not clientRideController:isCarryingUnsafeEgg()
 		PutAwayButton.Visible = canPutAwayRidingDragon
-		return
 	end
 
 	local tool: any = utils.getHoldingToolWithHandle(player)
@@ -743,7 +744,9 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 		self.latestEquippedItemId = currentItemPart:GetAttribute(Attributes.ITEM_ID)
 	end
 
-	PutAwayButton.Visible = (currentItemPart ~= nil)
+	if not isRidingPickupable then
+		PutAwayButton.Visible = (currentItemPart ~= nil)
+	end
 
 	local RadarActivateFrame = ScreenGui:WaitForChild("RadarActivateFrame")
 	local isHoldingRadar = isToolEquipped and (tool :: any):GetAttribute(Attributes.ITEM_TYPE) == "radar"

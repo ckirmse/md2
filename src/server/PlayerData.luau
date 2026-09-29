@@ -87,6 +87,7 @@ type PlayerDataFields = {
 	mergeData: any,
 	ridingItemId: any,
 	latestRidingItemId: any,
+	lastUnequippedItemId: any,
 	playerRelativeToDragonCFrame: any,
 	isInPlot: boolean,
 	isInCommunityGroup: boolean,
@@ -898,6 +899,14 @@ end
 
 function PlayerData.getRidingItemId(self: PlayerData)
 	return self.ridingItemId
+end
+
+function PlayerData.setLastUnequippedItemId(self: PlayerData, itemId: any)
+	self.lastUnequippedItemId = itemId
+end
+
+function PlayerData.getLastUnequippedItemId(self: PlayerData): any
+	return self.lastUnequippedItemId
 end
 
 function PlayerData.getLatestRidingItemId(self: PlayerData)
@@ -3226,6 +3235,7 @@ function PlayerData.new(player: Player?): PlayerData
 
 	self.ridingItemId = nil
 	self.latestRidingItemId = nil
+	self.lastUnequippedItemId = nil
 
 	self.mergeData = nil
 

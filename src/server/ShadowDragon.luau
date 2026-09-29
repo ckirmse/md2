@@ -1335,7 +1335,7 @@ function ShadowDragon.isAvailableToMine(self: ShadowDragon): boolean
 	return self.state == enums.DragonState.IDLE or self.state == enums.DragonState.MOVING_TO_IDLE or self.state == enums.DragonState.OUTSIDE or self.state == enums.DragonState.MOVING_TO_OUTSIDE
 end
 
-function ShadowDragon.notifyUnequippableEquipped(self: ShadowDragon)
+function ShadowDragon.notifyUnequippableEquipped(self: ShadowDragon, previousUnequippedItemId: any)
 	--(self:getPlayer() :: any).Character.Humanoid:UnequipTools()
 
 	--return gameController:isLocationInFreeFlyZone(self:getPart().Position)
@@ -1365,6 +1365,16 @@ function ShadowDragon.notifyUnequippableEquipped(self: ShadowDragon)
 		self:moveDragonFromBackpackToWorkspace()
 
 		tool:Destroy()
+	end
+
+	-- restore whatever the player had equipped before selecting this dragon (e.g. a Radar),
+	-- since equipping this dragon's own tool forced it out of their hand along the way
+	if previousUnequippedItemId then
+		local previousItem = itemManager:getItemById(previousUnequippedItemId)
+		local previousTool = previousItem and previousItem:findTool()
+		if previousTool and previousTool.Parent == (self:getPlayer() :: any).Backpack then
+			(self:getPlayer() :: any).Character.Humanoid:EquipTool(previousTool)
+		end
 	end
 end
 

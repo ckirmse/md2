@@ -959,8 +959,6 @@ function ClientRideController.setupPlayerRiding(self: ClientRideController)
 
 	clientPlayerAnimationManager:playSitAndRide()
 
-	Satchel:SetBackpackEnabled(false)
-
 	RemoteEvents.TryBeginRideDragon:FireServer(self.ridingItemId, playerRelativeToDragonCFrame)
 end
 
