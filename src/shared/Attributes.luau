@@ -42,7 +42,6 @@ module = {
 	DRAGON_PULSE_DATA = "DragonPulseData",
 	DRAGON_RIDER = "DragonRider",
 
-	DRAGON_POWER = "DragonPower",
 	DRAGON_LEVEL = "DragonLevel",
 	DRAGON_XP = "DragonXp",
 	DRAGON_NEXT_LEVEL_XP = "DragonNextLevelXp",

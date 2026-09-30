@@ -21,11 +21,11 @@ type IncomeManagerFields = {
 export type IncomeManager = typeof(setmetatable({} :: IncomeManagerFields, IncomeManager))
 
 function IncomeManager.getIncomePerSec(self: IncomeManager, playerData: Types.PlayerData): number
-	return playerData:getTotalDragonPower() * incomeData.incomeCoeff
+	return playerData:getTotalDragonIncome() * incomeData.incomeCoeff
 end
 
 function IncomeManager.getDragonIncomePerSec(self: IncomeManager, dragon: Types.ShadowDragon): number
-	return dragon:getPower() * incomeData.incomeCoeff
+	return dragon:getIncome() * incomeData.incomeCoeff
 end
 
 function IncomeManager.tickPlayer(self: IncomeManager, player: Player, playerData: Types.PlayerData, elapsedSec: number)

@@ -77,7 +77,7 @@ type PlayerDataFields = {
 	instantOpenCrystalItemIds: any,
 	abilityStatuses: any,
 	stableSlots: any,
-	totalDragonPower: number,
+	totalDragonIncome: number,
 	ftueProgress: any,
 	contextualFtueState: any,
 	firstSessionOfferState: any,
@@ -1106,11 +1106,11 @@ function PlayerData.getStableDragonInSlot(self: PlayerData, stableSlotIndex: num
 	return self.stableSlots[stableSlotIndex]
 end
 
-function PlayerData.getTotalDragonPower(self: PlayerData): number
-	return self.totalDragonPower
+function PlayerData.getTotalDragonIncome(self: PlayerData): number
+	return self.totalDragonIncome
 end
 
-function PlayerData.recomputeTotalDragonPower(self: PlayerData)
+function PlayerData.recomputeTotalDragonIncome(self: PlayerData)
 	local total = 0
 
 	for _, itemId in self.stableSlots do
@@ -1119,21 +1119,21 @@ function PlayerData.recomputeTotalDragonPower(self: PlayerData)
 			continue
 		end
 
-		total += (item :: Types.ShadowDragon):getPower()
+		total += (item :: Types.ShadowDragon):getIncome()
 	end
 
-	self.totalDragonPower = total
-	playerAttributesManager:set(self.player, PlayerAttributeKeys.TOTAL_DRAGON_POWER, total)
+	self.totalDragonIncome = total
+	playerAttributesManager:set(self.player, PlayerAttributeKeys.TOTAL_DRAGON_INCOME, total)
 end
 
 function PlayerData.setStableDragonInSlot(self: PlayerData, stableSlotIndex: number, itemId: number)
 	self.stableSlots[stableSlotIndex] = itemId
-	self:recomputeTotalDragonPower()
+	self:recomputeTotalDragonIncome()
 end
 
 function PlayerData.clearStableSlot(self: PlayerData, stableSlotIndex: number)
 	self.stableSlots[stableSlotIndex] = nil
-	self:recomputeTotalDragonPower()
+	self:recomputeTotalDragonIncome()
 end
 
 function PlayerData.getAbilityStatuses(self: PlayerData)
@@ -3253,7 +3253,7 @@ function PlayerData.new(player: Player?): PlayerData
 	self.abilityStatuses = {}
 
 	self.stableSlots = {}
-	self.totalDragonPower = 0
+	self.totalDragonIncome = 0
 
 	self.purchasedSlotUnlocks = {}
 

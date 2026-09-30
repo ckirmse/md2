@@ -27,14 +27,14 @@ local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
-local DragonPower = require("@game/ReplicatedStorage/Shared/DragonPower")
+local DragonIncome = require("@game/ReplicatedStorage/Shared/DragonIncome")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PivotToIndependentTween = require("@game/ReplicatedStorage/Shared/PivotToIndependentTween")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
-local dragonPowerValues = require("@game/ServerScriptService/GameData/Control/DragonPowerValues")
+local dragonIncomeValues = require("@game/ServerScriptService/GameData/Control/DragonIncomeValues")
 local dragonProgressionData = require("@game/ServerScriptService/GameData/Control/DragonProgression")
 
 local analyticsManager = require("./AnalyticsManager")
@@ -1614,7 +1614,7 @@ function ShadowDragon.notifyLoadComplete(
 )
 	self:getObj():SetAttribute(Attributes.DRAGON_LEVEL, self.dragonLevel)
 	self:replicateXpAttributes()
-	self:recomputePower()
+	self:recomputeIncome()
 	self:recomputeSize()
 
 	if itemSaveData.state == enums.DragonState.OPENING then
@@ -1867,48 +1867,49 @@ function ShadowDragon.addDragonXp(self: ShadowDragon, amount: number)
 
 	self:getObj():SetAttribute(Attributes.DRAGON_LEVEL, self.dragonLevel)
 	self:replicateXpAttributes()
-	self:recomputePower()
+	self:recomputeIncome()
 	self:recomputeSize()
 
 	if self.stableSlotIndex ~= nil then
 		local playerData = self:getPlayerData()
 		if playerData then
-			playerData:recomputeTotalDragonPower()
+			playerData:recomputeTotalDragonIncome()
 		end
 	end
 end
 
-function ShadowDragon.recomputePower(self: ShadowDragon)
+function ShadowDragon.recomputeIncome(self: ShadowDragon)
 	local itemData = self:getItemData()
 
 	local tierIndex = itemData.rarity - enums.Rarity.COMMON
-	local rarityBase = DragonPower.rarityBase(dragonPowerValues.rarityStep, tierIndex)
-	local base = DragonPower.basePower(rarityBase, dragonPowerValues.levelMult, itemData.level)
+	local rarityMult = dragonIncomeValues.rarityMultipliers[tierIndex + 1] or 1
+	local staticBase = dragonIncomeValues.staticLevelBase[itemData.level] or 1
+
+	local sizeMult = DragonIncome.sizeMult(dragonIncomeValues.sizeIncomeCoeff, self:getDragonSize())
+	local levelMult = DragonIncome.levelMult(dragonProgressionData.levelIncomeMultPerLevel, self.dragonLevel)
 
 	local mutationBonus = MItem.getMutationBonus(self.mutation)
 
 	-- weather traits aren't in the game yet
 	local traitBonus = 0
-	local masteryMult = DragonPower.masteryMult(dragonProgressionData.levelIncomeMultPerLevel, self.dragonLevel - 1)
 
-	self.power = DragonPower.compute(base, mutationBonus, traitBonus, masteryMult)
+	self.income = DragonIncome.compute(staticBase, rarityMult, sizeMult, levelMult, mutationBonus, traitBonus)
 
-	self:getObj():SetAttribute(Attributes.DRAGON_POWER, self.power)
 	self:getObj():SetAttribute(Attributes.DRAGON_INCOME_PER_SEC, incomeManager:getDragonIncomePerSec(self))
 end
 
-function ShadowDragon.getPower(self: ShadowDragon): number
-	if self.power == nil then
-		self:recomputePower()
+function ShadowDragon.getIncome(self: ShadowDragon): number
+	if self.income == nil then
+		self:recomputeIncome()
 	end
 
-	return self.power :: number
+	return self.income :: number
 end
 
 function ShadowDragon.processMutationChanged(self: ShadowDragon)
 	super.processMutationChanged(self)
 
-	self:recomputePower()
+	self:recomputeIncome()
 end
 
 function ShadowDragon.getStableSlotIndex(self: ShadowDragon): number?
@@ -2011,7 +2012,7 @@ function ShadowDragon.init(self: ShadowDragon)
 	collectionService:AddTag(self:getObj(), Tags.SHADOW)
 	collectionService:AddTag(self:getObj(), Tags.SHADOW_DRAGON)
 
-	self:recomputePower()
+	self:recomputeIncome()
 end
 
 function ShadowDragon.notifyNewClone(self: ShadowDragon)

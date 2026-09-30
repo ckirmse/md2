@@ -2,7 +2,7 @@
 
 local PlayerAttributeKeys = {
 	COINS = "coins",
-	TOTAL_DRAGON_POWER = "totalDragonPower",
+	TOTAL_DRAGON_INCOME = "totalDragonIncome",
 	INCOME_PER_SECOND = "incomePerSecond",
 	IS_UNLOCKED_FIRE = "isUnlockedFire",
 	IS_UNLOCKED_NATURE = "isUnlockedNature",

@@ -258,8 +258,8 @@ function DevTools.dumpGems(self: DevTools, player: Player)
 	end
 end
 
-function DevTools.dumpDragonPower(self: DevTools, player: Player)
-	print("Dragon Power for", player)
+function DevTools.dumpDragonIncome(self: DevTools, player: Player)
+	print("Dragon Income for", player)
 
 	local total = 0
 
@@ -275,8 +275,8 @@ function DevTools.dumpDragonPower(self: DevTools, player: Player)
 
 		local dragon = item :: Types.ShadowDragon
 		local itemData = dragon:getItemData()
-		local power = dragon:getPower()
-		total += power
+		local income = dragon:getIncome()
+		total += income
 
 		print(
 			" ",
@@ -289,8 +289,8 @@ function DevTools.dumpDragonPower(self: DevTools, player: Player)
 			itemData.level,
 			"mutation",
 			enums.getName(enums.Mutations, dragon:getMutation()),
-			"DP",
-			power
+			"income",
+			income
 		)
 	end
 
@@ -417,12 +417,12 @@ function DevTools.dumpDragonLevel(self: DevTools, player: Player, itemId: any)
 	local nextLevelXp = dragon:getNextLevelXp(level)
 
 	print(string.format(
-		"dragon %s level %d xp %.1f/%s power %.2f size %.2f",
+		"dragon %s level %d xp %.1f/%s income %.2f size %.2f",
 		tostring(itemId),
 		level,
 		dragon:getDragonXp(),
 		nextLevelXp and string.format("%.1f", nextLevelXp) or "MAX",
-		dragon:getPower(),
+		dragon:getIncome(),
 		dragon:getDragonSize()
 	))
 end
@@ -583,7 +583,7 @@ function DevTools.equipAllDragons(self: DevTools, player: Player)
 		end
 	end
 
-	print("TDP =", playerData:getTotalDragonPower())
+	print("total dragon income =", playerData:getTotalDragonIncome())
 end
 
 function DevTools.unequipAllDragons(self: DevTools, player: Player)
@@ -598,7 +598,7 @@ function DevTools.unequipAllDragons(self: DevTools, player: Player)
 		stableManager:tryUnequipDragon(player, stableSlotIndex)
 	end
 
-	print("unequipped all dragons; TDP =", playerData:getTotalDragonPower())
+	print("unequipped all dragons; total dragon income =", playerData:getTotalDragonIncome())
 end
 
 function DevTools.resetPrimaryElementProgress(self: DevTools, player: Player)

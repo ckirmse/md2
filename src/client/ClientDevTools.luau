@@ -351,8 +351,8 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				clientShadowManager:recreateAllCasters()
 			end
 			Iris.SeparatorText({ "Dragons" })
-			if Iris.Button({ "Dump Dragon Power" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("dumpDragonPower")
+			if Iris.Button({ "Dump Dragon Income" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpDragonIncome")
 			end
 			if Iris.Button({ "Equip All Dragons" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("equipAllDragons")
