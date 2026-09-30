@@ -414,12 +414,14 @@ export type ClientShadowManager = {
 	recreateAllCasters: (self: ClientShadowManager) -> (),
 	recreateCaster: (self: ClientShadowManager, itemId: number) -> (),
 	removeIndicators: (self: ClientShadowManager, itemId: number) -> (),
+	rescaleCaster: (self: ClientShadowManager, itemId: number, size: number) -> (),
 	setShouldProcessOtherPlayerShadows: (self: ClientShadowManager, shouldProcess: boolean) -> (),
 	setShowShadows: (self: ClientShadowManager, showShadows: boolean) -> (),
 	setupCasterForHolding: (self: ClientShadowManager, model: any) -> (),
 	setupDragonCaster: (self: ClientShadowManager, shadow: any, caster: any) -> (),
 	testCasterIntegrity: (self: ClientShadowManager, caster: any) -> boolean,
 	testCasterIntegrityLoop: (self: ClientShadowManager) -> (),
+	tryAutoRecreateCaster: (self: ClientShadowManager, itemId: number) -> (),
 	tryGetCasterTemplate: (self: ClientShadowManager, path: any) -> Model?,
 }
 
@@ -592,6 +594,7 @@ export type ScreenGuiManager = {
 	notifyIsInPlot: (self: ScreenGuiManager, isInPlot: boolean) -> (),
 	notifyTradingDisabled: (self: ScreenGuiManager) -> (),
 	processDropEggButtonActivated: (self: ScreenGuiManager) -> (),
+	processFoodActivateButtonActivated: (self: ScreenGuiManager) -> (),
 	processPutAwayButtonActivated: (self: ScreenGuiManager) -> (),
 	processRadarActivateButtonActivated: (self: ScreenGuiManager) -> (),
 	putAwayHeldItem: (self: ScreenGuiManager) -> (),

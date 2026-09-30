@@ -767,6 +767,10 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 		radarActivateButton.BackgroundColor3 = utils.getColorForRarity(heldRadarRarity)
 	end
 
+	local FoodActivateFrame = ScreenGui:WaitForChild("FoodActivateFrame")
+	local isHoldingFood = isToolEquipped and (tool :: any):GetAttribute(Attributes.ITEM_TYPE) == "food"
+	FoodActivateFrame.Visible = isHoldingFood and clientRideController:isRiding()
+
 	if currentItemPart ~= self.prevItemPart then
 		local mutationConnect = self.mutationConnect
 		if mutationConnect then
@@ -873,6 +877,15 @@ end
 function ScreenGuiManager.processRadarActivateButtonActivated(self: ScreenGuiManager)
 	local tool: any = utils.getHoldingToolWithHandle(player)
 	if not tool or tool:GetAttribute(Attributes.ITEM_TYPE) ~= "radar" then
+		return
+	end
+
+	tool:Activate()
+end
+
+function ScreenGuiManager.processFoodActivateButtonActivated(self: ScreenGuiManager)
+	local tool: any = utils.getHoldingToolWithHandle(player)
+	if not tool or tool:GetAttribute(Attributes.ITEM_TYPE) ~= "food" then
 		return
 	end
 
@@ -1022,6 +1035,12 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 	local radarActivateButton: any = utils.findFirstDescendant(RadarActivateFrame, "RadarActivateButton")
 	radarActivateButton.Activated:Connect(function()
 		self:processRadarActivateButtonActivated()
+	end)
+
+	local FoodActivateFrame = ScreenGui:WaitForChild("FoodActivateFrame")
+	local foodActivateButton: any = utils.findFirstDescendant(FoodActivateFrame, "FoodActivateButton")
+	foodActivateButton.Activated:Connect(function()
+		self:processFoodActivateButtonActivated()
 	end)
 
 	local unequipKeyCode = Enum.KeyCode.R

@@ -276,7 +276,8 @@ function ClientPickupController.handleClick(self: ClientPickupController, positi
 
 	if tool then
 		--print("activating tool")
-		if tool:GetAttribute(Attributes.ITEM_TYPE) ~= "radar" then
+		local itemType = tool:GetAttribute(Attributes.ITEM_TYPE)
+		if itemType ~= "radar" and itemType ~= "food" then
 			tool:Activate()
 		end
 	else

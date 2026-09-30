@@ -536,6 +536,17 @@ export type Radar = NumberItem & {
 	notifyToolActivated: (self: Radar) -> (),
 }
 
+export type FoodFields = NumberItemFields & {
+	doPreventSettling: boolean?,
+}
+
+-- inherited and overridden members come from NumberItem; only members new to Food are listed here
+export type Food = NumberItem & {
+	doPreventSettling: boolean?,
+
+	notifyToolActivated: (self: Food) -> (),
+}
+
 export type BlueprintFields = NumberItemFields & {
 	doPreventSettling: boolean?,
 }
@@ -789,6 +800,9 @@ export type KeyObjectType = ObjectType
 
 -- inherited and overridden members come from ObjectType; only members new to RadarObjectType are listed here
 export type RadarObjectType = ObjectType
+
+-- inherited and overridden members come from ObjectType; only members new to FoodObjectType are listed here
+export type FoodObjectType = ObjectType
 
 -- inherited and overridden members come from ObjectType; only members new to BlueprintObjectType are listed here
 export type BlueprintObjectType = ObjectType

@@ -41,6 +41,8 @@ module = {
 
 	RADAR = "Radar",
 
+	FOOD = "Food",
+
 	BLUEPRINT = "Blueprint",
 
 	CHEST = "Chest",
