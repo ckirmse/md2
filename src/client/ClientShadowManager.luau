@@ -12,6 +12,7 @@ local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local clientAnalyticsManager = require("./ClientAnalyticsManager")
+local clientRideController = require("./ClientRideController")
 local Types = require("./Types")
 
 local CLIENT_ITEM_TOOL_WELD_NAME = "ClientItemToolWeld"
@@ -177,7 +178,7 @@ function ClientShadowManager.testCasterIntegrityLoop(self: ClientShadowManager)
 		for itemId, indicatorData in self.indicatorMap do
 			if not self:testCasterIntegrity(indicatorData.caster) then
 				print("recreating caster for shadow", itemId, indicatorData.caster)
-				self:recreateCaster(itemId)
+				self:tryAutoRecreateCaster(itemId)
 				clientAnalyticsManager:logEvent(clientAnalyticsManager.Events.RecreateShadowCaster,
 					{
 						objectName = indicatorData.shadow:GetAttribute(Attributes.DISPLAY_NAME),
@@ -187,6 +188,21 @@ function ClientShadowManager.testCasterIntegrityLoop(self: ClientShadowManager)
 			task.wait(0.05)
 		end
 	end
+end
+
+-- skips recreating a caster the player is currently riding; testCasterIntegrityLoop retries on
+-- its own, so this self-heals after dismount
+function ClientShadowManager.tryAutoRecreateCaster(self: ClientShadowManager, itemId: number)
+	local indicatorData = self.indicatorMap[itemId]
+	if not indicatorData then
+		return
+	end
+
+	if clientRideController:isRiding() and clientRideController:getRidingObj() == indicatorData.shadow then
+		return
+	end
+
+	self:recreateCaster(itemId)
 end
 
 function ClientShadowManager.recreateCaster(self: ClientShadowManager, itemId: number)
@@ -237,6 +253,29 @@ function ClientShadowManager.createCaster(self: ClientShadowManager, itemId: num
 	caster.Parent = shadow.Parent
 
 	indicatorData.caster = caster
+end
+
+-- resizes an existing caster in place instead of destroying/recreating it, and re-applies
+-- antigravity per part since ScaleTo changes mass without updating VectorForce.Force
+function ClientShadowManager.rescaleCaster(self: ClientShadowManager, itemId: number, size: number)
+	local indicatorData = self.indicatorMap[itemId]
+	if not indicatorData or not indicatorData.caster then
+		return
+	end
+
+	local caster = indicatorData.caster :: Model
+	caster:ScaleTo(size)
+
+	for _, inst in caster:GetDescendants() do
+		if not inst:IsA("BasePart") then
+			continue
+		end
+
+		local antigravity = inst:FindFirstChild(Constants.ANTIGRAVITY_NAME)
+		if antigravity and antigravity:IsA("VectorForce") then
+			antigravity.Force = Vector3.new(0, inst.Mass * workspace.Gravity, 0)
+		end
+	end
 end
 
 function ClientShadowManager.setupCasterForHolding(self: ClientShadowManager, model: any)
@@ -372,7 +411,7 @@ function ClientShadowManager.notifyNewInstance(self: ClientShadowManager, shadow
 	if shadow:HasTag(Tags.SHADOW_DRAGON) then
 		indicatorData.dragonSizeChangedConnect = shadow:GetAttributeChangedSignal(Attributes.DRAGON_SIZE):Connect(
 			function()
-				self:recreateCaster(itemId)
+				self:rescaleCaster(itemId, shadow:GetAttribute(Attributes.DRAGON_SIZE) or 1)
 			end
 		)
 	end
