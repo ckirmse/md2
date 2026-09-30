@@ -1617,6 +1617,11 @@ function ShadowDragon.notifyLoadComplete(
 	self:recomputeIncome()
 	self:recomputeSize()
 
+	if self.stableSlotIndex ~= nil and offlineElapsedSec and offlineElapsedSec > 0 then
+		local creditedSec = math.min(offlineElapsedSec, dragonProgressionData.offlineXpMaxSeconds)
+		self:addDragonXp(dragonProgressionData.assignXpPerSec * creditedSec * dragonProgressionData.offlineXpEfficiency)
+	end
+
 	if itemSaveData.state == enums.DragonState.OPENING then
 		-- we do this here as we have a reference to another item that needs to exist and be in the workspace when we initialize OPENING state
 
