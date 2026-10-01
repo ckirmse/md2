@@ -55,6 +55,21 @@ function DragonEgg.computeLuckMultiplier(eggBaseLuck: number?, userId: number): 
 	return (eggBaseLuck or 1) * plotLuckMultiplier
 end
 
+function DragonEgg.hasReachedHatchingEggCap(userId: number, excludeItemId: number?): boolean
+	local count = 0
+	for _, item in itemManager:getItemsOnGroundByUserId(userId) do
+		if item:getType() ~= "dragonEgg" then
+			continue
+		end
+		if excludeItemId and item:getItemId() == excludeItemId then
+			continue
+		end
+		count += 1
+	end
+
+	return count >= hatchingData.maxHatchingEggCount
+end
+
 function DragonEgg.applyLuckBiasToLootTable(lootTable: any, luckMultiplier: number): { any }
 	if luckMultiplier == 1 then
 		return lootTable
@@ -132,6 +147,10 @@ function DragonEgg.tryBeginIncubatingFromPlacement(self: DragonEgg)
 
 	local position = self:getObj():GetPivot().Position
 	if not plotsManager:isPositionInMainPlotXZByUserId(position, self:getUserId()) then
+		return
+	end
+
+	if DragonEgg.hasReachedHatchingEggCap(self:getUserId(), self:getItemId()) then
 		return
 	end
 

@@ -2582,6 +2582,11 @@ function GameController.tryDropEggAtPosition(self: GameController, player: Playe
 		return
 	end
 
+	if DragonEgg.hasReachedHatchingEggCap(player.UserId) then
+		self:sendSystemMessageToPlayer(player, "Your plot already has the maximum number of eggs hatching")
+		return
+	end
+
 	local item = itemManager:getItemById(eggItemId)
 	if not item then
 		return
