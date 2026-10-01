@@ -28,6 +28,7 @@ local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local DragonIncome = require("@game/ReplicatedStorage/Shared/DragonIncome")
+local DragonSellValue = require("@game/ReplicatedStorage/Shared/DragonSellValue")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PivotToIndependentTween = require("@game/ReplicatedStorage/Shared/PivotToIndependentTween")
@@ -36,6 +37,7 @@ local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local dragonIncomeValues = require("@game/ServerScriptService/GameData/Control/DragonIncomeValues")
 local dragonProgressionData = require("@game/ServerScriptService/GameData/Control/DragonProgression")
+local dragonSellValues = require("@game/ServerScriptService/GameData/Control/DragonSellValues")
 
 local analyticsManager = require("./AnalyticsManager")
 
@@ -1615,6 +1617,7 @@ function ShadowDragon.notifyLoadComplete(
 	self:getObj():SetAttribute(Attributes.DRAGON_LEVEL, self.dragonLevel)
 	self:replicateXpAttributes()
 	self:recomputeIncome()
+	self:recomputeSellValue()
 	self:recomputeSize()
 
 	if self.stableSlotIndex ~= nil and offlineElapsedSec and offlineElapsedSec > 0 then
@@ -1873,6 +1876,7 @@ function ShadowDragon.addDragonXp(self: ShadowDragon, amount: number)
 	self:getObj():SetAttribute(Attributes.DRAGON_LEVEL, self.dragonLevel)
 	self:replicateXpAttributes()
 	self:recomputeIncome()
+	self:recomputeSellValue()
 	self:recomputeSize()
 
 	if self.stableSlotIndex ~= nil then
@@ -1911,10 +1915,33 @@ function ShadowDragon.getIncome(self: ShadowDragon): number
 	return self.income :: number
 end
 
+function ShadowDragon.recomputeSellValue(self: ShadowDragon)
+	local itemData = self:getItemData()
+
+	local tierIndex = itemData.rarity - enums.Rarity.COMMON
+	local rarityBaseValue = dragonSellValues.rarityBaseValue[tierIndex + 1] or 0
+	local elementMultiplier = dragonSellValues.elementMultiplier[itemData.primaryElement] or 1
+
+	local levelMult = DragonIncome.levelMult(dragonSellValues.levelSellMultPerLevel, self.dragonLevel)
+
+	self.sellValue = DragonSellValue.compute(rarityBaseValue, elementMultiplier, levelMult)
+
+	self:getObj():SetAttribute(Attributes.DRAGON_SELL_VALUE, self.sellValue)
+end
+
+function ShadowDragon.getSellValue(self: ShadowDragon): number
+	if self.sellValue == nil then
+		self:recomputeSellValue()
+	end
+
+	return self.sellValue :: number
+end
+
 function ShadowDragon.processMutationChanged(self: ShadowDragon)
 	super.processMutationChanged(self)
 
 	self:recomputeIncome()
+	self:recomputeSellValue()
 end
 
 function ShadowDragon.getStableSlotIndex(self: ShadowDragon): number?
@@ -2018,6 +2045,7 @@ function ShadowDragon.init(self: ShadowDragon)
 	collectionService:AddTag(self:getObj(), Tags.SHADOW_DRAGON)
 
 	self:recomputeIncome()
+	self:recomputeSellValue()
 end
 
 function ShadowDragon.notifyNewClone(self: ShadowDragon)
