@@ -1099,6 +1099,7 @@ export type ItemManager = {
 	notifyRemovePlayer: (self: ItemManager, player: Player) -> (),
 	removeAllItemsForPlayer: (self: ItemManager, player: Player) -> (),
 	setUseBillboards: (self: ItemManager, doUseBillboards: any) -> (),
+	wasRecentlyDestroyed: (self: ItemManager, itemId: number) -> boolean,
 }
 
 export type PlotsManager = {

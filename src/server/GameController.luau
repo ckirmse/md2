@@ -3252,7 +3252,9 @@ end
 
 function GameController.trySetBackpackIndex(self: GameController, player: Player, itemId: any, index: number?): ()
 	if not Validate.isItemIdForPlayer(player, itemId) then
-		print("invalid item by", player, "item id", itemId)
+		if not itemManager:wasRecentlyDestroyed(itemId :: number) then
+			print("invalid item by", player, "item id", itemId)
+		end
 		return
 	end
 

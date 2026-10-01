@@ -36,6 +36,11 @@ local itemTypeClassMap: { [string]: any } = {
 
 local mixinMap: any -- initialized by the game controller
 
+-- itemId -> true, for a few seconds after destroyItem; lets callers tell a stale client request
+-- apart from a genuinely bad one
+local recentlyDestroyedItemIds: { [number]: boolean } = {}
+local RECENTLY_DESTROYED_WINDOW_SEC = 5
+
 type ItemManagerFields = {
 	nextObjectId: number,
 	-- map from itemId to item for every item on this server, whether in player's backpack or in workspace
@@ -512,7 +517,16 @@ function ItemManager.destroyItem(self: ItemManager, item: Types.Item): boolean
 
 	item:destroy()
 
+	recentlyDestroyedItemIds[itemId] = true
+	task.delay(RECENTLY_DESTROYED_WINDOW_SEC, function()
+		recentlyDestroyedItemIds[itemId] = nil
+	end)
+
 	return true
+end
+
+function ItemManager.wasRecentlyDestroyed(self: ItemManager, itemId: number): boolean
+	return recentlyDestroyedItemIds[itemId] == true
 end
 
 function ItemManager.getSaveDataForPlayer(self: ItemManager, player: Player): any
