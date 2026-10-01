@@ -2583,7 +2583,17 @@ function GameController.tryDropEggAtPosition(self: GameController, player: Playe
 	end
 
 	if DragonEgg.hasReachedHatchingEggCap(player.UserId) then
-		self:sendSystemMessageToPlayer(player, "Your plot already has the maximum number of eggs hatching")
+		local egg = itemManager:getItemById(eggItemId)
+		if egg then
+			(egg :: Types.DragonEgg):cleanupCarrying()
+			egg:setUserId(player.UserId)
+
+			dragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
+			dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
+			egg:putInBackpack()
+		end
+
+		self:sendSystemMessageToPlayer(player, "Your plot already has the maximum number of eggs hatching, so the egg was placed in your backpack")
 		return
 	end
 
