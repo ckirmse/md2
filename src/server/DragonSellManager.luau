@@ -68,7 +68,7 @@ function DragonSellManager.trySellBackpackDragons(self: DragonSellManager, playe
 	end)
 
 	local playerData = gameController:getPlayerData(player)
-	local freeSlotCount = stableManager:getStableSlotCount() - utils.getTableSize(playerData:getStableSlots())
+	local freeSlotCount = stableManager:getStableSlotCount(player) - utils.getTableSize(playerData:getStableSlots())
 	local spareCount = math.clamp(freeSlotCount, 0, #dragons)
 
 	local soldCount = 0

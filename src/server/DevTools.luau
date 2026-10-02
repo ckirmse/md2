@@ -381,6 +381,44 @@ function DevTools.setPlotLuckLevel(self: DevTools, player: Player, level: any)
 	gameController:getPlayerData(player):setPlotLuckLevel(level)
 end
 
+function DevTools.dumpRebirth(self: DevTools, player: Player)
+	local playerData = gameController:getPlayerData(player)
+	local level = playerData:getRebirthLevel()
+	local nextLevelData = gameController:getRebirthLevelData(level + 1)
+	local coins = playerAttributesManager:get(player, PlayerAttributeKeys.COINS)
+
+	if not nextLevelData then
+		print(string.format(
+			"rebirth for %s: level %d, coins %d, no more rebirth levels available, stable slots %d",
+			player.Name,
+			level,
+			coins,
+			stableManager:getStableSlotCount(player)
+		))
+		return
+	end
+
+	local hasPet = itemManager:hasDragonWithName(player, nextLevelData.requiredPetName)
+	local petData = objectDataStore:getObjectDataByName(nextLevelData.requiredPetName)
+	local petDisplayName = (petData and petData.displayName) or nextLevelData.requiredPetName
+
+	print(string.format(
+		"rebirth for %s: level %d, coins %d, cost to rebirth: %d, required pet: %s (%s), found pet: %s, stable slots %d",
+		player.Name,
+		level,
+		coins,
+		nextLevelData.cost,
+		petDisplayName,
+		nextLevelData.requiredPetName,
+		tostring(hasPet),
+		stableManager:getStableSlotCount(player)
+	))
+end
+
+function DevTools.rebirth(self: DevTools, player: Player)
+	gameController:tryRebirth(player)
+end
+
 function DevTools.tryUpgradePlotLuck(self: DevTools, player: Player, toMax: any)
 	gameController:tryUpgradePlotLuck(player, toMax)
 end
@@ -571,7 +609,7 @@ function DevTools.equipAllDragons(self: DevTools, player: Player)
 		end
 
 		stableSlotIndex += 1
-		if stableSlotIndex > stableManager:getStableSlotCount() then
+		if stableSlotIndex > stableManager:getStableSlotCount(player) then
 			break
 		end
 

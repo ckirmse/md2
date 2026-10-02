@@ -113,6 +113,7 @@ local WelcomeBack = require("@game/ReplicatedStorage/Shared/WelcomeBack")
 local crystalTimeData = require("@game/ServerScriptService/GameData/Control/CrystalTime")
 local eatingTimeData = require("@game/ServerScriptService/GameData/Control/EatingTime")
 local plotLuckData = require("@game/ServerScriptService/GameData/Control/PlotLuck")
+local rebirthData = require("@game/ServerScriptService/GameData/Control/Rebirth")
 local starterOfferData = require("@game/ServerScriptService/GameData/Control/StarterOffer")
 local vanityAreasData = require("@game/ServerScriptService/GameData/Control/VanityAreas")
 
@@ -3545,6 +3546,49 @@ function GameController.getPlotLuckMultiplierForUserId(self: GameController, use
 	return self:getPlayerData(player):getPlotLuckMultiplier()
 end
 
+function GameController.getRebirthLevelData(self: GameController, level: number): any?
+	return rebirthData.levels[level]
+end
+
+function GameController.getRebirthLuckMultiplierForUserId(self: GameController, userId: number): number
+	local player = playersService:GetPlayerByUserId(userId)
+	if not player then
+		return 1
+	end
+
+	local rebirthLevel = self:getPlayerData(player):getRebirthLevel()
+	local levelData = self:getRebirthLevelData(rebirthLevel)
+	return levelData and levelData.luckMult or 1
+end
+
+function GameController.tryRebirth(self: GameController, player: Player): ()
+	local playerData = self:getPlayerData(player)
+	local level = playerData:getRebirthLevel()
+	local nextLevelData = self:getRebirthLevelData(level + 1)
+
+	if not nextLevelData then
+		self:sendSystemMessageToPlayer(player, "You cannot rebirth anymore yet")
+		return
+	end
+
+	if not itemManager:hasDragonWithName(player, nextLevelData.requiredPetName) then
+		self:sendSystemMessageToPlayer(player, "You need to find a dragon to rebirth")
+		return
+	end
+
+	if playerAttributesManager:get(player, PlayerAttributeKeys.COINS) < nextLevelData.cost then
+		self:sendSystemMessageToPlayer(player, string.format("You need %d coins to rebirth", nextLevelData.cost))
+		return
+	end
+
+	-- no yields between the checks above and this commit, so check-and-commit is atomic
+	playerAttributesManager:set(player, PlayerAttributeKeys.COINS, 0)
+	playerData:setPlotLuckLevel(1)
+	playerData:setRebirthLevel(level + 1)
+
+	self:sendSystemMessageToPlayer(player, string.format("Rebirthed! You are now Rebirth %d", level + 1))
+end
+
 function GameController.tryClaimWelcomeBackGift(self: GameController, player: Player): ()
 	--print("player trying to claim welcome back gift", player)
 
@@ -3683,6 +3727,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryCheckGroup", "tryCheckGroup")
 	self:addRemoteEventHandler("TryClaimWelcomeBackGift", "tryClaimWelcomeBackGift")
 	self:addRemoteEventHandler("TryClaimLuckBillboard", "tryClaimLuckBillboard")
+	self:addRemoteEventHandler("TryRebirth", "tryRebirth")
 	self:addRemoteEventHandler("TryUpgradePlotLuck", "tryUpgradePlotLuck")
 	self:addRemoteEventHandler("TryPickupEgg", "tryPickupEgg")
 	self:addRemoteEventHandler("TryDropEggAtPosition", "tryDropEggAtPosition")

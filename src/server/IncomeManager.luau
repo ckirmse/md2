@@ -5,6 +5,7 @@ IncomeManager.__index = IncomeManager
 
 local Types = require("./Types")
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local playerAttributesManager = require("./PlayerAttributesManager")
 local rideMixin = require("./RideMixin")
 
@@ -12,6 +13,11 @@ local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttrib
 
 local incomeData = require("@game/ServerScriptService/GameData/Control/Income")
 local dragonProgressionData = require("@game/ServerScriptService/GameData/Control/DragonProgression")
+
+local function rebirthIncomeMult(rebirthLevel: number): number
+	local levelData = gameController:getRebirthLevelData(rebirthLevel)
+	return levelData and levelData.incomeMult or 1
+end
 
 type IncomeManagerFields = {
 	-- fractional gold carried between 1 s ticks so nothing is lost to flooring
@@ -21,11 +27,14 @@ type IncomeManagerFields = {
 export type IncomeManager = typeof(setmetatable({} :: IncomeManagerFields, IncomeManager))
 
 function IncomeManager.getIncomePerSec(self: IncomeManager, playerData: Types.PlayerData): number
-	return playerData:getTotalDragonIncome() * incomeData.incomeCoeff
+	return playerData:getTotalDragonIncome() * incomeData.incomeCoeff * rebirthIncomeMult(playerData:getRebirthLevel())
 end
 
 function IncomeManager.getDragonIncomePerSec(self: IncomeManager, dragon: Types.ShadowDragon): number
-	return dragon:getIncome() * incomeData.incomeCoeff
+	local player = dragon:getPlayer()
+	local rebirthLevel = if player then gameController:getPlayerData(player):getRebirthLevel() else 0
+
+	return dragon:getIncome() * incomeData.incomeCoeff * rebirthIncomeMult(rebirthLevel)
 end
 
 function IncomeManager.tickPlayer(self: IncomeManager, player: Player, playerData: Types.PlayerData, elapsedSec: number)
@@ -76,6 +85,7 @@ end
 
 function IncomeManager.initClass(deps: any)
 	itemManager = deps.itemManager
+	gameController = deps.gameController
 end
 
 function IncomeManager.init(self: IncomeManager) end

@@ -15,14 +15,18 @@ local Level = workspace:WaitForChild("Level")
 local player = playersService.LocalPlayer :: Player
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
+local clientPlayerVariables = require("./ClientPlayerVariables")
 local clientRideController = require("./ClientRideController")
 local teleporters = require("./Teleporters")
 
-local STABLE_SLOT_COUNT = StableConfig.STABLE_SLOT_COUNT
+local function getStableSlotCount(): number
+	return StableConfig.STABLE_SLOT_COUNT + ((clientPlayerVariables:get(PlayerAttributeKeys.REBIRTH_LEVEL) :: number?) or 0)
+end
 local PROMPT_NAME = "StableSlotPrompt"
 local PROMPT_DISTANCE = 12
 local RESOLVE_ATTEMPTS = 40
@@ -74,7 +78,7 @@ function ClientStablesManager.refreshSlot(self: ClientStablesManager, slotIndex:
 end
 
 function ClientStablesManager.refreshAllSlots(self: ClientStablesManager)
-	for slotIndex = 1, STABLE_SLOT_COUNT do
+	for slotIndex = 1, getStableSlotCount() do
 		self:refreshSlot(slotIndex)
 	end
 end
@@ -169,7 +173,7 @@ function ClientStablesManager.resolveSlots(self: ClientStablesManager)
 		return
 	end
 
-	for slotIndex = 1, STABLE_SLOT_COUNT do
+	for slotIndex = 1, getStableSlotCount() do
 		local slotModel: Instance?
 		for _ = 1, RESOLVE_ATTEMPTS do
 			slotModel = utils.findFirstDescendantWithNameAndAttribute(

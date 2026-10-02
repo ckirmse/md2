@@ -21,15 +21,14 @@ local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
--- fixed for M1; M9 plot upgrades make this a per-player value from plotUpgrades.slots
-local STABLE_SLOT_COUNT = StableConfig.STABLE_SLOT_COUNT
+local BASE_STABLE_SLOT_COUNT = StableConfig.STABLE_SLOT_COUNT
 
 type StableManagerFields = {}
 
 export type StableManager = typeof(setmetatable({} :: StableManagerFields, StableManager))
 
-function StableManager.getStableSlotCount(self: StableManager): number
-	return STABLE_SLOT_COUNT
+function StableManager.getStableSlotCount(self: StableManager, player: Player): number
+	return BASE_STABLE_SLOT_COUNT + gameController:getPlayerData(player):getRebirthLevel()
 end
 
 function StableManager.getStableSlotAnchorCFrame(self: StableManager, userId: number, stableSlotIndex: number): CFrame?
@@ -61,7 +60,7 @@ function StableManager.tryEquipDragon(self: StableManager, player: Player, itemI
 	if
 		stableSlotIndex ~= math.floor(stableSlotIndex)
 		or stableSlotIndex < 1
-		or stableSlotIndex > STABLE_SLOT_COUNT
+		or stableSlotIndex > self:getStableSlotCount(player)
 	then
 		print("reject equip: stable slot out of range", player, stableSlotIndex)
 		return false
@@ -172,7 +171,7 @@ function StableManager.equipDragonOnLoad(self: StableManager, dragon: Types.Shad
 
 	if
 		stableSlotIndex < 1
-		or stableSlotIndex > STABLE_SLOT_COUNT
+		or stableSlotIndex > self:getStableSlotCount(player)
 		or playerData:getStableDragonInSlot(stableSlotIndex) ~= nil
 	then
 		warn("dropping equipped dragon with a bad/duplicate saved stable slot", player, stableSlotIndex)

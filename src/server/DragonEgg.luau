@@ -51,8 +51,9 @@ end
 
 function DragonEgg.computeLuckMultiplier(eggBaseLuck: number?, userId: number): number
 	local plotLuckMultiplier = gameController:getPlotLuckMultiplierForUserId(userId)
+	local rebirthLuckMultiplier = gameController:getRebirthLuckMultiplierForUserId(userId)
 
-	return (eggBaseLuck or 1) * plotLuckMultiplier
+	return (eggBaseLuck or 1) * plotLuckMultiplier * rebirthLuckMultiplier
 end
 
 function DragonEgg.hasReachedHatchingEggCap(userId: number, excludeItemId: number?): boolean

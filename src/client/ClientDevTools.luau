@@ -350,6 +350,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			if Iris.Button({ "Recreate All Shadow Casters" }).clicked() then
 				clientShadowManager:recreateAllCasters()
 			end
+			if Iris.Button({ "Dump Server Trading State" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpServerTradingState")
+			end
 			Iris.SeparatorText({ "Dragons" })
 			if Iris.Button({ "Dump Dragon Income" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpDragonIncome")
@@ -459,9 +462,14 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("tryUpgradePlotLuck", true)
 			end
 
-			if Iris.Button({ "Dump Server Trading State" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("dumpServerTradingState")
+			Iris.SeparatorText({ "Rebirth" })
+			if Iris.Button({ "Dump Rebirth" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpRebirth")
 			end
+			if Iris.Button({ "Rebirth" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("rebirth")
+			end
+
 			Iris.SeparatorText({ "Coins" })
 			if Iris.Button({ "Reset Coins" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("resetCoins")

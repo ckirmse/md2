@@ -96,6 +96,7 @@ type PlayerDataFields = {
 	luckTimer: any,
 	plotLuckLevel: number,
 	lastPlotLuckDisplayCoins: number?,
+	rebirthLevel: number,
 	latestPromptGroupTime: number,
 	tradeRequestCount: number,
 	pendingWelcomeBackCoinCount: number,
@@ -986,6 +987,15 @@ end
 function PlayerData.setPlotLuckLevel(self: PlayerData, level: number)
 	self.plotLuckLevel = level
 	self:updatePlotLuckDisplay()
+end
+
+function PlayerData.getRebirthLevel(self: PlayerData): number
+	return self.rebirthLevel
+end
+
+function PlayerData.setRebirthLevel(self: PlayerData, level: number)
+	self.rebirthLevel = level
+	playerAttributesManager:set(self.player, PlayerAttributeKeys.REBIRTH_LEVEL, level)
 end
 
 function PlayerData.updatePlotLuckButtonState(self: PlayerData, button: any, cost: number?, coins: number)
@@ -1929,6 +1939,7 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 
 	self.hasClaimedGroupLuck = (saveData and saveData.hasClaimedGroupLuck) or false
 	self.plotLuckLevel = (saveData and saveData.plotLuckLevel) or 1
+	self.rebirthLevel = (saveData and saveData.rebirthLevel) or 0
 	self:updatePlotLuckDisplay()
 	if self.hasClaimedGroupLuck then
 		self.isInCommunityGroup = true
@@ -2259,6 +2270,7 @@ function PlayerData.getSaveData(self: PlayerData): any
 	saveData.latestPromptGroupTime = self.latestPromptGroupTime
 	saveData.hasClaimedGroupLuck = self.hasClaimedGroupLuck
 	saveData.plotLuckLevel = self.plotLuckLevel
+	saveData.rebirthLevel = self.rebirthLevel
 
 	return saveData
 end
@@ -3237,6 +3249,7 @@ function PlayerData.new(player: Player?): PlayerData
 	self.isInCommunityGroup = false
 	self.hasClaimedGroupLuck = false
 	self.plotLuckLevel = 1
+	self.rebirthLevel = 0
 
 	self.isInPlot = false
 

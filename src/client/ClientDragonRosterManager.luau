@@ -8,10 +8,12 @@ local RunService = game:GetService("RunService")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local ItemIcons = require("@game/ReplicatedStorage/Shared/ItemIcons")
+local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
+local clientPlayerVariables = require("./ClientPlayerVariables")
 local overlayTracker = require("./OverlayTracker")
 local Types = require("./Types")
 
@@ -168,7 +170,8 @@ function ClientDragonRosterManager.refreshList(self: ClientDragonRosterManager)
 		refreshCardRecord(cardRecord, dragon)
 	end
 
-	self.rosterAmountText.Text = string.format("%d/%d", #dragons, StableConfig.STABLE_SLOT_COUNT)
+	local stableSlotCount = StableConfig.STABLE_SLOT_COUNT + ((clientPlayerVariables:get(PlayerAttributeKeys.REBIRTH_LEVEL) :: number?) or 0)
+	self.rosterAmountText.Text = string.format("%d/%d", #dragons, stableSlotCount)
 end
 
 function ClientDragonRosterManager.beginRoster(self: ClientDragonRosterManager)

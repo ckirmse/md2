@@ -131,6 +131,21 @@ function ItemManager.getRidableDragonsForPlayer(self: ItemManager, player: Playe
 	return retval
 end
 
+function ItemManager.hasDragonWithName(self: ItemManager, player: Player, itemName: string): boolean
+	for _, item in self.items do
+		if item:getType() ~= "shadowDragon" then
+			continue
+		end
+		if item:getUserId() ~= player.UserId then
+			continue
+		end
+		if item:getItemName() == itemName then
+			return true
+		end
+	end
+	return false
+end
+
 function ItemManager.getGrowingCrops(self: ItemManager): { Types.Crop }
 	local retval = {}
 	for _, item in self.items do
