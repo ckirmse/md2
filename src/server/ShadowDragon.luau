@@ -1837,6 +1837,10 @@ function ShadowDragon.getNextLevelXp(self: ShadowDragon, level: number): number?
 	return math.floor(dragonProgressionData.baseXpPerLevel * dragonProgressionData.xpGrowthRate ^ (level - 1))
 end
 
+function ShadowDragon.isAtMaxLevel(self: ShadowDragon): boolean
+	return self.dragonLevel >= dragonProgressionData.maxDragonLevel
+end
+
 function ShadowDragon.replicateXpAttributes(self: ShadowDragon)
 	self:getObj():SetAttribute(Attributes.DRAGON_XP, self.dragonXp)
 	self:getObj():SetAttribute(Attributes.DRAGON_NEXT_LEVEL_XP, self:getNextLevelXp(self.dragonLevel))

@@ -20,6 +20,7 @@ local Crystal = require("./Crystal")
 local customerTools = require("./CustomerTools")
 local devTools = require("./DevTools")
 local DragonEgg = require("./DragonEgg")
+local dragonFuseManager = require("./DragonFuseManager")
 local dragonSellManager = require("./DragonSellManager")
 local firstSessionOfferManager = require("./FirstSessionOfferManager")
 local ftueManager = require("./FtueManager")
@@ -2922,6 +2923,15 @@ function GameController.trySellDragons(self: GameController, player: Player, sel
 	end
 end
 
+function GameController.tryFuseDragons(self: GameController, player: Player, itemId1: any, itemId2: any): ()
+	if not Validate.areItemIdsForPlayer(player, { itemId1, itemId2 }) then
+		print("invalid item ids by", player, itemId1, itemId2)
+		return
+	end
+
+	dragonFuseManager:tryFuseDragonsAtMaxLevel(player, itemId1, itemId2)
+end
+
 function GameController.trySetFtueStep(self: GameController, player: Player, stepName: any): ()
 	--print("got try set ftue next step for player", player)
 
@@ -3623,6 +3633,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryMergeItemsWithHeldItem", "tryMergeItemsWithHeldItem")
 	self:addRemoteEventHandler("TryMergeItemsWithRidingItem", "tryMergeItemsWithRidingItem")
 	self:addRemoteEventHandler("TryFuseAllDragons", "tryFuseAllDragons")
+	self:addRemoteEventHandler("TryFuseDragons", "tryFuseDragons")
 	self:addRemoteEventHandler("TrySellDragons", "trySellDragons")
 	-- legacy/dormant (2026-august-20): gem-selling removed, see trySellGems definition
 	-- self:addRemoteEventHandler("TrySellGems", "trySellGems")
@@ -4006,6 +4017,7 @@ local function initClasses(gameController: GameController): ()
 
 	-- SellMixin and VerticalMixin no longer have an initClass, so the mixinData loop is gone
 	mergeMixin.initClass(deps)
+	dragonFuseManager.initClass(deps)
 	dragonSellManager.initClass(deps)
 	pickupMixin.initClass(deps)
 	rideMixin.initClass(deps)
