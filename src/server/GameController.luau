@@ -2910,10 +2910,6 @@ function GameController.tryUnequipDragon(self: GameController, player: Player, s
 	stableManager:tryUnequipDragon(player, stableSlotIndex)
 end
 
-function GameController.tryFuseAllDragons(self: GameController, player: Player): ()
-	mergeMixin:performFuseAllDragonsForPlayer(player)
-end
-
 function GameController.trySellDragons(self: GameController, player: Player, sellType: any): ()
 	if sellType == "ridden" then
 		dragonSellManager:trySellRiddenDragon(player)
@@ -3676,7 +3672,6 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryBuyMaxItemName", "tryBuyMaxItemName")
 	self:addRemoteEventHandler("TryMergeItemsWithHeldItem", "tryMergeItemsWithHeldItem")
 	self:addRemoteEventHandler("TryMergeItemsWithRidingItem", "tryMergeItemsWithRidingItem")
-	self:addRemoteEventHandler("TryFuseAllDragons", "tryFuseAllDragons")
 	self:addRemoteEventHandler("TryFuseDragons", "tryFuseDragons")
 	self:addRemoteEventHandler("TrySellDragons", "trySellDragons")
 	-- legacy/dormant (2026-august-20): gem-selling removed, see trySellGems definition

@@ -43,8 +43,4 @@ Satchel:GetSlotFilledEvent().Event:Connect(
 	end
 )
 
-Satchel:GetFuseAllClickedEvent().Event:Connect(function()
-	RemoteEvents.TryFuseAllDragons:FireServer()
-end)
-
 return Satchel

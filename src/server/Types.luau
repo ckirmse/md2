@@ -1018,7 +1018,6 @@ export type GameController = {
 	tryEquipAbility: (self: GameController, player: Player, ability: any) -> (),
 	tryEquipDragon: (self: GameController, player: Player, itemId: any, stableSlotIndex: any) -> (),
 	tryEquipVanityComponent: (self: GameController, player: Player, vanityPlacement: any, vanityComponentName: any) -> (),
-	tryFuseAllDragons: (self: GameController, player: Player) -> (),
 	tryFuseDragons: (self: GameController, player: Player, itemId1: any, itemId2: any) -> (),
 	tryGrantPlayerRobuxProductId: (self: GameController, player: Player, productId: number) -> boolean,
 	tryHatchEgg: (self: GameController, player: Player, eggItemId: any) -> (),

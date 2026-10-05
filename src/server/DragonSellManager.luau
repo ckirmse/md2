@@ -18,8 +18,7 @@ type DragonSellManagerFields = {}
 export type DragonSellManager = typeof(setmetatable({} :: DragonSellManagerFields, DragonSellManager))
 
 -- dragons not stable-slotted and not being ridden; stable-slotted and ridden dragons are always
--- parented to workspace, so getItemsNotOnGroundByUserId already excludes both (same filter
--- MergeMixin.getBackpackDragonGroups uses)
+-- parented to workspace, so getItemsNotOnGroundByUserId already excludes both
 function DragonSellManager.getBackpackDragons(self: DragonSellManager, player: Player): { Types.ShadowDragon }
 	local dragons = {}
 	for _, item in itemManager:getItemsNotOnGroundByUserId(player.UserId) do
