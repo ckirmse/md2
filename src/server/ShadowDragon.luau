@@ -1804,6 +1804,16 @@ function ShadowDragon.destroy(self: ShadowDragon)
 		end
 	end
 
+	if self.stableSlotIndex ~= nil then
+		local player = self:getPlayer()
+		if player then
+			local playerData = gameController:getPlayerData(player)
+			if playerData then
+				playerData:clearStableSlot(self.stableSlotIndex)
+			end
+		end
+	end
+
 	super.destroy(self)
 end
 
