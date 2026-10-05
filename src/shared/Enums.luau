@@ -69,11 +69,6 @@ module = {
 		OPENED = 2,
 	},
 
-	NestState = {
-		IDLE = 1,
-		DEPLETED = 2,
-	},
-
 	-- if you add more of these you must also update the table in GameController
 	PrimaryElements = {
 		NONE = 0,

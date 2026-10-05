@@ -53,9 +53,7 @@ module = {
 	CARRIED_EGG_ITEM_ID = "CarriedEggItemId",
 
 	OPEN_COMPLETE_TIME = "OpenCompleteTime",
-	NEST_RESPAWN_COMPLETE_TIME = "NestRespawnCompleteTime",
 	HATCH_COMPLETE_TIME = "HatchCompleteTime",
-	NEST_NAME = "NestName",
 	SOURCE_BIOME_INDEX = "SourceBiomeIndex",
 	BIOME_INDEX = "BiomeIndex",
 	STUNNED_UNTIL = "StunnedUntil",

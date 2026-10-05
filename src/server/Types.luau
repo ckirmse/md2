@@ -637,33 +637,6 @@ export type Node = BaseObject & {
 	setState: (self: Node, state: number?, data: any) -> (),
 }
 
-export type NestFields = BaseObjectFields & {
-	state: number?,
-	eggItemId: number?,
-	respawnTimer: Timer?,
-}
-
--- inherited and overridden members come from BaseObject; only members new to Nest are listed here
-export type Nest = BaseObject & {
-	state: number?,
-	eggItemId: number?,
-	respawnTimer: Timer?,
-
-	beginDepleted: (self: Nest) -> (),
-	beginIdle: (self: Nest) -> (),
-	beginState: (self: Nest, state: number?) -> (),
-	cleanupDepleted: (self: Nest) -> (),
-	cleanupIdle: (self: Nest) -> (),
-	endState: (self: Nest) -> (),
-	getBiomeIndex: (self: Nest) -> number,
-	getEggItemId: (self: Nest) -> number?,
-	getEggSpawnPosition: (self: Nest) -> Vector3,
-	isPlayerCloseEnoughToPickupWhileRiding: (self: Nest, player: Player) -> boolean,
-	notifyEggTaken: (self: Nest) -> (),
-	notifyRefill: (self: Nest) -> (),
-	setState: (self: Nest, state: number?) -> (),
-}
-
 export type ScatterZoneFields = BaseObjectFields & {
 	spawnedEggItemIds: { [number]: boolean },
 	refillTimer: Timer?,
@@ -827,9 +800,6 @@ export type ChestObjectType = ObjectType
 
 -- inherited and overridden members come from ObjectType; only members new to CritterObjectType are listed here
 export type CritterObjectType = ObjectType
-
--- inherited and overridden members come from ObjectType; only members new to NestObjectType are listed here
-export type NestObjectType = ObjectType
 
 -- inherited and overridden members come from ObjectType; only members new to ScatterZoneObjectType are listed here
 export type ScatterZoneObjectType = ObjectType
@@ -1032,7 +1002,6 @@ export type GameController = {
 	tryOpenChest: (self: GameController, player: Player, objectId: number, heldItemId: any) -> (),
 	tryOpenCrate: (self: GameController, player: Player, crateItemId: any) -> (),
 	tryOpenPack: (self: GameController, player: Player, packItemId: any) -> (),
-	tryPickupEgg: (self: GameController, player: Player, objectId: any) -> (),
 	tryPickupItem: (self: GameController, player: Player, itemId: any) -> (),
 	tryPickupScatteredEgg: (self: GameController, player: Player, itemId: any) -> (),
 	tryPlaceLuckBillboardForPlayer: (self: GameController, player: Player) -> (),

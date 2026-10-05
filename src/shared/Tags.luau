@@ -54,9 +54,6 @@ module = {
 	CRITTER = "Critter",
 	CRITTER_CASTER = "CritterCaster",
 
-	NEST = "Nest",
-	NEST_SPAWN = "NestSpawn",
-
 	EGG_SCATTER_ZONE = "EggScatterZone",
 }
 

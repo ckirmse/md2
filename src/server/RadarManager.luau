@@ -32,7 +32,7 @@ type RadarManagerFields = {
 export type RadarManager = typeof(setmetatable({} :: RadarManagerFields, RadarManager))
 
 -- source-agnostic: finds the nearest unowned, not-currently-carried dragon egg matching rarity
--- and range -- works the same whether the egg came from a Nest, a ScatterZone, or was dropped
+-- and range -- works the same whether the egg came from a ScatterZone or was dropped
 function RadarManager.findNearestAvailableEgg(self: RadarManager, position: Vector3, rarity: number, maxRange: number): Types.DragonEgg?
 	local closestEgg: Types.DragonEgg?
 	local closestDistance = math.huge

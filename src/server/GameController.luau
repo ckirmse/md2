@@ -37,8 +37,6 @@ local ItemMover = require("./ItemMover")
 local lootTableManager = require("./LootTableManager")
 local MItem = require("./MItem")
 local mergeMixin = require("./MergeMixin")
-local Nest = require("./Nest")
-local nestManager = require("./NestManager")
 local Radar = require("./Radar")
 local radarManager = require("./RadarManager")
 local Node = require("./Node")
@@ -2466,46 +2464,6 @@ function GameController.trySetRidingItemCFrame(self: GameController, player: Pla
 	dragon:trySetRidingItemCFrame(time, cframe)
 end
 
-function GameController.tryPickupEgg(self: GameController, player: Player, objectId: any): ()
-	if not rideMixin:isPlayerRiding(player) then
-		return
-	end
-
-	local nest = nestManager:getNestByObjectId(objectId)
-	if not nest then
-		return
-	end
-
-	if not nest:isPlayerCloseEnoughToPickupWhileRiding(player) then
-		return
-	end
-
-	local eggItemId = nest:getEggItemId()
-	if not eggItemId then
-		return
-	end
-
-	local item = itemManager:getItemById(eggItemId)
-	if not item then
-		return
-	end
-
-	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if not dragon then
-		return
-	end
-
-	nest:notifyEggTaken()
-
-	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", false)
-	utils.setPropertyTreeBaseParts(item:getObj(), "CanCollide", false)
-
-	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, true)
-	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, eggItemId)
-
-	;(item :: Types.DragonEgg):beginCarrying(dragon)
-end
-
 function GameController.tryPickupScatteredEgg(self: GameController, player: Player, itemId: any): ()
 	if not rideMixin:isPlayerRiding(player) then
 		return
@@ -3724,7 +3682,6 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryClaimLuckBillboard", "tryClaimLuckBillboard")
 	self:addRemoteEventHandler("TryRebirth", "tryRebirth")
 	self:addRemoteEventHandler("TryUpgradePlotLuck", "tryUpgradePlotLuck")
-	self:addRemoteEventHandler("TryPickupEgg", "tryPickupEgg")
 	self:addRemoteEventHandler("TryDropEggAtPosition", "tryDropEggAtPosition")
 	self:addRemoteEventHandler("TryDropEggFromBasket", "tryDropEggFromBasket")
 	self:addRemoteEventHandler("TryPickupScatteredEgg", "tryPickupScatteredEgg")
@@ -3958,7 +3915,6 @@ function GameController.init(self: GameController): ()
 	mutationStoreManager:init()
 	vanityStoreManager:init()
 	islandManager:init()
-	nestManager:init()
 	scatterZoneManager:init()
 	stableManager:init()
 
@@ -4017,7 +3973,6 @@ local function initClasses(gameController: GameController): ()
 	customerTools.initClass(deps)
 	indexManager.initClass(deps)
 	islandManager.initClass(deps)
-	nestManager.initClass(deps)
 	radarManager.initClass(deps)
 	scatterZoneManager.initClass(deps)
 	plotsManager.initClass(deps)
@@ -4039,7 +3994,6 @@ local function initClasses(gameController: GameController): ()
 	Node.initClass(deps)
 	Chest.initClass(deps)
 	Critter.initClass(deps)
-	Nest.initClass(deps)
 	ScatterZone.initClass(deps)
 
 	ItemMover.initClass(deps)

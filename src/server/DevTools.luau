@@ -14,7 +14,6 @@ local indexManager = require("./IndexManager")
 local itemManager = require("./ItemManager")
 local lootTableManager = require("./LootTableManager")
 local mergeMixin = require("./MergeMixin")
-local nestManager = require("./NestManager")
 local objectDataStore = require("./ObjectDataStore")
 local playerAttributesManager = require("./PlayerAttributesManager")
 local plotsManager = require("./PlotsManager")
@@ -481,25 +480,6 @@ function DevTools.forceExpireCarry(self: DevTools, player: Player, itemId: any)
 	item:notifyCarryExpired()
 end
 
-function DevTools.dumpNests(self: DevTools, player: Player)
-	for _, nest in nestManager:getAllNests() do
-		local eggItemId = nest:getEggItemId()
-		local eggRarity = if eggItemId then itemManager:getItemById(eggItemId):getObj():GetAttribute(Attributes.RARITY) else nil
-
-		print(
-			"nest",
-			nest:getObjectId(),
-			nest:getObjectName(),
-			"state",
-			enums.getName(enums.NestState, nest.state),
-			"egg rarity",
-			if eggRarity then enums.getName(enums.Rarity, eggRarity) else "none",
-			"respawns at",
-			nest:getObj():GetAttribute(Attributes.NEST_RESPAWN_COMPLETE_TIME)
-		)
-	end
-end
-
 function DevTools.forceActivateRadar(self: DevTools, player: Player, itemId: any)
 	if not Validate.isItemIdForPlayer(player, itemId) then
 		print("invalid item id by", player, "item id", itemId)
@@ -516,25 +496,6 @@ function DevTools.forceActivateRadar(self: DevTools, player: Player, itemId: any
 	radar:notifyToolActivated()
 end
 
-function DevTools.forceTakeNestEgg(self: DevTools, player: Player, objectId: any)
-	local nest = nestManager:getNestByObjectId(objectId)
-	if not nest then
-		print("no nest with object id", objectId)
-		return
-	end
-
-	nest:notifyEggTaken()
-end
-
-function DevTools.forceRefillNest(self: DevTools, player: Player, objectId: any)
-	local nest = nestManager:getNestByObjectId(objectId)
-	if not nest then
-		print("no nest with object id", objectId)
-		return
-	end
-
-	nest:notifyRefill()
-end
 
 function DevTools.dumpScatterZones(self: DevTools, player: Player)
 	for _, zone in scatterZoneManager:getAllZones() do

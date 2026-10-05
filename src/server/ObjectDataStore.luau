@@ -13,7 +13,6 @@ local DragonEggObjectType = require("./DragonEggObjectType")
 local FoodObjectType = require("./FoodObjectType")
 local GemObjectType = require("./GemObjectType")
 local KeyObjectType = require("./KeyObjectType")
-local NestObjectType = require("./NestObjectType")
 local NodeObjectType = require("./NodeObjectType")
 local PackObjectType = require("./PackObjectType")
 local RadarObjectType = require("./RadarObjectType")
@@ -40,7 +39,6 @@ local dataTypeClassMap: { [string]: any } = {
 	chest = ChestObjectType,
 	crate = CrateObjectType,
 	critter = CritterObjectType,
-	nest = NestObjectType,
 	node = NodeObjectType,
 	scatterZone = ScatterZoneObjectType,
 }
