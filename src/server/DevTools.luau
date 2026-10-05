@@ -1001,6 +1001,7 @@ function DevTools.resetFullPlayerState(self: DevTools, player: Player)
 	local playerData = gameController:getPlayerData(player)
 	playerData:resetStats()
 	playerData:resetLuckBillboard()
+	playerData:setRebirthLevel(0)
 
 	gameController:notifyPlayerLevelChanged(player)
 

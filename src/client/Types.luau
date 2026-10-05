@@ -615,6 +615,7 @@ export type ScreenGuiManager = {
 	updateLuckDisplay: (self: ScreenGuiManager) -> (),
 	updateMergeAllButton: (self: ScreenGuiManager) -> (),
 	updatePositionPutAwayButton: (self: ScreenGuiManager) -> (),
+	updateRebirthFrameVisibility: (self: ScreenGuiManager) -> (),
 	updateText: (self: ScreenGuiManager) -> (),
 }
 

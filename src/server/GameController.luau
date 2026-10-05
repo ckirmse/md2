@@ -3785,6 +3785,7 @@ function GameController.processPollTimer(self: GameController): ()
 
 		incomeManager:tickPlayer(player, playerData, elapsedSec)
 		playerData:tickPlotLuckDisplay()
+		playerData:tickRebirthDisplay()
 		radarManager:tickPlayer(player)
 
 		if doResetTradeRequestCount then

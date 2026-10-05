@@ -13,7 +13,7 @@ local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
-local clientPlayerVariables = require("./ClientPlayerVariables")
+local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
 local overlayTracker = require("./OverlayTracker")
 local Types = require("./Types")
 
@@ -170,7 +170,7 @@ function ClientDragonRosterManager.refreshList(self: ClientDragonRosterManager)
 		refreshCardRecord(cardRecord, dragon)
 	end
 
-	local stableSlotCount = StableConfig.STABLE_SLOT_COUNT + ((clientPlayerVariables:get(PlayerAttributeKeys.REBIRTH_LEVEL) :: number?) or 0)
+	local stableSlotCount = StableConfig.STABLE_SLOT_COUNT + ((clientPlayerAttributesManager:get(PlayerAttributeKeys.REBIRTH_LEVEL) :: number?) or 0)
 	self.rosterAmountText.Text = string.format("%d/%d", #dragons, stableSlotCount)
 end
 

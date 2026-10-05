@@ -21,7 +21,7 @@ local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
-local clientPlayerVariables = require("./ClientPlayerVariables")
+local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
 local clientRideController = require("./ClientRideController")
 local overlayTracker = require("./OverlayTracker")
 local ProximityThresholdTracker = require("./ProximityThresholdTracker")
@@ -117,7 +117,7 @@ local function getBackpackSellPreview(ownedDragons: { any }, ridingObj: any): (n
 			> (b:GetAttribute(Attributes.DRAGON_INCOME_PER_SEC) :: number? or 0)
 	end)
 
-	local stableSlotCount = StableConfig.STABLE_SLOT_COUNT + ((clientPlayerVariables:get(PlayerAttributeKeys.REBIRTH_LEVEL) :: number?) or 0)
+	local stableSlotCount = StableConfig.STABLE_SLOT_COUNT + ((clientPlayerAttributesManager:get(PlayerAttributeKeys.REBIRTH_LEVEL) :: number?) or 0)
 	local freeSlotCount = stableSlotCount - occupiedSlotCount
 	local spareCount = math.clamp(freeSlotCount, 0, #backpackDragons)
 

@@ -97,6 +97,7 @@ type PlayerDataFields = {
 	plotLuckLevel: number,
 	lastPlotLuckDisplayCoins: number?,
 	rebirthLevel: number,
+	lastRebirthDisplayCoins: number?,
 	latestPromptGroupTime: number,
 	tradeRequestCount: number,
 	pendingWelcomeBackCoinCount: number,
@@ -996,6 +997,40 @@ end
 function PlayerData.setRebirthLevel(self: PlayerData, level: number)
 	self.rebirthLevel = level
 	playerAttributesManager:set(self.player, PlayerAttributeKeys.REBIRTH_LEVEL, level)
+	self:updateRebirthDisplay()
+end
+
+function PlayerData.updateRebirthDisplay(self: PlayerData)
+	local level = self.rebirthLevel
+	local currentData = gameController:getRebirthLevelData(level)
+	local nextData = gameController:getRebirthLevelData(level + 1)
+
+	playerAttributesManager:set(
+		self.player,
+		PlayerAttributeKeys.REBIRTH_CURRENT_INCOME_MULT,
+		currentData and currentData.incomeMult or 1
+	)
+	playerAttributesManager:set(
+		self.player,
+		PlayerAttributeKeys.REBIRTH_CURRENT_LUCK_MULT,
+		currentData and currentData.luckMult or 1
+	)
+	playerAttributesManager:set(self.player, PlayerAttributeKeys.REBIRTH_NEXT_COST, nextData and nextData.cost or nil)
+	playerAttributesManager:set(
+		self.player,
+		PlayerAttributeKeys.REBIRTH_NEXT_INCOME_MULT,
+		nextData and nextData.incomeMult or nil
+	)
+	playerAttributesManager:set(
+		self.player,
+		PlayerAttributeKeys.REBIRTH_NEXT_LUCK_MULT,
+		nextData and nextData.luckMult or nil
+	)
+	playerAttributesManager:set(
+		self.player,
+		PlayerAttributeKeys.REBIRTH_NEXT_REQUIRED_PET_NAME,
+		nextData and nextData.requiredPetName or nil
+	)
 end
 
 function PlayerData.updatePlotLuckButtonState(self: PlayerData, button: any, cost: number?, coins: number)
@@ -1024,6 +1059,16 @@ function PlayerData.tickPlotLuckDisplay(self: PlayerData)
 	end
 
 	self:updatePlotLuckDisplay()
+end
+
+function PlayerData.tickRebirthDisplay(self: PlayerData)
+	local coins = playerAttributesManager:get(self.player, PlayerAttributeKeys.COINS)
+	if coins == self.lastRebirthDisplayCoins then
+		return
+	end
+
+	self.lastRebirthDisplayCoins = coins
+	self:updateRebirthDisplay()
 end
 
 function PlayerData.updatePlotLuckDisplay(self: PlayerData)
@@ -1941,6 +1986,7 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 	self.plotLuckLevel = (saveData and saveData.plotLuckLevel) or 1
 	self.rebirthLevel = (saveData and saveData.rebirthLevel) or 0
 	self:updatePlotLuckDisplay()
+	self:updateRebirthDisplay()
 	if self.hasClaimedGroupLuck then
 		self.isInCommunityGroup = true
 		self:updateLuckInGuiData()

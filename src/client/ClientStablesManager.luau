@@ -20,12 +20,12 @@ local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
-local clientPlayerVariables = require("./ClientPlayerVariables")
+local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
 local clientRideController = require("./ClientRideController")
 local teleporters = require("./Teleporters")
 
 local function getStableSlotCount(): number
-	return StableConfig.STABLE_SLOT_COUNT + ((clientPlayerVariables:get(PlayerAttributeKeys.REBIRTH_LEVEL) :: number?) or 0)
+	return StableConfig.STABLE_SLOT_COUNT + ((clientPlayerAttributesManager:get(PlayerAttributeKeys.REBIRTH_LEVEL) :: number?) or 0)
 end
 local PROMPT_NAME = "StableSlotPrompt"
 local PROMPT_DISTANCE = 12

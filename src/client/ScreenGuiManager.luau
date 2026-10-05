@@ -22,6 +22,7 @@ local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local clientDragonRosterManager = require("./ClientDragonRosterManager")
+local clientRebirthManager = require("./ClientRebirthManager")
 local clientLuckInfoManager = require("./ClientLuckInfoManager")
 local clientOptionsManager = require("./ClientOptionsManager")
 local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
@@ -68,6 +69,7 @@ type ScreenGuiManagerFields = {
 	indexFrame: any?,
 	isIndexFeatureEnabled: boolean,
 	dragonRosterFrame: any?,
+	rebirthFrame: any?,
 	isInPlot: boolean,
 	isBackpackEnabled: boolean?,
 	gemsFrameBasePosition: UDim2,
@@ -1122,6 +1124,14 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 		clientDragonRosterManager:toggleRoster()
 	end)
 
+	local rebirthFrame: any = ScreenGui:WaitForChild("RebirthFrame")
+	self.rebirthFrame = rebirthFrame
+	rebirthFrame.Visible = true
+
+	rebirthFrame:WaitForChild("RebirthButton").Activated:Connect(function()
+		clientRebirthManager:toggleRebirth()
+	end)
+
 	local friendLuckBoostFrame = ScreenGui:FindFirstChild("FriendLuckBoostFrame")
 	if friendLuckBoostFrame then
 		friendLuckBoostFrame.Visible = not clientFtueManager:isFtueActive()
@@ -1228,6 +1238,7 @@ function ScreenGuiManager.new(): ScreenGuiManager
 	self.isIndexFeatureEnabled = true
 
 	self.dragonRosterFrame = nil
+	self.rebirthFrame = nil
 	self.isInPlot = false
 
 	local ScreenGui: any = PlayerGui:WaitForChild("ScreenGui")
