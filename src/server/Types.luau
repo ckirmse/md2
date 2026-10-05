@@ -307,6 +307,7 @@ export type DragonEgg = MItem & {
 	pauseCarrying: (self: DragonEgg) -> (),
 	cleanupCarrying: (self: DragonEgg) -> (),
 	notifyCarryExpired: (self: DragonEgg) -> (),
+	refreshLuckDisplay: (self: DragonEgg) -> (),
 }
 
 -- the per-state scratch tables (movingToEat, eating, opening, ...) are dynamic bags that get reset

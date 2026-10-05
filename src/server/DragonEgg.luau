@@ -56,6 +56,14 @@ function DragonEgg.computeLuckMultiplier(eggBaseLuck: number?, userId: number): 
 	return (eggBaseLuck or 1) * plotLuckMultiplier * rebirthLuckMultiplier
 end
 
+function DragonEgg.refreshLuckDisplay(self: DragonEgg)
+	local itemData = self:getItemData()
+	self:getObj():SetAttribute(
+		Attributes.NAME_PLATE_EXTRA_TEXT,
+		string.format("Luck: %g", DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck, self:getUserId()))
+	)
+end
+
 function DragonEgg.hasReachedHatchingEggCap(userId: number, excludeItemId: number?): boolean
 	local count = 0
 	for _, item in itemManager:getItemsOnGroundByUserId(userId) do
@@ -178,10 +186,7 @@ end
 function DragonEgg.notifyPlacedInPlot(self: DragonEgg)
 	self:cleanupCarrying()
 
-	self:getObj():SetAttribute(
-		Attributes.NAME_PLATE_EXTRA_TEXT,
-		string.format("Luck: %g", DragonEgg.computeLuckMultiplier(self:getItemData().eggBaseLuck, self:getUserId()))
-	)
+	self:refreshLuckDisplay()
 
 	if self.hatchTimer then
 		warn("egg is already incubating, ignoring second placement", self:getItemName())
@@ -456,10 +461,7 @@ function DragonEgg.notifyNewClone(self: DragonEgg)
 
 	self:getObj():SetAttribute(Attributes.PRIMARY_ELEMENT, itemData.primaryElement)
 	self:getObj():SetAttribute(Attributes.EGG_BASE_LUCK, itemData.eggBaseLuck or 1)
-	self:getObj():SetAttribute(
-		Attributes.NAME_PLATE_EXTRA_TEXT,
-		string.format("Luck: %g", DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck, self:getUserId()))
-	)
+	self:refreshLuckDisplay()
 
 	self.eggSize = rollEggSize(self.random, itemData.minEggSize, itemData.maxEggSize)
 	local obj = self:getObj()
@@ -479,10 +481,7 @@ function DragonEgg.new(itemId: number, itemName: string, userId: number): Dragon
 
 	self:getObj():SetAttribute(Attributes.PRIMARY_ELEMENT, itemData.primaryElement)
 	self:getObj():SetAttribute(Attributes.EGG_BASE_LUCK, itemData.eggBaseLuck or 1)
-	self:getObj():SetAttribute(
-		Attributes.NAME_PLATE_EXTRA_TEXT,
-		string.format("Luck: %g", DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck, userId))
-	)
+	self:refreshLuckDisplay()
 
 	self.eggSize = rollEggSize(self.random, itemData.minEggSize, itemData.maxEggSize)
 	local obj = self:getObj()

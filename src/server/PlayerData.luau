@@ -1987,6 +1987,12 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 	self.rebirthLevel = (saveData and saveData.rebirthLevel) or 0
 	self:updatePlotLuckDisplay()
 	self:updateRebirthDisplay()
+
+	for _, item in itemManager:getItemsOnGroundByUserId(self.player.UserId) do
+		if item:getType() == "dragonEgg" then
+			(item :: Types.DragonEgg):refreshLuckDisplay()
+		end
+	end
 	if self.hasClaimedGroupLuck then
 		self.isInCommunityGroup = true
 		self:updateLuckInGuiData()
