@@ -30,6 +30,7 @@ type IndicatorData = {
 	namePlateNameChangedConnect: RBXScriptConnection?,
 	modificationsChangedConnect: RBXScriptConnection?,
 	mutationChangedConnect: RBXScriptConnection?,
+	extraTextChangedConnect: RBXScriptConnection?,
 	parentChangedConnect: RBXScriptConnection?,
 	casterRecreatedEventConnect: RBXScriptConnection?,
 }
@@ -126,6 +127,12 @@ function ClientNamePlateManager.removeIndicators(self: ClientNamePlateManager, i
 		indicatorData.mutationChangedConnect = nil
 	end
 
+	local extraTextChangedConnect = indicatorData.extraTextChangedConnect
+	if extraTextChangedConnect then
+		extraTextChangedConnect:Disconnect()
+		indicatorData.extraTextChangedConnect = nil
+	end
+
 	local parentChangedConnect = indicatorData.parentChangedConnect
 	if parentChangedConnect then
 		parentChangedConnect:Disconnect()
@@ -218,6 +225,12 @@ function ClientNamePlateManager.notifyNewInstance(self: ClientNamePlateManager, 
 	)
 
 	indicatorData.mutationChangedConnect = inst:GetAttributeChangedSignal(Attributes.MUTATION):Connect(
+		function()
+			self:updateTextForItemId(itemId)
+		end
+	)
+
+	indicatorData.extraTextChangedConnect = inst:GetAttributeChangedSignal(Attributes.NAME_PLATE_EXTRA_TEXT):Connect(
 		function()
 			self:updateTextForItemId(itemId)
 		end

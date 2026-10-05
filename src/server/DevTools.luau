@@ -329,7 +329,7 @@ function DevTools.dumpEggLootWeights(self: DevTools, player: Player)
 			continue
 		end
 
-		local luckMultiplier = DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck)
+		local luckMultiplier = DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck, player.UserId)
 		local biasedLootTable = DragonEgg.applyLuckBiasToLootTable(rawLootTable, luckMultiplier)
 
 		local baseTotal = 0

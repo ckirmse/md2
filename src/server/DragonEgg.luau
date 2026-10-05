@@ -178,6 +178,11 @@ end
 function DragonEgg.notifyPlacedInPlot(self: DragonEgg)
 	self:cleanupCarrying()
 
+	self:getObj():SetAttribute(
+		Attributes.NAME_PLATE_EXTRA_TEXT,
+		string.format("Luck: %g", DragonEgg.computeLuckMultiplier(self:getItemData().eggBaseLuck, self:getUserId()))
+	)
+
 	if self.hatchTimer then
 		warn("egg is already incubating, ignoring second placement", self:getItemName())
 		return
@@ -451,7 +456,10 @@ function DragonEgg.notifyNewClone(self: DragonEgg)
 
 	self:getObj():SetAttribute(Attributes.PRIMARY_ELEMENT, itemData.primaryElement)
 	self:getObj():SetAttribute(Attributes.EGG_BASE_LUCK, itemData.eggBaseLuck or 1)
-	self:getObj():SetAttribute(Attributes.NAME_PLATE_EXTRA_TEXT, string.format("Luck: %s", tostring(itemData.eggBaseLuck or 1)))
+	self:getObj():SetAttribute(
+		Attributes.NAME_PLATE_EXTRA_TEXT,
+		string.format("Luck: %g", DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck, self:getUserId()))
+	)
 
 	self.eggSize = rollEggSize(self.random, itemData.minEggSize, itemData.maxEggSize)
 	local obj = self:getObj()
@@ -471,7 +479,10 @@ function DragonEgg.new(itemId: number, itemName: string, userId: number): Dragon
 
 	self:getObj():SetAttribute(Attributes.PRIMARY_ELEMENT, itemData.primaryElement)
 	self:getObj():SetAttribute(Attributes.EGG_BASE_LUCK, itemData.eggBaseLuck or 1)
-	self:getObj():SetAttribute(Attributes.NAME_PLATE_EXTRA_TEXT, string.format("Luck: %s", tostring(itemData.eggBaseLuck or 1)))
+	self:getObj():SetAttribute(
+		Attributes.NAME_PLATE_EXTRA_TEXT,
+		string.format("Luck: %g", DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck, userId))
+	)
 
 	self.eggSize = rollEggSize(self.random, itemData.minEggSize, itemData.maxEggSize)
 	local obj = self:getObj()
