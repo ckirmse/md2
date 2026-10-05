@@ -63,6 +63,7 @@ module = {
 	MAX_EGGS_IN_ZONE = "MaxEggsInZone",
 	RESPAWN_SEC = "RespawnSec",
 	MIN_EGG_SPACING = "MinEggSpacing",
+	LOOT_TABLE_NAME = "LootTableName",
 	SOURCE_SCATTER_ZONE_ID = "SourceScatterZoneId",
 	CARRY_EXPIRES_TIME = "CarryExpiresTime",
 	CARRY_TOTAL_SEC = "CarryTotalSec",

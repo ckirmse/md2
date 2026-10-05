@@ -7,6 +7,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local GameAssets = ReplicatedStorage:WaitForChild("GameAssets")
 
+local Constants = require("@game/ReplicatedStorage/Shared/Constants")
+local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/EggLootTables")
+
 local objectDataStore = require("./ObjectDataStore")
 local Validate = require("./Validate")
 
@@ -146,9 +149,41 @@ function GameDataVerifier.verifyLootTableItems(self: GameDataVerifier)
 	end
 end
 
+function GameDataVerifier.verifyEggLootTables(self: GameDataVerifier)
+	local standardLootTables = eggLootTablesData.standardLootTables
+
+	if not Validate.isTable(standardLootTables) or next(standardLootTables) == nil then
+		warn("GameDataVerifier: EggLootTables.standardLootTables is missing or empty")
+		return
+	end
+
+	for tableName, weights in standardLootTables do
+		if not Validate.isTable(weights) or next(weights) == nil then
+			warn("GameDataVerifier: standardLootTables entry has no weight entries", tableName)
+			continue
+		end
+		for eggName, weight in weights do
+			if type(weight) ~= "number" or weight < 0 then
+				warn("GameDataVerifier: standardLootTables entry has an invalid weight", tableName, eggName, weight)
+			end
+			if objectDataStore:getObjectDataByName(eggName) == nil then
+				warn("GameDataVerifier: unknown egg name in standardLootTables", tableName, eggName)
+			end
+		end
+	end
+
+	if not standardLootTables[Constants.DEFAULT_STANDARD_LOOT_TABLE_NAME] then
+		warn(
+			"GameDataVerifier: standardLootTables is missing the reserved default fallback table",
+			Constants.DEFAULT_STANDARD_LOOT_TABLE_NAME
+		)
+	end
+end
+
 function GameDataVerifier.verifyAll(self: GameDataVerifier)
 	self:verifyVanity()
 	self:verifyLootTableItems()
+	self:verifyEggLootTables()
 end
 
 function GameDataVerifier.new(): GameDataVerifier

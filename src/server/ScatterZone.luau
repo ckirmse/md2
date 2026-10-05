@@ -20,8 +20,9 @@ local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/Eg
 export type ScatterZoneFields = Types.ScatterZoneFields
 export type ScatterZone = Types.ScatterZone
 
-local function pickWeightedEggName(biomeIndex: number): string?
-	local weights = eggLootTablesData.standardLootByBiome[biomeIndex] or eggLootTablesData.standardLootByBiome[1]
+local function pickWeightedEggName(self: ScatterZone): string?
+	local weights = eggLootTablesData.standardLootTables[self:getLootTableName()]
+		or eggLootTablesData.standardLootTables[Constants.DEFAULT_STANDARD_LOOT_TABLE_NAME]
 	if not weights then
 		return nil
 	end
@@ -30,6 +31,14 @@ end
 
 function ScatterZone.getBiomeIndex(self: ScatterZone): number
 	return (self:getObj():GetAttribute(Attributes.BIOME_INDEX) :: number?) or 1
+end
+
+function ScatterZone.getLootTableName(self: ScatterZone): string
+	local name = self:getObj():GetAttribute(Attributes.LOOT_TABLE_NAME) :: string?
+	if name and eggLootTablesData.standardLootTables[name] then
+		return name
+	end
+	return Constants.DEFAULT_STANDARD_LOOT_TABLE_NAME
 end
 
 function ScatterZone.getMaxEggsInZone(self: ScatterZone): number
@@ -114,10 +123,9 @@ function ScatterZone.findSpawnPosition(self: ScatterZone): Vector3
 end
 
 function ScatterZone.trySpawnOneEgg(self: ScatterZone): boolean
-	local biomeIndex = self:getBiomeIndex()
-	local eggItemName = pickWeightedEggName(biomeIndex)
+	local eggItemName = pickWeightedEggName(self)
 	if not eggItemName then
-		warn("scatter zone has no loot table entries for its biome", biomeIndex, self:getObjectName())
+		warn("scatter zone has no loot table entries for its loot table", self:getLootTableName(), self:getObjectName())
 		return false
 	end
 
@@ -131,7 +139,7 @@ function ScatterZone.trySpawnOneEgg(self: ScatterZone): boolean
 	item:getObj():PivotTo(CFrame.new(groundPosition))
 	item:setPreventSettling()
 	item:getObj().Parent = workspace
-	item:getObj():SetAttribute(Attributes.SOURCE_BIOME_INDEX, biomeIndex)
+	item:getObj():SetAttribute(Attributes.SOURCE_BIOME_INDEX, self:getBiomeIndex())
 	item:getObj():SetAttribute(Attributes.SOURCE_SCATTER_ZONE_ID, self:getObjectId())
 
 	self.spawnedEggItemIds[item:getItemId()] = true
@@ -182,6 +190,16 @@ function ScatterZone.new(objectData: any, marker: BasePart, objectId: number): S
 	} :: ScatterZoneFields, ScatterZone) :: any
 
 	self:getObj():SetAttribute(Attributes.OBJECT_ID, self:getObjectId())
+
+	local rawLootTableName = self:getObj():GetAttribute(Attributes.LOOT_TABLE_NAME) :: string?
+	if not rawLootTableName or not eggLootTablesData.standardLootTables[rawLootTableName] then
+		warn(
+			"scatter zone has no recognized LootTableName attribute, falling back to default loot table",
+			self:getObjectName(),
+			rawLootTableName,
+			Constants.DEFAULT_STANDARD_LOOT_TABLE_NAME
+		)
+	end
 
 	self:topUp()
 	self:beginRefillLoop()

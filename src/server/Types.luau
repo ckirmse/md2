@@ -679,6 +679,7 @@ export type ScatterZone = BaseObject & {
 	getBiomeIndex: (self: ScatterZone) -> number,
 	getCurrentEggCount: (self: ScatterZone) -> number,
 	getDistanceToNearestEgg: (self: ScatterZone, position: Vector3) -> number,
+	getLootTableName: (self: ScatterZone) -> string,
 	getMaxEggsInZone: (self: ScatterZone) -> number,
 	getMinEggSpacing: (self: ScatterZone) -> number,
 	getRandomPositionInBounds: (self: ScatterZone) -> Vector3,
