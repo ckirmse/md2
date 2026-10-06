@@ -7,9 +7,7 @@ local ScatterZone = {}
 ScatterZone.__index = setmetatable(ScatterZone, super)
 
 local Types = require("./Types")
-local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
-local Timer = require("./Timer")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
@@ -44,11 +42,6 @@ end
 function ScatterZone.getMaxEggsInZone(self: ScatterZone): number
 	local override = self:getObj():GetAttribute(Attributes.MAX_EGGS_IN_ZONE) :: number?
 	return override or self:getObjectData().maxEggsInZone
-end
-
-function ScatterZone.getRespawnSec(self: ScatterZone): number
-	local override = self:getObj():GetAttribute(Attributes.RESPAWN_SEC) :: number?
-	return override or self:getObjectData().respawnSec
 end
 
 function ScatterZone.getMinEggSpacing(self: ScatterZone): number
@@ -163,21 +156,7 @@ function ScatterZone.notifyEggTaken(self: ScatterZone, itemId: number)
 	self.spawnedEggItemIds[itemId] = nil
 end
 
-function ScatterZone.beginRefillLoop(self: ScatterZone)
-	local respawnSec = self:getRespawnSec()
-	self.refillTimer = Timer.new(respawnSec, function()
-		if self:topUp() then
-			gameController:sendSystemMessageToAllPlayers(self:getObjectName() .. " eggs have respawned!")
-		end
-		self:beginRefillLoop()
-	end)
-end
-
 function ScatterZone.destroy(self: ScatterZone)
-	if self.refillTimer then
-		self.refillTimer:cancel()
-		self.refillTimer = nil
-	end
 	-- self.obj is the original Studio-placed marker, never a clone -- it must never be destroyed here
 end
 
@@ -202,13 +181,11 @@ function ScatterZone.new(objectData: any, marker: BasePart, objectId: number): S
 	end
 
 	self:topUp()
-	self:beginRefillLoop()
 
 	return self
 end
 
 function ScatterZone.initClass(deps: any)
-	gameController = deps.gameController
 	itemManager = deps.itemManager
 end
 

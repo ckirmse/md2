@@ -26,7 +26,6 @@ function ScatterZoneObjectType.new(): ScatterZoneObjectType
 	self.dataTableShape = {
 		type = "string",
 		name = "string",
-		respawnSec = "nonnegativeNumber",
 		maxEggsInZone = "nonnegativeInteger",
 		minEggSpacing = "nonnegativeNumber",
 	}

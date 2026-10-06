@@ -640,15 +640,12 @@ export type Node = BaseObject & {
 
 export type ScatterZoneFields = BaseObjectFields & {
 	spawnedEggItemIds: { [number]: boolean },
-	refillTimer: Timer?,
 }
 
 -- inherited and overridden members come from BaseObject; only members new to ScatterZone are listed here
 export type ScatterZone = BaseObject & {
 	spawnedEggItemIds: { [number]: boolean },
-	refillTimer: Timer?,
 
-	beginRefillLoop: (self: ScatterZone) -> (),
 	findSpawnPosition: (self: ScatterZone) -> Vector3,
 	getBiomeIndex: (self: ScatterZone) -> number,
 	getCurrentEggCount: (self: ScatterZone) -> number,
@@ -658,7 +655,6 @@ export type ScatterZone = BaseObject & {
 	getMinEggSpacing: (self: ScatterZone) -> number,
 	getRandomPositionInBounds: (self: ScatterZone) -> Vector3,
 	getSpawnedEggItemIds: (self: ScatterZone) -> { number },
-	getRespawnSec: (self: ScatterZone) -> number,
 	notifyEggTaken: (self: ScatterZone, itemId: number) -> (),
 	topUp: (self: ScatterZone) -> boolean,
 	trySpawnOneEgg: (self: ScatterZone) -> boolean,
