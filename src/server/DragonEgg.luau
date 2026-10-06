@@ -45,8 +45,8 @@ local function rollMutation(random: Random): number
 	return enums.Mutations.NORMAL
 end
 
-local function computeHatchDurationSec(biomeIndex: number): number
-	return hatchingData.hatchSecByBiome[biomeIndex] or hatchingData.hatchSecByBiome[1]
+local function computeHatchDurationSec(distanceFromPlot: number): number
+	return hatchingData.baseHatchSec + distanceFromPlot * hatchingData.hatchSecPerStud
 end
 
 function DragonEgg.computeLuckMultiplier(eggBaseLuck: number?, userId: number): number
@@ -108,7 +108,8 @@ local function rollEggSize(random: Random, minSize: number?, maxSize: number?): 
 end
 
 local function computeCarryReturnSec(distanceFromHub: number): number
-	return carryingData.baseCarryReturnSec + distanceFromHub * carryingData.carryReturnSecPerStud
+	local rawCarryReturnSec = carryingData.baseCarryReturnSec + distanceFromHub * carryingData.carryReturnSecPerStud
+	return math.floor(rawCarryReturnSec / 5) * 5
 end
 
 
@@ -200,10 +201,14 @@ function DragonEgg.notifyPlacedInPlot(self: DragonEgg)
 		return
 	end
 
-	local biomeIndex = (self:getObj():GetAttribute(Attributes.SOURCE_BIOME_INDEX) :: number?) or 1
-	self.incubatingBiomeIndex = biomeIndex
+	local sourcePosition = self:getObj():GetAttribute(Attributes.SOURCE_POSITION) :: Vector3?
+	local plotCenter = plotsManager:getPlotItemRecoveryPositionByUserId(self:getUserId())
+	local distanceFromPlot = 0
+	if sourcePosition and plotCenter then
+		distanceFromPlot = (sourcePosition - plotCenter).Magnitude
+	end
 
-	self:beginIncubating(computeHatchDurationSec(biomeIndex))
+	self:beginIncubating(computeHatchDurationSec(distanceFromPlot))
 end
 
 function DragonEgg.beginIncubating(self: DragonEgg, durationSec: number)
@@ -389,17 +394,14 @@ function DragonEgg.getSaveData(self: DragonEgg, itemIdMap: any): any
 
 	if self:isReadyToHatch() then
 		retval.hatch = {
-			biomeIndex = self.incubatingBiomeIndex,
 			isReady = true,
 		}
 	elseif self.hatchTimer then
 		retval.hatch = {
-			biomeIndex = self.incubatingBiomeIndex,
 			remainingSec = self.hatchTimer:getTimeLeft() or 0,
 		}
 	elseif self.pausedRemainingSec then
 		retval.hatch = {
-			biomeIndex = self.incubatingBiomeIndex,
 			remainingSec = self.pausedRemainingSec,
 			isPaused = true,
 		}
@@ -425,8 +427,6 @@ function DragonEgg.notifyLoadComplete(self: DragonEgg, itemSaveData: any, itemId
 	if not itemSaveData.hatch then
 		return
 	end
-
-	self.incubatingBiomeIndex = itemSaveData.hatch.biomeIndex
 
 	if itemSaveData.hatch.isReady then
 		self:notifyHatchReady()

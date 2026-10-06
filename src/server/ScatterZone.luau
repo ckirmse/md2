@@ -27,10 +27,6 @@ local function pickWeightedEggName(self: ScatterZone): string?
 	return utils.pickWeightedRandom(weights)
 end
 
-function ScatterZone.getBiomeIndex(self: ScatterZone): number
-	return (self:getObj():GetAttribute(Attributes.BIOME_INDEX) :: number?) or 1
-end
-
 function ScatterZone.getLootTableName(self: ScatterZone): string
 	local name = self:getObj():GetAttribute(Attributes.LOOT_TABLE_NAME) :: string?
 	if name and eggLootTablesData.standardLootTables[name] then
@@ -132,7 +128,7 @@ function ScatterZone.trySpawnOneEgg(self: ScatterZone): boolean
 	item:getObj():PivotTo(CFrame.new(groundPosition))
 	item:setPreventSettling()
 	item:getObj().Parent = workspace
-	item:getObj():SetAttribute(Attributes.SOURCE_BIOME_INDEX, self:getBiomeIndex())
+	item:getObj():SetAttribute(Attributes.SOURCE_POSITION, groundPosition)
 	item:getObj():SetAttribute(Attributes.SOURCE_SCATTER_ZONE_ID, self:getObjectId())
 
 	self.spawnedEggItemIds[item:getItemId()] = true

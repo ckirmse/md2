@@ -510,8 +510,6 @@ function DevTools.dumpScatterZones(self: DevTools, player: Player)
 			"scatter zone",
 			zone:getObjectId(),
 			zone:getObjectName(),
-			"biome",
-			zone:getBiomeIndex(),
 			"eggs",
 			zone:getCurrentEggCount(),
 			"/",

@@ -272,7 +272,6 @@ export type DragonEggFields = MItemFields & {
 	doPreventSettling: boolean?,
 	random: Random,
 	hatchTimer: any,
-	incubatingBiomeIndex: number?,
 	hatchCompleteTime: number?,
 	pausedRemainingSec: number?,
 	carryTimer: any,
@@ -286,7 +285,6 @@ export type DragonEgg = MItem & {
 	doPreventSettling: boolean?,
 	random: Random,
 	hatchTimer: any,
-	incubatingBiomeIndex: number?,
 	hatchCompleteTime: number?,
 	pausedRemainingSec: number?,
 	carryTimer: any,
@@ -647,7 +645,6 @@ export type ScatterZone = BaseObject & {
 	spawnedEggItemIds: { [number]: boolean },
 
 	findSpawnPosition: (self: ScatterZone) -> Vector3,
-	getBiomeIndex: (self: ScatterZone) -> number,
 	getCurrentEggCount: (self: ScatterZone) -> number,
 	getDistanceToNearestEgg: (self: ScatterZone, position: Vector3) -> number,
 	getLootTableName: (self: ScatterZone) -> string,

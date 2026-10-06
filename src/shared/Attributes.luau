@@ -54,8 +54,7 @@ module = {
 
 	OPEN_COMPLETE_TIME = "OpenCompleteTime",
 	HATCH_COMPLETE_TIME = "HatchCompleteTime",
-	SOURCE_BIOME_INDEX = "SourceBiomeIndex",
-	BIOME_INDEX = "BiomeIndex",
+	SOURCE_POSITION = "SourcePosition",
 	STUNNED_UNTIL = "StunnedUntil",
 	SCATTER_ZONE_NAME = "ScatterZoneName",
 	MAX_EGGS_IN_ZONE = "MaxEggsInZone",
