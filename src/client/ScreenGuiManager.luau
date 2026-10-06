@@ -22,6 +22,7 @@ local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local clientDragonRosterManager = require("./ClientDragonRosterManager")
+local clientEggWorldCountsManager = require("./ClientEggWorldCountsManager")
 local clientRebirthManager = require("./ClientRebirthManager")
 local clientLuckInfoManager = require("./ClientLuckInfoManager")
 local clientOptionsManager = require("./ClientOptionsManager")
@@ -643,16 +644,6 @@ function ScreenGuiManager.updateLuckDisplay(self: ScreenGuiManager)
 	end
 end
 
-function ScreenGuiManager.updateEggRefreshCountdown(self: ScreenGuiManager)
-	local ScreenGui: any = PlayerGui:WaitForChild("ScreenGui")
-	local EggRefreshFrame = ScreenGui:WaitForChild("EggRefreshFrame")
-	local TimerText: any = utils.findFirstDescendant(EggRefreshFrame, "TimerText")
-
-	local nextRefreshTime = workspace:GetAttribute(Attributes.NEXT_EGG_REFRESH_TIME) :: number?
-	local duration = math.max(0, (nextRefreshTime or 0) - workspace:GetServerTimeNow())
-	TimerText.Text = utils.convertDurationSecToString(duration)
-end
-
 function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 	local isChanged = false
 
@@ -673,7 +664,6 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 	end
 
 	self:updateLuckDisplay()
-	self:updateEggRefreshCountdown()
 
 	-- here we update whether our putAwayButton is visible or not
 
@@ -1141,6 +1131,14 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 
 	rebirthFrame:WaitForChild("RebirthButton").Activated:Connect(function()
 		clientRebirthManager:toggleRebirth()
+	end)
+
+	local eggsInWorldFrame: any = ScreenGui:WaitForChild("EggsInWorldFrame")
+	self.eggsInWorldFrame = eggsInWorldFrame
+	eggsInWorldFrame.Visible = true
+
+	eggsInWorldFrame:WaitForChild("EggsInWorldButton").Activated:Connect(function()
+		clientEggWorldCountsManager:togglePanel()
 	end)
 
 	local friendLuckBoostFrame = ScreenGui:FindFirstChild("FriendLuckBoostFrame")

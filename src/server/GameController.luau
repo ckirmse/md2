@@ -2642,6 +2642,10 @@ function GameController.tryDropEggFromBasket(self: GameController, player: Playe
 	utils.setPropertyTreeBaseParts(item:getObj(), "CanCollide", true)
 end
 
+function GameController.tryGetEggWorldCounts(self: GameController, player: Player): ()
+	RemoteEvents.NotifyEggWorldCounts:FireClient(player, scatterZoneManager:getEggWorldCounts())
+end
+
 function GameController.tryShootFireballAtCrop(self: GameController, player: Player, cropItemId: any): ()
 	--print("got try shoot fireball at crop player", player, "of item id", cropItemId)
 
@@ -3685,6 +3689,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryDropEggAtPosition", "tryDropEggAtPosition")
 	self:addRemoteEventHandler("TryDropEggFromBasket", "tryDropEggFromBasket")
 	self:addRemoteEventHandler("TryPickupScatteredEgg", "tryPickupScatteredEgg")
+	self:addRemoteEventHandler("TryGetEggWorldCounts", "tryGetEggWorldCounts")
 end
 
 function GameController.processPollTimer(self: GameController): ()

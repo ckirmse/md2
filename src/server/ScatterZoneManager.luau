@@ -93,6 +93,34 @@ function ScatterZoneManager.refreshAllZones(self: ScatterZoneManager)
 	workspace:SetAttribute(Attributes.NEXT_EGG_REFRESH_TIME, workspace:GetServerTimeNow() + eggSpawningData.globalRefreshSec)
 end
 
+function ScatterZoneManager.getEggWorldCounts(self: ScatterZoneManager): { any }
+	local counts: { [string]: number } = {}
+
+	for _, item in itemManager:getItemsOnGroundByUserId(Constants.UNOWNED_USER_ID) do
+		if item:getType() ~= "dragonEgg" then
+			continue
+		end
+		if item:getObj():GetAttribute(Attributes.CARRY_EXPIRES_TIME) then
+			continue
+		end
+
+		local itemName = item:getItemName()
+		counts[itemName] = (counts[itemName] or 0) + 1
+	end
+
+	local result = {}
+	for itemName, count in counts do
+		local itemData = objectDataStore:getObjectDataByName(itemName)
+		table.insert(result, {
+			itemName = itemName,
+			count = count,
+			eggBaseLuck = (itemData and itemData.eggBaseLuck) or 1,
+		})
+	end
+
+	return result
+end
+
 function ScatterZoneManager.beginGlobalRefreshLoop(self: ScatterZoneManager)
 	self.refreshTimer = Timer.new(eggSpawningData.globalRefreshSec, function()
 		self.refreshTimer = nil

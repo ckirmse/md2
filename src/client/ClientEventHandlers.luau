@@ -25,6 +25,7 @@ local clientContextualFtueManager = require("./ClientContextualFtueManager")
 local clientCustomerTools = require("./ClientCustomerTools")
 local clientDevTools = require("./ClientDevTools")
 --local clientDragonManager = nil -- prevent circular reference by not initializing here
+local clientEggWorldCountsManager = require("./ClientEggWorldCountsManager")
 local clientExpansionTeleporter = require("./ClientExpansionTeleporter")
 local clientFtueManager = require("./ClientFtueManager")
 local clientFirstSessionOfferManager = require("./ClientFirstSessionOfferManager")
@@ -221,6 +222,10 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 	RemoteEvents.NotifyWeatherUpdate.OnClientEvent:Connect(function(clientWeatherDatas)
 		--print("weather update", clientWeatherDatas)
 		clientWeatherManager:setClientWeatherDatas(clientWeatherDatas)
+	end)
+
+	RemoteEvents.NotifyEggWorldCounts.OnClientEvent:Connect(function(eggWorldCountDatas)
+		clientEggWorldCountsManager:setEggWorldCountDatas(eggWorldCountDatas)
 	end)
 
 	RemoteEvents.NotifyPlayerAttributeChange.OnClientEvent:Connect(function(playerDataKey, value)
