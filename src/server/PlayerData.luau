@@ -69,6 +69,7 @@ type PlayerDataFields = {
 	saveOnExit: boolean,
 	canUseDevTools: boolean,
 	sessionStartTime: number,
+	playTimeCheckpoint: number,
 	stats: any,
 	options: any,
 	playerVariables: any,
@@ -2314,7 +2315,12 @@ function PlayerData.canMergeAll(self: PlayerData)
 end
 
 function PlayerData.getSaveData(self: PlayerData): any
-	self:addToStat("totalPlaySec", math.ceil(workspace:GetServerTimeNow() - self.sessionStartTime))
+	-- only the time since the last save is new; the checkpoint advances by whole seconds so none is lost
+	local newPlaySec = math.floor(workspace:GetServerTimeNow() - self.playTimeCheckpoint)
+	if newPlaySec > 0 then
+		self:addToStat("totalPlaySec", newPlaySec)
+		self.playTimeCheckpoint += newPlaySec
+	end
 
 	local saveData = {}
 	saveData.saveTime = workspace:GetServerTimeNow()
@@ -3346,6 +3352,7 @@ function PlayerData.new(player: Player?): PlayerData
 	self.playerVariables = {}
 
 	self.sessionStartTime = workspace:GetServerTimeNow()
+	self.playTimeCheckpoint = self.sessionStartTime
 
 	self.starterOfferProgress = {}
 	self.buyStorePurchases = { era = 0, counts = {} }
