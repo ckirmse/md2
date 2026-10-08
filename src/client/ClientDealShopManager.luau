@@ -15,6 +15,7 @@ local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
+local clientGiftingManager = require("./ClientGiftingManager")
 local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
 local overlayTracker = require("./OverlayTracker")
 local Types = require("./Types")
@@ -33,6 +34,7 @@ type TierRecord = {
 	tierIndex: number,
 	button: any,
 	priceText: any,
+	giftButton: any?,
 	hasCurrencyIcon: boolean, -- an icon sits next to the price, so the text is only the number
 	baseTextColor: Color3,
 	pendingToken: number?,
@@ -41,14 +43,17 @@ type TierRecord = {
 type CardRecord = {
 	card: any,
 	sectionKey: string,
-	endTime: number?,
+	deal: DealShopCatalog.Deal,
 	timeLimitText: any?,
-	isExpired: boolean,
+	isAvailable: boolean,
 }
 
 type ClientDealShopManagerFields = {
 	gui: any?,
 	scroll: any,
+	mainFrame: any,
+	toolTipFrame: any?,
+	toolTipLabel: any?,
 	sectionTabsFrame: any?,
 	sectionTabTemplate: any?,
 	bundleTemplate: any,
@@ -63,6 +68,7 @@ type ClientDealShopManagerFields = {
 	refreshConnect: RBXScriptConnection?,
 	lastCoins: number?,
 	nextPendingToken: number,
+	purchasedDealKeys: { [string]: boolean },
 	panelOpen: boolean,
 	isReady: boolean,
 	hasAttemptedBuild: boolean,
@@ -84,32 +90,40 @@ local function getCoins(): number
 	return (clientPlayerAttributesManager:get(PlayerAttributeKeys.COINS) :: number?) or 0
 end
 
-local function describeContent(content: DealShopCatalog.DealContent): string
+local function getContentName(content: DealShopCatalog.DealContent): string
 	if content.kind == enums.ShopContentKind.COINS then
-		return `{formatNumber(content.amount :: number)} Coins`
+		return "Coins"
 	end
+	return (content.displayName or content.objectName) :: string
+end
 
-	local name = (content.displayName or content.objectName) :: string
-	local count = content.count :: number
+local function getContentCount(content: DealShopCatalog.DealContent): number
+	if content.kind == enums.ShopContentKind.COINS then
+		return content.amount :: number
+	end
+	return content.count :: number
+end
+
+-- a single item sold two ways can come in different quantities, so each button states its own count
+local function doTierCountsDiffer(deal: DealShopCatalog.Deal): boolean
+	local secondTier = deal.tiers[2]
+	return secondTier ~= nil and getContentCount(deal.tiers[1].contents[1]) ~= getContentCount(secondTier.contents[1])
+end
+
+local function describeContent(content: DealShopCatalog.DealContent): string
+	local name = getContentName(content)
+	local count = getContentCount(content)
 	if count > 1 then
-		return `{count}x {name}`
+		return `{formatNumber(count)}x {name}`
 	end
 	return name
 end
 
--- both tiers of a deal grant the same contents
-local function describeTier(tier: DealShopCatalog.Tier): string
-	local parts: { string } = {}
-	for _, content in tier.contents do
-		table.insert(parts, describeContent(content))
-	end
-	return table.concat(parts, ", ")
-end
-
 local function setTabActive(tabButton: any, isActive: boolean)
-	local stroke = tabButton:FindFirstChildOfClass("UIStroke")
-	if stroke then
-		stroke.Transparency = isActive and 0 or 1
+	for _, child in tabButton:GetChildren() do
+		if child:IsA("UIStroke") and child.ApplyStrokeMode == Enum.ApplyStrokeMode.Border then
+			child.Transparency = isActive and 0 or 1
+		end
 	end
 end
 
@@ -162,6 +176,9 @@ function ClientDealShopManager.refreshTierRecord(self: ClientDealShopManager, ti
 
 	tierRecord.priceText.TextColor3 = textColor
 	tierRecord.button.Active = canBuy
+	if tierRecord.giftButton then
+		tierRecord.giftButton.Active = canBuy
+	end
 end
 
 function ClientDealShopManager.refreshAllTierRecords(self: ClientDealShopManager)
@@ -203,6 +220,10 @@ function ClientDealShopManager.onTierActivated(self: ClientDealShopManager, tier
 	end
 
 	local productId = tier.productId :: number
+
+	-- a gift selection abandoned earlier must not turn this into a gift
+	RemoteEvents.TryClearGift:FireServer()
+
 	local isSuccess, errorMessage = pcall(function()
 		MarketplaceService:PromptProductPurchase(player, productId)
 	end)
@@ -219,6 +240,20 @@ function ClientDealShopManager.notifyDealPurchaseResult(self: ClientDealShopMana
 
 	tierRecord.pendingToken = nil
 	self:refreshTierRecord(tierRecord)
+
+	if isSuccess and tierRecord.deal.oneTimeOnly then
+		self.purchasedDealKeys[dealKey] = true
+		self:updateTimeLimits()
+	end
+end
+
+function ClientDealShopManager.setPurchasedDealKeys(self: ClientDealShopManager, purchasedDealKeys: any)
+	if type(purchasedDealKeys) ~= "table" then
+		return
+	end
+
+	self.purchasedDealKeys = purchasedDealKeys
+	self:updateTimeLimits()
 end
 
 function ClientDealShopManager.wireTier(self: ClientDealShopManager, card: any, deal: DealShopCatalog.Deal, tierIndex: number)
@@ -235,7 +270,7 @@ function ClientDealShopManager.wireTier(self: ClientDealShopManager, card: any, 
 	end
 
 	local robuxIcon: any = costFrame:FindFirstChild("RBX")
-	local coinIcon: any = costFrame:FindFirstChild("CoinIcon")
+	local coinIcon: any = costFrame:FindFirstChild("Coin")
 	local currencyIcon: any = if tier.coinCost then coinIcon else robuxIcon
 	if robuxIcon then
 		robuxIcon.Visible = tier.coinCost == nil
@@ -246,9 +281,11 @@ function ClientDealShopManager.wireTier(self: ClientDealShopManager, card: any, 
 
 	local amountText: any = button:FindFirstChild("Amount")
 	if amountText then
-		local content = tier.contents[1]
-		local count = content.count or 1
-		amountText.Text = if deal.cardStyle == enums.ShopCardStyle.SINGLE_ITEM and count > 1 then `Buy {count}` else "Buy"
+		local count = tier.contents[1].count or 1
+		local statesCount = count > 1 or doTierCountsDiffer(deal)
+		amountText.Text = if deal.cardStyle == enums.ShopCardStyle.SINGLE_ITEM and statesCount then `Buy {count}` else "Buy"
+	elseif doTierCountsDiffer(deal) then
+		warn(`ClientDealShopManager: deal {deal.dealKey} sells different counts, so BuyTier{tierIndex}/Purchase needs an Amount label`)
 	end
 
 	local priceSlashText: any = costFrame:FindFirstChild("PriceSlash")
@@ -259,10 +296,12 @@ function ClientDealShopManager.wireTier(self: ClientDealShopManager, card: any, 
 		end
 	end
 
-	-- hidden until gifting is wired
-	local giftButton: any = tierFrame:FindFirstChild("Gift")
-	if giftButton then
-		giftButton.Visible = false
+	-- only Robux tiers can be gifted
+	local authoredGiftButton: any = tierFrame:FindFirstChild("Gift")
+	local isGiftable = tier.productId ~= nil and deal.giftable ~= false and not deal.oneTimeOnly
+	local giftButton: any = if isGiftable and clientGiftingManager:isGiftingEnabled() then authoredGiftButton else nil
+	if authoredGiftButton then
+		authoredGiftButton.Visible = giftButton ~= nil
 	end
 
 	tierFrame.Visible = true
@@ -273,6 +312,7 @@ function ClientDealShopManager.wireTier(self: ClientDealShopManager, card: any, 
 		tierIndex = tierIndex,
 		button = button,
 		priceText = priceText,
+		giftButton = giftButton,
 		hasCurrencyIcon = currencyIcon ~= nil,
 		baseTextColor = priceText.TextColor3,
 		pendingToken = nil,
@@ -282,15 +322,36 @@ function ClientDealShopManager.wireTier(self: ClientDealShopManager, card: any, 
 	button.Activated:Connect(function()
 		self:onTierActivated(tierRecord)
 	end)
+
+	if giftButton then
+		giftButton.Activated:Connect(function()
+			if giftButton.Active then
+				clientGiftingManager:open(tier.productId :: number)
+			end
+		end)
+	end
 end
 
 function ClientDealShopManager.refreshCardVisibility(self: ClientDealShopManager, cardRecord: CardRecord)
 	local isInActiveSection = self.activeSectionKey == nil or cardRecord.sectionKey == self.activeSectionKey
-	cardRecord.card.Visible = isInActiveSection and not cardRecord.isExpired
+	cardRecord.card.Visible = isInActiveSection and cardRecord.isAvailable
+end
+
+function ClientDealShopManager.isDealAvailable(self: ClientDealShopManager, deal: DealShopCatalog.Deal): boolean
+	local now = workspace:GetServerTimeNow()
+	if deal.startTime and now < deal.startTime then
+		return false
+	end
+	if deal.endTime and now >= deal.endTime then
+		return false
+	end
+
+	return not (deal.oneTimeOnly and self.purchasedDealKeys[deal.dealKey])
 end
 
 function ClientDealShopManager.setActiveSection(self: ClientDealShopManager, sectionKey: string)
 	self.activeSectionKey = sectionKey
+	self:hideToolTip()
 
 	for tabSectionKey, tabButton in self.tabButtons do
 		setTabActive(tabButton, tabSectionKey == sectionKey)
@@ -322,6 +383,7 @@ function ClientDealShopManager.buildCard(self: ClientDealShopManager, section: D
 	end
 
 	self:fillContents(card, deal)
+	self:wireCardToolTip(card, deal)
 
 	for tierIndex = 1, 2 do
 		if tierIndex <= #deal.tiers then
@@ -337,16 +399,17 @@ function ClientDealShopManager.buildCard(self: ClientDealShopManager, section: D
 	local cardRecord: CardRecord = {
 		card = card,
 		sectionKey = section.sectionKey,
-		endTime = deal.endTime,
+		deal = deal,
 		timeLimitText = if deal.endTime then timeLimitText else nil,
-		isExpired = false,
+		isAvailable = true,
 	}
 	table.insert(self.cardRecords, cardRecord)
 
 	card.Parent = self.scroll
 end
 
--- no item art yet, so the contents are listed as text and the authored icon tiles are removed
+-- no item art yet, so each content gets a tile cloned from the authored Icon tile, with its NameText
+-- (and optional CountText) standing in for the icon
 function ClientDealShopManager.fillContents(self: ClientDealShopManager, card: any, deal: DealShopCatalog.Deal)
 	local contentsFrame: any = card:FindFirstChild("Contents")
 	if not contentsFrame then
@@ -354,20 +417,81 @@ function ClientDealShopManager.fillContents(self: ClientDealShopManager, card: a
 		return
 	end
 
-	for _, child in contentsFrame:GetChildren() do
-		if child.Name == "Icon" or child.Name == "TimeSkipTemplate" then
-			child:Destroy()
+	local hideCounts = doTierCountsDiffer(deal)
+	local tileTemplate: any = contentsFrame:FindFirstChild("Icon")
+	if not tileTemplate or not tileTemplate:FindFirstChild("NameText") then
+		warn(`ClientDealShopManager: card for deal {deal.dealKey} needs Contents/Icon with a NameText label`)
+	else
+		for contentIndex, content in deal.tiers[1].contents do
+			local tile: any = tileTemplate:Clone()
+			tile.Name = `Content_{contentIndex}`
+			tile.LayoutOrder = contentIndex
+			tile.Visible = true
+			if tile:IsA("ImageLabel") then
+				tile.Image = ""
+			end
+
+			tile.NameText.Visible = true
+
+			local count = getContentCount(content)
+			local countText: any = tile:FindFirstChild("CountText", true)
+			if hideCounts then
+				tile.NameText.Text = getContentName(content)
+				if countText then
+					countText.Visible = false
+				end
+			elseif countText then
+				tile.NameText.Text = getContentName(content)
+				countText.Visible = count > 1
+				countText.Text = `x{formatNumber(count)}`
+			else
+				tile.NameText.Text = describeContent(content)
+			end
+
+			tile.Parent = contentsFrame
 		end
 	end
 
-	local benefitDetails: any = contentsFrame:FindFirstChild("BenefitDetails")
-	if not benefitDetails then
-		warn(`ClientDealShopManager: card for deal {deal.dealKey} needs Contents/BenefitDetails`)
+	for _, child in contentsFrame:GetChildren() do
+		if child.Name == "Icon" or child.Name == "TimeSkipTemplate" or child.Name == "BenefitDetails" then
+			child:Destroy()
+		end
+	end
+end
+
+function ClientDealShopManager.hideToolTip(self: ClientDealShopManager)
+	if self.toolTipFrame then
+		self.toolTipFrame.Visible = false
+	end
+end
+
+function ClientDealShopManager.wireCardToolTip(self: ClientDealShopManager, card: any, deal: DealShopCatalog.Deal)
+	if not deal.tooltip then
 		return
 	end
 
-	benefitDetails.Text = describeTier(deal.tiers[1])
-	benefitDetails.Visible = true
+	local lines: { string } = { deal.tooltip }
+	for _, content in deal.tiers[1].contents do
+		table.insert(lines, `• {describeContent(content)}`)
+	end
+	local toolTipText = table.concat(lines, "\n")
+
+	card.MouseEnter:Connect(function()
+		local toolTipFrame: any = self.toolTipFrame
+		local toolTipLabel: any = self.toolTipLabel
+		if not toolTipFrame or not toolTipLabel then
+			return
+		end
+
+		toolTipLabel.Text = toolTipText
+		local offset = card.AbsolutePosition - self.mainFrame.AbsolutePosition
+		toolTipFrame.Position = UDim2.fromOffset(offset.X, offset.Y - toolTipFrame.AbsoluteSize.Y)
+		toolTipFrame.Visible = true
+	end)
+
+	card.MouseLeave:Connect(function()
+		self:hideToolTip()
+	end)
 end
 
 function ClientDealShopManager.buildSectionTab(self: ClientDealShopManager, section: DealShopCatalog.Section, layoutOrder: number)
@@ -418,19 +542,14 @@ function ClientDealShopManager.updateTimeLimits(self: ClientDealShopManager)
 	local now = workspace:GetServerTimeNow()
 
 	for _, cardRecord in self.cardRecords do
-		local endTime = cardRecord.endTime
-		if not endTime then
-			continue
+		local endTime = cardRecord.deal.endTime
+		if endTime and cardRecord.timeLimitText then
+			cardRecord.timeLimitText.Text = utils.convertDurationSecToString(math.max(0, endTime - now))
 		end
 
-		local remaining = math.max(0, endTime - now)
-		if cardRecord.timeLimitText then
-			cardRecord.timeLimitText.Text = utils.convertDurationSecToString(remaining)
-		end
-
-		local isExpired = remaining <= 0
-		if isExpired ~= cardRecord.isExpired then
-			cardRecord.isExpired = isExpired
+		local isAvailable = self:isDealAvailable(cardRecord.deal)
+		if isAvailable ~= cardRecord.isAvailable then
+			cardRecord.isAvailable = isAvailable
 			self:refreshCardVisibility(cardRecord)
 		end
 	end
@@ -540,6 +659,7 @@ function ClientDealShopManager.cleanupPanel(self: ClientDealShopManager)
 
 	local gui: any = self.gui
 	gui.Enabled = false
+	self:hideToolTip()
 
 	overlayTracker:notifyEndOverlay((self :: any) :: Types.Overlay)
 
@@ -609,9 +729,18 @@ function ClientDealShopManager.init(self: ClientDealShopManager)
 		gachaTemplate.Visible = false
 	end
 
-	-- hover needs a mouse, so the popup is unused
+	self.mainFrame = main
 	local toolTip: any = main:FindFirstChild("ToolTip")
-	if toolTip then
+	local toolTipLabel: any = toolTip and toolTip:FindFirstChild("ToolTipInfo")
+	if toolTipLabel then
+		-- the buy buttons must draw over the popup's background, and the contents list is rich text
+		toolTip.ZIndex = 10
+		toolTipLabel.ZIndex = 11
+		toolTipLabel.RichText = true
+		toolTip.Visible = false
+		self.toolTipFrame = toolTip
+		self.toolTipLabel = toolTipLabel
+	elseif toolTip then
 		toolTip.Visible = false
 	end
 
@@ -640,6 +769,8 @@ function ClientDealShopManager.new(): ClientDealShopManager
 	local self = setmetatable({} :: ClientDealShopManagerFields, ClientDealShopManager)
 
 	self.gui = nil
+	self.toolTipFrame = nil
+	self.toolTipLabel = nil
 	self.config = nil
 	self.cardRecords = {}
 	self.tierRecords = {}
@@ -650,6 +781,7 @@ function ClientDealShopManager.new(): ClientDealShopManager
 	self.refreshConnect = nil
 	self.lastCoins = nil
 	self.nextPendingToken = 0
+	self.purchasedDealKeys = {}
 	self.panelOpen = false
 	self.isReady = false
 	self.hasAttemptedBuild = false

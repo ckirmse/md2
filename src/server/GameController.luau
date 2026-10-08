@@ -1592,6 +1592,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		abilityStatuses = playerData:getAbilityStatuses(),
 		starterOfferData = starterOfferManager:updateAndGetStarterOfferDataForPlayer(player),
 		dealShopConfig = dealShopManager:getClientConfig(),
+		purchasedDealKeys = playerData:getPurchasedDealKeys(),
 		ftueProgress = ftueProgress,
 		firstSessionOfferState = playerData:getFirstSessionOfferState(),
 		showLuckBillboard = not playerData.hasClaimedGroupLuck and not ftueProgress.isEnabled,

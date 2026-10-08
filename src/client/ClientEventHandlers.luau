@@ -29,6 +29,7 @@ local clientDevTools = require("./ClientDevTools")
 local clientEggWorldCountsManager = require("./ClientEggWorldCountsManager")
 local clientExpansionTeleporter = require("./ClientExpansionTeleporter")
 local clientFtueManager = require("./ClientFtueManager")
+local clientGiftingManager = require("./ClientGiftingManager")
 local clientFirstSessionOfferManager = require("./ClientFirstSessionOfferManager")
 local clientIndexManager = require("./ClientIndexManager")
 local clientMergeController = require("./ClientMergeController")
@@ -153,6 +154,7 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 		local starterOfferData = initData.starterOfferData
 		clientPremiumStore:initStarterOfferData(starterOfferData)
 
+		clientDealShopManager:setPurchasedDealKeys(initData.purchasedDealKeys)
 		clientDealShopManager:setConfig(initData.dealShopConfig)
 
 		local ftueProgress = initData.ftueProgress
@@ -233,6 +235,10 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 
 	RemoteEvents.NotifyDealPurchaseResult.OnClientEvent:Connect(function(dealKey, tierIndex, isSuccess)
 		clientDealShopManager:notifyDealPurchaseResult(dealKey, tierIndex, isSuccess)
+	end)
+
+	RemoteEvents.NotifyGiftReceived.OnClientEvent:Connect(function(fromDisplayName, dealTitle)
+		clientGiftingManager:notifyGiftReceived(fromDisplayName, dealTitle)
 	end)
 
 	RemoteEvents.NotifyPlayerAttributeChange.OnClientEvent:Connect(function(playerDataKey, value)

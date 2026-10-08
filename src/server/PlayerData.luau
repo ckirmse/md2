@@ -108,6 +108,7 @@ type PlayerDataFields = {
 	vanityComponentStates: any,
 	vanityAreaStates: any,
 	indexDiscoveredItems: any,
+	purchasedDealKeys: any,
 	indexDiscoveredMutations: any,
 	indexClaimedRewards: any,
 	indexStatBuffs: any,
@@ -1922,6 +1923,13 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 		self.codesRedeemed = {}
 	end
 
+	local purchasedDealKeysSaveData = saveData and saveData.purchasedDealKeys or nil
+	if purchasedDealKeysSaveData then
+		self.purchasedDealKeys = purchasedDealKeysSaveData
+	else
+		self.purchasedDealKeys = {}
+	end
+
 	local indexDiscoveredItemsSaveData = saveData and saveData.indexDiscoveredItems or nil
 	if indexDiscoveredItemsSaveData then
 		self.indexDiscoveredItems = indexDiscoveredItemsSaveData
@@ -2156,6 +2164,18 @@ function PlayerData.resetCodesRedeemed(self: PlayerData)
 	self.codesRedeemed = {}
 end
 
+function PlayerData.hasPurchasedDeal(self: PlayerData, dealKey: string): boolean
+	return self.purchasedDealKeys[dealKey] == true
+end
+
+function PlayerData.markDealPurchased(self: PlayerData, dealKey: string)
+	self.purchasedDealKeys[dealKey] = true
+end
+
+function PlayerData.getPurchasedDealKeys(self: PlayerData): any
+	return self.purchasedDealKeys
+end
+
 function PlayerData.hasDiscoveredIndexItem(self: PlayerData, itemName: any)
 	return self.indexDiscoveredItems[itemName] == true
 end
@@ -2308,6 +2328,7 @@ function PlayerData.getSaveData(self: PlayerData): any
 	saveData.ftueProgress = self.ftueProgress
 	saveData.firstSessionOfferState = self.firstSessionOfferState
 	saveData.codesRedeemed = self.codesRedeemed
+	saveData.purchasedDealKeys = self.purchasedDealKeys
 	saveData.contextualFtueState = self.contextualFtueState
 	saveData.indexDiscoveredItems = self.indexDiscoveredItems
 	saveData.indexClaimedRewards = self.indexClaimedRewards
@@ -3331,6 +3352,7 @@ function PlayerData.new(player: Player?): PlayerData
 	self.ftueProgress = {}
 	self.firstSessionOfferState = {}
 	self.codesRedeemed = {}
+	self.purchasedDealKeys = {}
 	self.contextualFtueState = self:getDefaultContextualFtueState()
 	self.indexDiscoveredItems = {}
 	self.indexClaimedRewards = {}

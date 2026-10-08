@@ -30,6 +30,11 @@ export type Deal = {
 	cardStyle: number, -- Enums.ShopCardStyle
 	icon: string?,
 	tooltip: string?,
+	giftable: boolean?, -- false hides Gift and refuses gifts; oneTimeOnly deals are never giftable
+	oneTimeOnly: boolean?, -- each player can buy it once
+	startDate: string?, -- ISO 8601 UTC; hidden before this
+	endDate: string?, -- ISO 8601 UTC; hidden (and counted down to) after this
+	startTime: number?, -- startDate and endDate as server times, filled server-side for clients
 	endTime: number?,
 	tiers: { Tier },
 }
@@ -45,6 +50,11 @@ export type DealShopConfig = {
 }
 
 local MAX_TIERS = 2
+
+function DealShopCatalog.parseIsoDate(isoDate: string): number?
+	local dateTime = DateTime.fromIsoDate(isoDate)
+	return if dateTime then dateTime.UnixTimestamp else nil
+end
 
 local function validateContent(errors: { string }, where: string, content: DealContent)
 	if not enums.isValidValue(enums.ShopContentKind, content.kind) then
@@ -108,24 +118,30 @@ local function validateTier(errors: { string }, tierWhere: string, tier: Tier, s
 	end
 end
 
--- a deal with two tiers is one item sold two ways: one Robux tier and one coin tier, same contents
+local function describeTierContents(tier: Tier, includeCounts: boolean): string
+	local parts: { string } = {}
+	for _, content in tier.contents do
+		local counts = if includeCounts then `:{tostring(content.count)}:{tostring(content.amount)}` else ""
+		table.insert(parts, `{content.kind}:{tostring(content.objectName)}{counts}`)
+	end
+	return table.concat(parts, ",")
+end
+
+-- a deal with two tiers is one offering sold two ways, one Robux tier and one coin tier; a single item may
+-- differ in count between them (a bigger pack for Robux), a bundle must grant the same contents in both
 local function validateTierPair(errors: { string }, where: string, deal: Deal)
 	local first = deal.tiers[1]
 	local second = deal.tiers[2]
 	if isRobuxTier(first) == isRobuxTier(second) then
 		table.insert(errors, `{where}: two tiers must be one Robux tier and one coin tier`)
 	end
-	if type(first.contents) == "table" and type(second.contents) == "table" then
-		local function describe(tier: Tier): string
-			local parts: { string } = {}
-			for _, content in tier.contents do
-				table.insert(parts, `{content.kind}:{tostring(content.objectName)}:{tostring(content.count)}:{tostring(content.amount)}`)
-			end
-			return table.concat(parts, ",")
-		end
-		if describe(first) ~= describe(second) then
-			table.insert(errors, `{where}: both tiers must grant identical contents`)
-		end
+	if type(first.contents) ~= "table" or type(second.contents) ~= "table" then
+		return
+	end
+
+	local isSingleItem = deal.cardStyle == enums.ShopCardStyle.SINGLE_ITEM
+	if describeTierContents(first, not isSingleItem) ~= describeTierContents(second, not isSingleItem) then
+		table.insert(errors, if isSingleItem then `{where}: both tiers must sell the same item` else `{where}: both tiers must grant identical contents`)
 	end
 end
 
@@ -136,8 +152,32 @@ function DealShopCatalog.validateDeal(errors: { string }, where: string, deal: D
 	if deal.icon ~= nil and (type(deal.icon) ~= "string" or deal.icon == "") then
 		table.insert(errors, `{where}: icon must be nil or a non-empty string`)
 	end
-	if deal.endTime ~= nil and type(deal.endTime) ~= "number" then
-		table.insert(errors, `{where}: endTime must be nil or a number`)
+	if deal.giftable ~= nil and type(deal.giftable) ~= "boolean" then
+		table.insert(errors, `{where}: giftable must be nil or a boolean`)
+	end
+	if deal.oneTimeOnly ~= nil and type(deal.oneTimeOnly) ~= "boolean" then
+		table.insert(errors, `{where}: oneTimeOnly must be nil or a boolean`)
+	end
+	if deal.oneTimeOnly == true and deal.giftable == true then
+		table.insert(errors, `{where}: oneTimeOnly deals cannot be giftable`)
+	end
+
+	local startTime: number? = nil
+	local endTime: number? = nil
+	if deal.startDate ~= nil then
+		startTime = if type(deal.startDate) == "string" then DealShopCatalog.parseIsoDate(deal.startDate) else nil
+		if not startTime then
+			table.insert(errors, `{where}: startDate must be an ISO 8601 date such as 2026-10-01T00:00:00Z`)
+		end
+	end
+	if deal.endDate ~= nil then
+		endTime = if type(deal.endDate) == "string" then DealShopCatalog.parseIsoDate(deal.endDate) else nil
+		if not endTime then
+			table.insert(errors, `{where}: endDate must be an ISO 8601 date such as 2026-10-15T00:00:00Z`)
+		end
+	end
+	if startTime and endTime and startTime >= endTime then
+		table.insert(errors, `{where}: startDate must be before endDate`)
 	end
 	if not enums.isValidValue(enums.ShopCardStyle, deal.cardStyle) then
 		table.insert(errors, `{where}: invalid cardStyle {tostring(deal.cardStyle)}`)

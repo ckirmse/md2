@@ -24,6 +24,12 @@ local gameController: Types.GameController -- injected via initClass(deps); type
 type TierEntry = {
 	deal: DealShopCatalog.Deal,
 	tier: DealShopCatalog.Tier,
+	tierIndex: number,
+}
+
+type DealWindow = {
+	startTime: number?,
+	endTime: number?,
 }
 
 type PendingGift = {
@@ -35,6 +41,7 @@ type PendingGift = {
 type DealShopManagerFields = {
 	tiersByProductId: { [number]: TierEntry },
 	tiersByDealKey: { [string]: { TierEntry } },
+	dealWindows: { [string]: DealWindow }, -- keyed by dealKey
 	pendingGiftsByPlayer: { [Player]: PendingGift },
 	clientConfig: DealShopCatalog.DealShopConfig?,
 }
@@ -80,9 +87,13 @@ function DealShopManager.validateConfig(self: DealShopManager)
 		for _, deal in section.deals do
 			local dealTiers: { TierEntry } = {}
 			self.tiersByDealKey[deal.dealKey] = dealTiers
+			self.dealWindows[deal.dealKey] = {
+				startTime = if deal.startDate then DealShopCatalog.parseIsoDate(deal.startDate) else nil,
+				endTime = if deal.endDate then DealShopCatalog.parseIsoDate(deal.endDate) else nil,
+			}
 
-			for _, tier in deal.tiers do
-				local entry: TierEntry = { deal = deal, tier = tier }
+			for tierIndex, tier in deal.tiers do
+				local entry: TierEntry = { deal = deal, tier = tier, tierIndex = tierIndex }
 				table.insert(dealTiers, entry)
 
 				local productId = tier.productId
@@ -111,6 +122,10 @@ function DealShopManager.buildClientConfig(self: DealShopManager)
 		for dealIndex, deal in section.deals do
 			local enrichedDeal = table.clone(deal) :: any
 			enrichedDeal.tiers = {}
+			enrichedDeal.startDate = nil
+			enrichedDeal.endDate = nil
+			enrichedDeal.startTime = self.dealWindows[deal.dealKey].startTime
+			enrichedDeal.endTime = self.dealWindows[deal.dealKey].endTime
 
 			for tierIndex, tier in deal.tiers do
 				local enrichedTier = table.clone(tier) :: any
@@ -194,6 +209,29 @@ function DealShopManager.grantTier(
 	return grantedCount > 0
 end
 
+function DealShopManager.isDealAvailable(self: DealShopManager, deal: DealShopCatalog.Deal, playerData: any): boolean
+	local window = self.dealWindows[deal.dealKey]
+	local now = workspace:GetServerTimeNow()
+	if window.startTime and now < window.startTime then
+		return false
+	end
+	if window.endTime and now >= window.endTime then
+		return false
+	end
+
+	return not (deal.oneTimeOnly and playerData:hasPurchasedDeal(deal.dealKey))
+end
+
+function DealShopManager.isDealGiftable(self: DealShopManager, deal: DealShopCatalog.Deal): boolean
+	return deal.giftable ~= false and not deal.oneTimeOnly
+end
+
+function DealShopManager.recordPurchase(self: DealShopManager, playerData: any, deal: DealShopCatalog.Deal)
+	if deal.oneTimeOnly then
+		playerData:markDealPurchased(deal.dealKey)
+	end
+end
+
 function DealShopManager.notifyDealPurchaseResult(self: DealShopManager, player: Player, dealKey: string, tierIndex: number, isSuccess: boolean)
 	RemoteEvents.NotifyDealPurchaseResult:FireClient(player, dealKey, tierIndex, isSuccess)
 end
@@ -211,11 +249,16 @@ function DealShopManager.tryBuyDeal(self: DealShopManager, player: Player, dealK
 		return
 	end
 
+	local playerData = gameController:getPlayerData(player)
+	if not playerData then
+		return
+	end
+
 	local deal = entry.deal
 	local cost = entry.tier.coinCost :: number
 
-	if deal.endTime ~= nil and deal.endTime <= workspace:GetServerTimeNow() then
-		gameController:sendSystemMessageToPlayer(player, "That deal has ended")
+	if not self:isDealAvailable(deal, playerData) then
+		gameController:sendSystemMessageToPlayer(player, "That deal is not available")
 		self:notifyDealPurchaseResult(player, dealKey, tierIndex, false)
 		return
 	end
@@ -244,6 +287,7 @@ function DealShopManager.tryBuyDeal(self: DealShopManager, player: Player, dealK
 	ftueManager:notifyBuyItemForPlayer(player)
 
 	gameController:sendSystemMessageToPlayer(player, string.format("%s purchased!", deal.title))
+	self:recordPurchase(playerData, deal)
 	self:notifyDealPurchaseResult(player, dealKey, tierIndex, true)
 end
 
@@ -253,8 +297,19 @@ function DealShopManager.tryBeginGift(self: DealShopManager, player: Player, pro
 		return
 	end
 
-	if not self.tiersByProductId[productId :: number] then
+	local entry = self.tiersByProductId[productId :: number]
+	if not entry then
 		warn("DealShopManager: TryBeginGift for unknown product", productId, "from", player.Name)
+		return
+	end
+	if not self:isDealGiftable(entry.deal) then
+		gameController:sendSystemMessageToPlayer(player, "That deal cannot be gifted")
+		return
+	end
+
+	local playerData = gameController:getPlayerData(player)
+	if not playerData or not self:isDealAvailable(entry.deal, playerData) then
+		gameController:sendSystemMessageToPlayer(player, "That deal is not available")
 		return
 	end
 	if recipientUserId == player.UserId then
@@ -331,6 +386,13 @@ function DealShopManager.tryDeliverToPlayer(self: DealShopManager, player: Playe
 		return false
 	end
 
+	local playerData = gameController:getPlayerData(player)
+	if playerData and entry.deal.oneTimeOnly then
+		self:recordPurchase(playerData, entry.deal)
+		-- the card for a one-time deal disappears once it is bought
+		self:notifyDealPurchaseResult(player, entry.deal.dealKey, entry.tierIndex, true)
+	end
+
 	-- in case a player does a robux purchase during ftue
 	task.defer(function()
 		ftueManager:notifyBuyItemForPlayer(player)
@@ -351,6 +413,7 @@ function DealShopManager.new(): DealShopManager
 
 	self.tiersByProductId = {}
 	self.tiersByDealKey = {}
+	self.dealWindows = {}
 	self.pendingGiftsByPlayer = {}
 	self.clientConfig = nil
 
