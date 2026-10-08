@@ -55,7 +55,7 @@ synced by Rojo.
 | Studio location | Contains | Consumed by |
 |---|---|---|
 | `ServerScriptService.GameData.Objects` | One ModuleScript per item/object definition (`name`, `type`, `mixins`, `templatePath`, `boardSpacing`, …) | `ObjectDataStore:initDataTypes()` |
-| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
+| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
 | `ServerScriptService.GameData.LootTables` | One ModuleScript per loot table | `LootTableManager:init()` |
 | `ServerScriptService.GameData.Vanity` | `MainPlotInner`, `MainPlotOuter`, `Fence`, `ExpansionInner`, … | `PlotsManager:initVanityData()` |
 | `ReplicatedStorage.RemoteEvents` | Every RemoteEvent instance | server + client (see below) |
@@ -324,6 +324,56 @@ to the client:
   overload pick).
 - `tools/convert_client_strict.py` was the mechanical first pass for this conversion and documents
   the transforms; new modules should just be written strict directly.
+
+## Deal Shop
+
+A config-driven shop of **deals** (bundles and single items) sold for coins or Robux, grouped into
+sections shown as tabs. It is separate from the coin `BuyStore` (era-restocked, driven by `buy` tables on
+item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter-bundle chest). Files:
+`shared/DealShopCatalog.luau` (types and pure validation), `server/DealShopManager.luau`,
+`client/ClientDealShopManager.luau`, `client/ClientGiftingManager.luau`.
+
+- **Config** lives in the Studio-only `ServerScriptService.GameData.Control.DealShop`
+  (`SECTIONS → deals → tiers → contents`); the field reference is a comment block at the top of that
+  script. A deal has 1–2 tiers, each priced in coins (`coinCost`) or Robux (`productId`); contents are
+  `ITEM` (`objectName`, `count`) or `COINS` (`amount`). Optional per-deal `giftable = false`,
+  `oneTimeOnly = true` (saved in `PlayerData.purchasedDealKeys`; never giftable), and
+  `startDate`/`endDate` (ISO 8601 UTC).
+- **Startup:** `DealShopManager:init` validates the config and errors (stopping the server) on a bad one:
+  catalog rules, every `objectName` exists and is deliverable, and no `productId` is already delivered by
+  another system (`GameController:isProductIdReserved` mirrors `tryGrantPlayerRobuxProductId` and must
+  stay in sync with it). The display copy for clients is built once and sent in `NotifyInit` as
+  `dealShopConfig` (with `purchasedDealKeys`); nothing is stored on workspace.
+- **Buying:** a coin tier fires `TryBuyDeal(dealKey, tierIndex)`; the server checks availability and
+  balance, subtracts, grants, refunds on total failure, and replies `NotifyDealPurchaseResult`. A Robux
+  tier prompts the dev product and the receipt flows
+  `ProcessReceipt → GameController:tryGrantPlayerRobuxProductId → DealShopManager:tryDeliverToPlayer`. A
+  gift (Robux tiers only) records a pending gift with `TryBeginGift`, the receipt grants the recipient,
+  and `TryClearGift` cancels it.
+- **Grant policy:** every content entry is attempted and one landing counts as granted, because retrying a
+  partial failure would duplicate items; items go through
+  `GameController:tryDeliverPurchasedItemToPlayer`. A Robux receipt for an unavailable deal is still
+  granted (the player already paid).
+- **Adding something to sell needs no code:** add a deal with `coinCost`, or create a developer product
+  and use its `productId`. A new content kind means editing `Enums.ShopContentKind`,
+  `DealShopCatalog.validateContent`, `DealShopManager.grantTier` (and `validateTierContents` /
+  `buildClientConfig` if it needs display data), and `ClientDealShopManager.fillContents`.
+- **Studio prerequisites:** RemoteEvents `TryBuyDeal`, `TryBeginGift`, `TryClearGift`,
+  `NotifyDealPurchaseResult`, `NotifyGiftReceived`; the config module; the `DealShop` and `Gifting`
+  ScreenGuis; and `DealShopFrame` → `DealShopButton` in the HUD ScreenGui (hidden during the FTUE). A
+  missing GUI only logs a warning and disables that part; a missing RemoteEvent or config module stops boot.
+- **GUI names the client finds** (a lookup that fails names the missing piece in the output):
+  `DealShop > Main > Title > Exit`; `Main > Scroll > BundleDealCardTemplate / SingleItemDealCardTemplate`
+  (an authored `GachaDealCardTemplate` is kept hidden for future gacha deals); optional
+  `Main > SectionTabs > SectionTabTemplate` (a TextButton; its Border-mode `UIStroke` marks the active
+  tab); `Main > ToolTip > ToolTipInfo`. Each card has `TitleTimer > DealTitle, TimeLimit`,
+  `Contents > Icon` (the tile template, with `NameText` and an optional `CountText`), and
+  `BuyTier1`/`BuyTier2` > `Purchase` (the button) > optional `Amount`, `Cost` (frame) > `RBX`, `Coin`,
+  `Cost` (label), optional `PriceSlash`, plus a `Gift` button. `Gifting > Main > Title > Exit` and
+  `Main > Scroll > PlayerTemplate > PlayerName, PlayerAvatar, Select`.
+- **Current limits:** bundles are Robux-only by convention (not enforced); a two-tier single item must sell
+  the same item in both tiers but may differ in count, a two-tier bundle must grant identical contents; there
+  is no play-time window or gacha card style yet.
 
 ## Design Notes in the Repo
 

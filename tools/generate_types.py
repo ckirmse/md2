@@ -133,16 +133,16 @@ GENERATED_MARKER = "-- ===== GENERATED SECTION -- everything below is written by
 def parse_methods(cls: str, path: str):
     methods = {}
     problems = []
-    for lineno, line in enumerate(open(path).read().split("\n"), 1):
-        m = re.match(rf"^function {cls}\.(\w+)\((.*)$", line)
-        if not m:
-            continue
-        name, rest = m.group(1), m.group(2)
-        if not rest.startswith(f"self: {cls}"):
-            continue  # static / constructor / initClass: not part of the consumer API
+    text = open(path).read()
+    # a formatter may wrap a long definition across lines, so scan the whole file, not line by line
+    for match in re.finditer(rf"^function {cls}\.(\w+)\(", text, re.MULTILINE):
+        name = match.group(1)
+        lineno = text.count("\n", 0, match.start()) + 1
+        start = match.end()
         # split params from return annotation at the closing paren of the parameter list
         depth = 1
-        for i, ch in enumerate(rest):
+        for i in range(start, len(text)):
+            ch = text[i]
             if ch == "(":
                 depth += 1
             elif ch == ")":
@@ -152,14 +152,15 @@ def parse_methods(cls: str, path: str):
         else:
             problems.append(f"{path}:{lineno}: could not parse parameter list for {name}")
             continue
-        params = rest[:i]
+        params = re.sub(r"\s+", " ", text[start:i]).strip()
+        params = re.sub(r",$", "", params)
+        if not params.startswith(f"self: {cls}"):
+            continue  # static / constructor / initClass: not part of the consumer API
+        line_end = text.find("\n", i)
+        ret = text[i + 1:line_end if line_end != -1 else len(text)].strip()
+        ret = ret[1:].strip() if ret.startswith(":") else "()"
         # varargs in type position need a type: `...` / `...: any` -> `...any`
         params = re.sub(r"\.\.\.(: (any))?$", "...any", params)
-        ret = rest[i + 1:].strip()
-        ret = ret[1:].strip() if ret.startswith(":") else "()"
-        if not (ret.startswith("(") and ret.endswith(")")) :
-            # single return type; parenthesize multi-returns as written
-            pass
         # signatures may reference other central types as Types.Foo; inside Types.luau the
         # qualifier drops away
         params = re.sub(r"\bTypes\.(\w+)", r"\1", params)
