@@ -27,6 +27,7 @@ local clientRebirthManager = require("./ClientRebirthManager")
 local clientLuckInfoManager = require("./ClientLuckInfoManager")
 local clientOptionsManager = require("./ClientOptionsManager")
 local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
+local clientDealShopManager = require("./ClientDealShopManager")
 local clientRadarManager = require("./ClientRadarManager")
 local NumberLabelAnimator = require("./NumberLabelAnimator")
 local overlayTracker = require("./OverlayTracker")
@@ -71,6 +72,8 @@ type ScreenGuiManagerFields = {
 	isIndexFeatureEnabled: boolean,
 	dragonRosterFrame: any?,
 	rebirthFrame: any?,
+	eggsInWorldFrame: any?,
+	dealShopFrame: any?,
 	isInPlot: boolean,
 	isBackpackEnabled: boolean?,
 	gemsFrameBasePosition: UDim2,
@@ -601,7 +604,8 @@ function ScreenGuiManager.updateFriendLuckBoostDisplay(self: ScreenGuiManager)
 		return
 	end
 
-	local luckState = player:WaitForChild("PlayerGui"):WaitForChild("SplendidData"):WaitForChild("Luck"):WaitForChild("State")
+	local luckState =
+		player:WaitForChild("PlayerGui"):WaitForChild("SplendidData"):WaitForChild("Luck"):WaitForChild("State")
 	local friendLuckPercent = (luckState:GetAttribute(Attributes.FRIEND_LUCK_PERCENT) :: number?) or 0
 	local textLabel: any = utils.findFirstDescendant(friendLuckBoostFrame, "FriendLuckBoostText")
 	if friendLuckPercent > 0 then
@@ -731,11 +735,13 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 	end
 
 	local isRiding = clientRideController:isRiding()
-	local isRidingPickupable = isRiding and (clientRideController:getRidingObj() :: any):GetAttribute(Attributes.PICKUP_NAME) ~= nil
+	local isRidingPickupable = isRiding
+		and (clientRideController:getRidingObj() :: any):GetAttribute(Attributes.PICKUP_NAME) ~= nil
 
 	if isRidingPickupable then
 		self.latestEquippedItemId = nil
-		local canPutAwayRidingDragon = clientRideController:isRidingAndControllingAndInFreeFlyZone() and not clientRideController:isCarryingUnsafeEgg()
+		local canPutAwayRidingDragon = clientRideController:isRidingAndControllingAndInFreeFlyZone()
+			and not clientRideController:isCarryingUnsafeEgg()
 		PutAwayButton.Visible = canPutAwayRidingDragon
 	end
 
@@ -762,7 +768,8 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 		heldRadarRarity = (tool :: any):GetAttribute(Attributes.RARITY)
 	end
 
-	local isHeldRadarActive = heldRadarRarity ~= nil and clientRadarManager:hasActiveGuidanceForRarity(heldRadarRarity :: number)
+	local isHeldRadarActive = heldRadarRarity ~= nil
+		and clientRadarManager:hasActiveGuidanceForRarity(heldRadarRarity :: number)
 
 	RadarActivateFrame.Visible = isHoldingRadar and not isHeldRadarActive
 	if isHoldingRadar and not isHeldRadarActive then
@@ -792,7 +799,8 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 			if currentItemPart:HasTag(Tags.SHADOW) then
 				inst = currentItemPart
 			else
-				inst = utils.tryGetModelForPlayerAndItemId(player, currentItemPart:GetAttribute(Attributes.ITEM_ID)) :: any
+				inst =
+					utils.tryGetModelForPlayerAndItemId(player, currentItemPart:GetAttribute(Attributes.ITEM_ID)) :: any
 				if not inst then
 					-- gems get here as of 2026-february-20, because they are just a part, no model
 					-- gems can't be held as of 2026-march-26 so this probably isn't possible
@@ -853,7 +861,12 @@ function ScreenGuiManager.hideAllOtherGuis(self: ScreenGuiManager)
 			continue
 		end
 
-		if gui.Name == "ScreenGui" or gui.Name == "BackpackGui" or gui.Name == "ItemScreenshotGui" or gui.Name:match("^Topbar") then
+		if
+			gui.Name == "ScreenGui"
+			or gui.Name == "BackpackGui"
+			or gui.Name == "ItemScreenshotGui"
+			or gui.Name:match("^Topbar")
+		then
 			continue
 		end
 
@@ -1141,6 +1154,27 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 		clientEggWorldCountsManager:togglePanel()
 	end)
 
+	local dealShopFrame: any = ScreenGui:FindFirstChild("DealShopFrame")
+	if dealShopFrame then
+		self.dealShopFrame = dealShopFrame
+		dealShopFrame.Visible = not clientFtueManager:isFtueActive()
+
+		clientFtueManager:getIsEnabledEvent():Connect(function(isFtueEnabled: boolean)
+			dealShopFrame.Visible = not isFtueEnabled
+		end)
+
+		local dealShopButton: any = dealShopFrame:FindFirstChild("DealShopButton")
+		if dealShopButton then
+			dealShopButton.Activated:Connect(function()
+				clientDealShopManager:togglePanel()
+			end)
+		else
+			warn("ScreenGuiManager: DealShopFrame has no DealShopButton")
+		end
+	else
+		warn("ScreenGuiManager: DealShopFrame missing from the HUD; no deal shop button")
+	end
+
 	local friendLuckBoostFrame = ScreenGui:FindFirstChild("FriendLuckBoostFrame")
 	if friendLuckBoostFrame then
 		friendLuckBoostFrame.Visible = not clientFtueManager:isFtueActive()
@@ -1258,7 +1292,8 @@ function ScreenGuiManager.new(): ScreenGuiManager
 	local luckFrame = ScreenGui:WaitForChild("LuckFrame")
 	self.luckFrameBasePosition = luckFrame.Position
 
-	local luckState = player:WaitForChild("PlayerGui"):WaitForChild("SplendidData"):WaitForChild("Luck"):WaitForChild("State")
+	local luckState =
+		player:WaitForChild("PlayerGui"):WaitForChild("SplendidData"):WaitForChild("Luck"):WaitForChild("State")
 	local lastLuckPercent = luckState:GetAttribute(Attributes.PERCENT) :: number
 	luckState:GetAttributeChangedSignal(Attributes.PERCENT):Connect(function()
 		local newPercent = luckState:GetAttribute(Attributes.PERCENT) :: number

@@ -116,6 +116,24 @@ module = {
 			PLANTS = "Plants",
 		},
 	},
+	ShopContentKind = {
+		ITEM = 1,
+		COINS = 2,
+
+		PublicNames = {
+			ITEM = "Item",
+			COINS = "Coins",
+		},
+	},
+	ShopCardStyle = {
+		BUNDLE = 1,
+		SINGLE_ITEM = 2,
+
+		PublicNames = {
+			BUNDLE = "Bundle",
+			SINGLE_ITEM = "Single Item",
+		},
+	},
 	Mutations = {
 		-- if these are changed to not be strictly better in increasing values, then you must update MItem.compareMutations (as of 2026-january-23)
 		NORMAL = 1,

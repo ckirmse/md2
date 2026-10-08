@@ -18,6 +18,7 @@ local Critter = require("./Critter")
 local Crop = require("./Crop")
 local Crystal = require("./Crystal")
 local customerTools = require("./CustomerTools")
+local dealShopManager = require("./DealShopManager")
 local devTools = require("./DevTools")
 local DragonEgg = require("./DragonEgg")
 local dragonFuseManager = require("./DragonFuseManager")
@@ -1368,6 +1369,10 @@ function GameController.tryGrantPlayerRobuxProductId(self: GameController, playe
 		return true
 	end
 
+	if dealShopManager:isProductId(productId) then
+		return dealShopManager:tryDeliverToPlayer(player, productId)
+	end
+
 	if productId == WelcomeBack.DOUBLE_WELCOME_BACK_PRODUCT_ID then
 		return playerData:tryDeliverDoubleWelcomeBackGift()
 	end
@@ -1378,6 +1383,43 @@ function GameController.tryGrantPlayerRobuxProductId(self: GameController, playe
 	warn("did not find product id to purchase", player, productId)
 
 	return false
+end
+
+-- whether another system already delivers this product id; keep in sync with the branches in
+-- tryGrantPlayerRobuxProductId (the Deal Shop checks it at startup so no id is shared)
+function GameController.isProductIdReserved(self: GameController, productId: number): boolean
+	for _, itemName in self:getAllRobuxBuyableItemNames() do
+		if objectDataStore:getObjectDataByName(itemName).buy.robuxProductId == productId then
+			return true
+		end
+	end
+
+	for _, instantOpenCrystalData in crystalTimeData.instantOpenCrystal do
+		if instantOpenCrystalData.robuxProductId == productId then
+			return true
+		end
+	end
+
+	for _, primaryElement in Elements.getPrimaryElementsSorted() do
+		if Elements.getUnlockAbilitySlotRobuxProductIdForPrimaryElement(primaryElement) == productId then
+			return true
+		end
+	end
+
+	if starterOfferData.robuxProductId == productId then
+		return true
+	end
+
+	for _, vanityArea in enums.getAllValues(enums.VanityAreas) do
+		local unlockPurchase = vanityAreasData.unlockPurchase[vanityArea]
+		if unlockPurchase and unlockPurchase.robuxProductId == productId then
+			return true
+		end
+	end
+
+	return vanityStoreManager:isProductId(productId)
+		or mutationStoreManager:isProductId(productId)
+		or productId == WelcomeBack.DOUBLE_WELCOME_BACK_PRODUCT_ID
 end
 
 function GameController.notifyPlayerLevelChanged(self: GameController, player: Player): ()
@@ -1549,6 +1591,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		options = playerData:getOptions(),
 		abilityStatuses = playerData:getAbilityStatuses(),
 		starterOfferData = starterOfferManager:updateAndGetStarterOfferDataForPlayer(player),
+		dealShopConfig = dealShopManager:getClientConfig(),
 		ftueProgress = ftueProgress,
 		firstSessionOfferState = playerData:getFirstSessionOfferState(),
 		showLuckBillboard = not playerData.hasClaimedGroupLuck and not ftueProgress.isEnabled,
@@ -1597,6 +1640,7 @@ function GameController.processPlayerRemove(self: GameController, player: Player
 	plotsManager:notifyRemovePlayer(player)
 	incomeManager:notifyRemovePlayer(player)
 	radarManager:notifyRemovePlayer(player)
+	dealShopManager:notifyRemovePlayer(player)
 
 	for otherPlayer, otherPlayerData in self.playerDatas do
 		otherPlayerData:notifyOtherPlayerRemoved(player)
@@ -1772,6 +1816,18 @@ function GameController.tryBuyMaxItemName(self: GameController, player: Player, 
 	})
 
 	RemoteEvents.NotifyBuyMaxStatus:FireClient(player, actualQuantity, buyStoreManager:getPurchasesForPlayer(player))
+end
+
+function GameController.tryBuyDeal(self: GameController, player: Player, dealKey: any, tierIndex: any): ()
+	dealShopManager:tryBuyDeal(player, dealKey, tierIndex)
+end
+
+function GameController.tryBeginGift(self: GameController, player: Player, productId: any, recipientUserId: any): ()
+	dealShopManager:tryBeginGift(player, productId, recipientUserId)
+end
+
+function GameController.tryClearGift(self: GameController, player: Player): ()
+	dealShopManager:tryClearGift(player)
 end
 
 function GameController.tryMergeItemsWithHeldItem(self: GameController, player: Player, heldItemId: any, itemIds: any, isMergeAll: any): ()
@@ -3632,6 +3688,9 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryCustomerTool", "tryCustomerTool")
 	self:addRemoteEventHandler("TryBuyItemName", "tryBuyItemName")
 	self:addRemoteEventHandler("TryBuyMaxItemName", "tryBuyMaxItemName")
+	self:addRemoteEventHandler("TryBuyDeal", "tryBuyDeal")
+	self:addRemoteEventHandler("TryBeginGift", "tryBeginGift")
+	self:addRemoteEventHandler("TryClearGift", "tryClearGift")
 	self:addRemoteEventHandler("TryMergeItemsWithHeldItem", "tryMergeItemsWithHeldItem")
 	self:addRemoteEventHandler("TryMergeItemsWithRidingItem", "tryMergeItemsWithRidingItem")
 	self:addRemoteEventHandler("TryFuseDragons", "tryFuseDragons")
@@ -3919,6 +3978,7 @@ function GameController.init(self: GameController): ()
 	tradeManager:init()
 	mutationStoreManager:init()
 	vanityStoreManager:init()
+	dealShopManager:init()
 	islandManager:init()
 	scatterZoneManager:init()
 	stableManager:init()
@@ -4014,6 +4074,7 @@ local function initClasses(gameController: GameController): ()
 	tradeManager.initClass(deps)
 	mutationStoreManager.initClass(deps)
 	vanityStoreManager.initClass(deps)
+	dealShopManager.initClass(deps)
 
 	-- SellMixin and VerticalMixin no longer have an initClass, so the mixinData loop is gone
 	mergeMixin.initClass(deps)

@@ -23,6 +23,7 @@ local clientClaimableCrystalManager = require("./ClientClaimableCrystalManager")
 local clientConsumableCropManager = require("./ClientConsumableCropManager")
 local clientContextualFtueManager = require("./ClientContextualFtueManager")
 local clientCustomerTools = require("./ClientCustomerTools")
+local clientDealShopManager = require("./ClientDealShopManager")
 local clientDevTools = require("./ClientDevTools")
 --local clientDragonManager = nil -- prevent circular reference by not initializing here
 local clientEggWorldCountsManager = require("./ClientEggWorldCountsManager")
@@ -152,6 +153,8 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 		local starterOfferData = initData.starterOfferData
 		clientPremiumStore:initStarterOfferData(starterOfferData)
 
+		clientDealShopManager:setConfig(initData.dealShopConfig)
+
 		local ftueProgress = initData.ftueProgress
 		clientFtueManager:setFtueProgress(ftueProgress)
 
@@ -226,6 +229,10 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 
 	RemoteEvents.NotifyEggWorldCounts.OnClientEvent:Connect(function(eggWorldCountDatas)
 		clientEggWorldCountsManager:setEggWorldCountDatas(eggWorldCountDatas)
+	end)
+
+	RemoteEvents.NotifyDealPurchaseResult.OnClientEvent:Connect(function(dealKey, tierIndex, isSuccess)
+		clientDealShopManager:notifyDealPurchaseResult(dealKey, tierIndex, isSuccess)
 	end)
 
 	RemoteEvents.NotifyPlayerAttributeChange.OnClientEvent:Connect(function(playerDataKey, value)
