@@ -5,7 +5,6 @@ ClientEggWorldCountsManager.__index = ClientEggWorldCountsManager
 
 local RunService = game:GetService("RunService")
 
-local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -45,6 +44,8 @@ type ClientEggWorldCountsManagerFields = {
 	eggWorldCountDatas: { EggWorldCountData },
 	refreshConnect: RBXScriptConnection?,
 	timeSinceRefresh: number,
+	nextRefreshTime: number, -- server time of the next egg refresh, sent with every reply
+	shownTimerSec: number?, -- the whole seconds the label currently shows
 	panelOpen: boolean,
 	awaitingInitialData: boolean,
 }
@@ -71,9 +72,15 @@ function ClientEggWorldCountsManager.doesWantBlur(self: ClientEggWorldCountsMana
 	return false
 end
 
-function ClientEggWorldCountsManager.setEggWorldCountDatas(self: ClientEggWorldCountsManager, eggWorldCountDatas: { EggWorldCountData })
+function ClientEggWorldCountsManager.setEggWorldCountDatas(
+	self: ClientEggWorldCountsManager,
+	eggWorldCountDatas: { EggWorldCountData },
+	nextRefreshTime: number
+)
 	self.eggWorldCountDatas = eggWorldCountDatas
+	self.nextRefreshTime = nextRefreshTime
 	self:refreshCards()
+	self:updateTimerText()
 
 	if self.awaitingInitialData then
 		self.awaitingInitialData = false
@@ -127,9 +134,17 @@ function ClientEggWorldCountsManager.refreshCards(self: ClientEggWorldCountsMana
 end
 
 function ClientEggWorldCountsManager.updateTimerText(self: ClientEggWorldCountsManager)
-	local nextRefreshTime = workspace:GetAttribute(Attributes.NEXT_EGG_REFRESH_TIME) :: number?
-	local duration = math.max(0, (nextRefreshTime or 0) - workspace:GetServerTimeNow())
-	self.timerText.Text = string.format("Egg resets in %s", utils.convertDurationSecToString(duration))
+	if self.nextRefreshTime == 0 then
+		return
+	end
+
+	local remainingSec = math.max(0, math.ceil(self.nextRefreshTime - workspace:GetServerTimeNow()))
+	if remainingSec == self.shownTimerSec then
+		return
+	end
+
+	self.shownTimerSec = remainingSec
+	self.timerText.Text = string.format("Egg resets in %s", utils.convertDurationSecToString(remainingSec))
 end
 
 function ClientEggWorldCountsManager.beginPanel(self: ClientEggWorldCountsManager)
@@ -139,7 +154,7 @@ function ClientEggWorldCountsManager.beginPanel(self: ClientEggWorldCountsManage
 	overlayTracker:notifyBeginOverlay((self :: any) :: Types.Overlay)
 
 	RemoteEvents.TryGetEggWorldCounts:FireServer()
-	self:updateTimerText()
+	self.shownTimerSec = nil
 	self.timeSinceRefresh = 0
 
 	self.refreshConnect = RunService.Heartbeat:Connect(function(deltaTime: number)
@@ -196,6 +211,8 @@ function ClientEggWorldCountsManager.new(): ClientEggWorldCountsManager
 	self.eggWorldCountDatas = {}
 	self.refreshConnect = nil
 	self.timeSinceRefresh = 0
+	self.nextRefreshTime = 0
+	self.shownTimerSec = nil
 	self.panelOpen = false
 	self.awaitingInitialData = false
 

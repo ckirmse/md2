@@ -229,8 +229,8 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 		clientWeatherManager:setClientWeatherDatas(clientWeatherDatas)
 	end)
 
-	RemoteEvents.NotifyEggWorldCounts.OnClientEvent:Connect(function(eggWorldCountDatas)
-		clientEggWorldCountsManager:setEggWorldCountDatas(eggWorldCountDatas)
+	RemoteEvents.NotifyEggWorldCounts.OnClientEvent:Connect(function(eggWorldCountDatas, nextRefreshTime)
+		clientEggWorldCountsManager:setEggWorldCountDatas(eggWorldCountDatas, nextRefreshTime)
 	end)
 
 	RemoteEvents.NotifyDealPurchaseResult.OnClientEvent:Connect(function(dealKey, tierIndex, isSuccess)

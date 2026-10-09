@@ -2700,7 +2700,11 @@ function GameController.tryDropEggFromBasket(self: GameController, player: Playe
 end
 
 function GameController.tryGetEggWorldCounts(self: GameController, player: Player): ()
-	RemoteEvents.NotifyEggWorldCounts:FireClient(player, scatterZoneManager:getEggWorldCounts())
+	RemoteEvents.NotifyEggWorldCounts:FireClient(
+		player,
+		scatterZoneManager:getEggWorldCounts(),
+		scatterZoneManager:getNextRefreshTime()
+	)
 end
 
 function GameController.tryShootFireballAtCrop(self: GameController, player: Player, cropItemId: any): ()

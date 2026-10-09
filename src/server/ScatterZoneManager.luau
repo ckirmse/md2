@@ -21,6 +21,7 @@ local eggSpawningData = require("@game/ServerScriptService/GameData/Control/EggS
 type ScatterZoneManagerFields = {
 	zoneMap: { [number]: Types.ScatterZone },
 	refreshTimer: Timer.Timer?,
+	nextRefreshTime: number, -- server time of the next global refresh
 }
 
 export type ScatterZoneManager = typeof(setmetatable({} :: ScatterZoneManagerFields, ScatterZoneManager))
@@ -90,7 +91,15 @@ function ScatterZoneManager.refreshAllZones(self: ScatterZoneManager)
 		end
 	end
 
-	workspace:SetAttribute(Attributes.NEXT_EGG_REFRESH_TIME, workspace:GetServerTimeNow() + eggSpawningData.globalRefreshSec)
+	self:stampNextRefreshTime()
+end
+
+function ScatterZoneManager.stampNextRefreshTime(self: ScatterZoneManager)
+	self.nextRefreshTime = workspace:GetServerTimeNow() + eggSpawningData.globalRefreshSec
+end
+
+function ScatterZoneManager.getNextRefreshTime(self: ScatterZoneManager): number
+	return self.nextRefreshTime
 end
 
 function ScatterZoneManager.getEggWorldCounts(self: ScatterZoneManager): { any }
@@ -133,6 +142,7 @@ function ScatterZoneManager.new(): ScatterZoneManager
 	local self: ScatterZoneManager = setmetatable({
 		zoneMap = {},
 		refreshTimer = nil,
+		nextRefreshTime = 0,
 	} :: ScatterZoneManagerFields, ScatterZoneManager)
 
 	return self
@@ -148,7 +158,7 @@ function ScatterZoneManager.init(self: ScatterZoneManager)
 		self:createZoneFromMarker(marker)
 	end
 
-	workspace:SetAttribute(Attributes.NEXT_EGG_REFRESH_TIME, workspace:GetServerTimeNow() + eggSpawningData.globalRefreshSec)
+	self:stampNextRefreshTime()
 	self:beginGlobalRefreshLoop()
 end
 
