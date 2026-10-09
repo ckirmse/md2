@@ -37,6 +37,7 @@ local RIGHT_KEY = Enum.KeyCode.D
 local BACKWARD_KEY = Enum.KeyCode.S
 
 local RIDE_BEGIN_COOLDOWN_SEC = 2
+local DISMOUNT_LAUNCH_SPEED = 60
 
 -- rotation in radians per second
 local ROTATION_SPEED = 1.5
@@ -246,7 +247,10 @@ function ClientRideController.beginListenInputs(self: ClientRideController)
 		if gameProcessed then
 			return
 		end
-		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
+		if
+			input.UserInputType ~= Enum.UserInputType.MouseButton1
+			and input.UserInputType ~= Enum.UserInputType.Touch
+		then
 			return
 		end
 		if not self.shadow:GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) then
@@ -622,12 +626,7 @@ function ClientRideController.updateMovement(self: ClientRideController, deltaTi
 			speedMultiplier = 1
 		end
 
-		local velocityVector = (
-			speedFrac
-			* moveFrac
-			* Constants.BASE_RIDE_SPEED
-			* speedMultiplier
-		) * forwardDirection
+		local velocityVector = (speedFrac * moveFrac * Constants.BASE_RIDE_SPEED * speedMultiplier) * forwardDirection
 
 		--local forwardDirectionXZ = Vector3.new(forwardDirection.X, 0, forwardDirection.Z)
 		--local forwardAngle = forwardDirection:Angle(forwardDirectionXZ, Vector3.zAxis)
@@ -1247,6 +1246,11 @@ function ClientRideController.cleanupRiding(self: ClientRideController, skipLaun
 
 	self:cleanupPlayerRiding()
 
+	local wasDragonDestroyed = self.shadow ~= nil and self.shadow.Parent == nil
+
+	-- legacy launch speed, disabled 2026-october-09: putting the dragon in the backpack removes it on every
+	-- server-driven dismount, so this branch doubled the launch for ordinary dismounts
+	--[[
 	-- if dragon was destroyed (for example, it was merged away) then we can't check its stamina (but also we don't care)
 	-- (or maybe we want to launch in that situation too, actually?)
 
@@ -1263,10 +1267,11 @@ function ClientRideController.cleanupRiding(self: ClientRideController, skipLaun
 			end
 		end
 	end
+	]]
 
 	if not skipLaunch then
 		local launchRig: any = player.Character
-		local impulse = launchSpeed * launchRig.HumanoidRootPart.AssemblyMass * Vector3.yAxis
+		local impulse = DISMOUNT_LAUNCH_SPEED * launchRig.HumanoidRootPart.AssemblyMass * Vector3.yAxis
 		launchRig.HumanoidRootPart:ApplyImpulse(impulse)
 	end
 
