@@ -128,10 +128,12 @@ module = {
 	ShopCardStyle = {
 		BUNDLE = 1,
 		SINGLE_ITEM = 2,
+		GACHA = 3,
 
 		PublicNames = {
 			BUNDLE = "Bundle",
 			SINGLE_ITEM = "Single Item",
+			GACHA = "Gacha",
 		},
 	},
 	Mutations = {

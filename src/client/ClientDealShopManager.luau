@@ -12,6 +12,7 @@ local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
 local DealShopCatalog = require("@game/ReplicatedStorage/Shared/DealShopCatalog")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
+local ItemIcons = require("@game/ReplicatedStorage/Shared/ItemIcons")
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
@@ -27,6 +28,15 @@ local ROBUX_SYMBOL = "\u{E002}"
 local UNAFFORDABLE_COLOR = Color3.fromRGB(255, 90, 90)
 -- the server answers every coin purchase it accepts; this only unlocks a button whose request was dropped
 local PENDING_TIMEOUT_SEC = 5
+local PRIZE_GRID_MAX_COLUMNS = 5
+local PRIZE_GRID_PADDING_X = 0.015
+local PRIZE_GRID_PADDING_Y = 0.04
+
+-- the authored per-rarity prize frames are named after the rarity's public name
+local rarityByPublicName: { [string]: number } = {}
+for key, publicName in enums.Rarity.PublicNames do
+	rarityByPublicName[publicName] = enums.Rarity[key]
+end
 
 type TierRecord = {
 	deal: DealShopCatalog.Deal,
@@ -58,6 +68,7 @@ type ClientDealShopManagerFields = {
 	sectionTabTemplate: any?,
 	bundleTemplate: any,
 	singleItemTemplate: any,
+	gachaTemplate: any?,
 	config: DealShopCatalog.DealShopConfig?,
 	cardRecords: { CardRecord },
 	tierRecords: { [string]: TierRecord }, -- keyed by dealKey and tier index
@@ -86,6 +97,14 @@ local function getTierKey(dealKey: string, tierIndex: number): string
 	return `{dealKey}:{tierIndex}`
 end
 
+-- the buy buttons of a gacha card sit inside its PurchaseTiers frame, every other card holds them directly
+local function getTierParent(card: any, deal: DealShopCatalog.Deal): any
+	if deal.cardStyle == enums.ShopCardStyle.GACHA then
+		return card:FindFirstChild("PurchaseTiers")
+	end
+	return card
+end
+
 local function getCoins(): number
 	return (clientPlayerAttributesManager:get(PlayerAttributeKeys.COINS) :: number?) or 0
 end
@@ -108,6 +127,19 @@ end
 local function doTierCountsDiffer(deal: DealShopCatalog.Deal): boolean
 	local secondTier = deal.tiers[2]
 	return secondTier ~= nil and getContentCount(deal.tiers[1].contents[1]) ~= getContentCount(secondTier.contents[1])
+end
+
+-- 0.5 -> "50%", 0.045 -> "4.5%", 0.0005 -> "0.05%"
+local function formatOddsPercent(fraction: number): string
+	local percent = fraction * 100
+	local text = if percent >= 10 then string.format("%.0f", percent)
+		elseif percent >= 1 then string.format("%.1f", percent)
+		else string.format("%.2f", percent)
+	if string.find(text, "%.") then
+		text = string.gsub(text, "0+$", "")
+		text = string.gsub(text, "%.$", "")
+	end
+	return text .. "%"
 end
 
 local function describeContent(content: DealShopCatalog.DealContent): string
@@ -260,7 +292,8 @@ function ClientDealShopManager.wireTier(self: ClientDealShopManager, card: any, 
 	local tier = deal.tiers[tierIndex]
 
 	-- the price label and its frame are both named Cost, so these are direct paths
-	local tierFrame: any = card:FindFirstChild(`BuyTier{tierIndex}`)
+	local tierParent: any = getTierParent(card, deal)
+	local tierFrame: any = tierParent and tierParent:FindFirstChild(`BuyTier{tierIndex}`)
 	local button: any = tierFrame and tierFrame:FindFirstChild("Purchase")
 	local costFrame: any = button and button:FindFirstChild("Cost")
 	local priceText: any = costFrame and costFrame:FindFirstChild("Cost")
@@ -283,7 +316,8 @@ function ClientDealShopManager.wireTier(self: ClientDealShopManager, card: any, 
 	if amountText then
 		local count = tier.contents[1].count or 1
 		local statesCount = count > 1 or doTierCountsDiffer(deal)
-		amountText.Text = if deal.cardStyle == enums.ShopCardStyle.SINGLE_ITEM and statesCount then `Buy {count}` else "Buy"
+		local isPack = deal.cardStyle == enums.ShopCardStyle.GACHA or (deal.cardStyle == enums.ShopCardStyle.SINGLE_ITEM and statesCount)
+		amountText.Text = if isPack then `Buy {count}` else "Buy"
 	elseif doTierCountsDiffer(deal) then
 		warn(`ClientDealShopManager: deal {deal.dealKey} sells different counts, so BuyTier{tierIndex}/Purchase needs an Amount label`)
 	end
@@ -364,7 +398,14 @@ function ClientDealShopManager.setActiveSection(self: ClientDealShopManager, sec
 end
 
 function ClientDealShopManager.buildCard(self: ClientDealShopManager, section: DealShopCatalog.Section, deal: DealShopCatalog.Deal, layoutOrder: number)
-	local template: any = if deal.cardStyle == enums.ShopCardStyle.SINGLE_ITEM then self.singleItemTemplate else self.bundleTemplate
+	local template: any = if deal.cardStyle == enums.ShopCardStyle.SINGLE_ITEM then self.singleItemTemplate
+		elseif deal.cardStyle == enums.ShopCardStyle.GACHA then self.gachaTemplate
+		else self.bundleTemplate
+	if not template then
+		warn(`ClientDealShopManager: no card template for deal {deal.dealKey}; add GachaDealCardTemplate for gacha deals`)
+		return
+	end
+
 	local card: any = template:Clone()
 	card.Name = `Deal_{deal.dealKey}`
 	card.LayoutOrder = layoutOrder
@@ -382,14 +423,20 @@ function ClientDealShopManager.buildCard(self: ClientDealShopManager, section: D
 		timeLimitText.Visible = deal.endTime ~= nil
 	end
 
-	self:fillContents(card, deal)
+	if deal.cardStyle == enums.ShopCardStyle.GACHA then
+		self:fillGachaCard(card, deal)
+	else
+		self:fillContents(card, deal)
+	end
 	self:wireCardToolTip(card, deal)
 
-	for tierIndex = 1, 2 do
+	local tierFrameCount = if deal.cardStyle == enums.ShopCardStyle.GACHA then 3 else 2
+	for tierIndex = 1, tierFrameCount do
 		if tierIndex <= #deal.tiers then
 			self:wireTier(card, deal, tierIndex)
 		else
-			local unusedTierFrame: any = card:FindFirstChild(`BuyTier{tierIndex}`)
+			local tierParent: any = getTierParent(card, deal)
+			local unusedTierFrame: any = tierParent and tierParent:FindFirstChild(`BuyTier{tierIndex}`)
 			if unusedTierFrame then
 				unusedTierFrame.Visible = false
 			end
@@ -465,6 +512,26 @@ function ClientDealShopManager.hideToolTip(self: ClientDealShopManager)
 	end
 end
 
+-- shows the shared popup above a gui object while the mouse is over it
+function ClientDealShopManager.attachToolTip(self: ClientDealShopManager, guiObject: any, toolTipText: string)
+	guiObject.MouseEnter:Connect(function()
+		local toolTipFrame: any = self.toolTipFrame
+		local toolTipLabel: any = self.toolTipLabel
+		if not toolTipFrame or not toolTipLabel then
+			return
+		end
+
+		toolTipLabel.Text = toolTipText
+		local offset = guiObject.AbsolutePosition - self.mainFrame.AbsolutePosition
+		toolTipFrame.Position = UDim2.fromOffset(offset.X, offset.Y - toolTipFrame.AbsoluteSize.Y)
+		toolTipFrame.Visible = true
+	end)
+
+	guiObject.MouseLeave:Connect(function()
+		self:hideToolTip()
+	end)
+end
+
 function ClientDealShopManager.wireCardToolTip(self: ClientDealShopManager, card: any, deal: DealShopCatalog.Deal)
 	if not deal.tooltip then
 		return
@@ -474,24 +541,152 @@ function ClientDealShopManager.wireCardToolTip(self: ClientDealShopManager, card
 	for _, content in deal.tiers[1].contents do
 		table.insert(lines, `• {describeContent(content)}`)
 	end
-	local toolTipText = table.concat(lines, "\n")
 
-	card.MouseEnter:Connect(function()
-		local toolTipFrame: any = self.toolTipFrame
-		local toolTipLabel: any = self.toolTipLabel
-		if not toolTipFrame or not toolTipLabel then
-			return
+	self:attachToolTip(card, table.concat(lines, "\n"))
+end
+
+-- one possible hatch result: the prize's rarity frame with its icon (or its name when there is no icon),
+-- its odds in the corner, and a hover tooltip
+function ClientDealShopManager.buildPrizeTile(
+	self: ClientDealShopManager,
+	prize: DealShopCatalog.GachaPrize,
+	layoutOrder: number,
+	rarityFrames: { [number]: any }
+): any
+	local tile: any
+	local rarityFrame = rarityFrames[prize.rarity]
+	if rarityFrame then
+		tile = rarityFrame:Clone()
+		tile.Visible = true
+	else
+		warn(`ClientDealShopManager: no rarity frame authored for rarity {prize.rarity}; prize {prize.itemName} uses a plain tile`)
+		tile = Instance.new("Frame")
+		tile.BackgroundTransparency = 0.15
+		tile.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 4)
+		corner.Parent = tile
+
+		local aspect = Instance.new("UIAspectRatioConstraint")
+		aspect.AspectRatio = 1
+		aspect.Parent = tile
+	end
+	tile.Name = `Prize_{prize.itemName}`
+	tile.LayoutOrder = layoutOrder
+
+	local iconAssetId = ItemIcons.getItemIconAssetId(prize.itemName)
+	if iconAssetId then
+		local image = Instance.new("ImageLabel")
+		image.Name = "Image"
+		image.BackgroundTransparency = 1
+		image.Size = UDim2.fromScale(1, 1)
+		image.ScaleType = Enum.ScaleType.Fit
+		image.Image = iconAssetId
+		image.Parent = tile
+	else
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Name = "NameText"
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Size = UDim2.fromScale(0.9, 0.5)
+		nameLabel.Position = UDim2.fromScale(0.05, 0.1)
+		nameLabel.TextScaled = true
+		nameLabel.TextWrapped = true
+		nameLabel.Font = Enum.Font.GothamBold
+		nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		nameLabel.Text = prize.displayName
+
+		local nameStroke = Instance.new("UIStroke")
+		nameStroke.Thickness = 1.5
+		nameStroke.Parent = nameLabel
+		nameLabel.Parent = tile
+	end
+
+	local oddsText = formatOddsPercent(prize.odds)
+	local oddsLabel = Instance.new("TextLabel")
+	oddsLabel.Name = "Odds"
+	oddsLabel.BackgroundTransparency = 1
+	oddsLabel.Size = UDim2.fromScale(0.7, 0.28)
+	oddsLabel.Position = UDim2.fromScale(0.28, 0.7)
+	oddsLabel.TextScaled = true
+	oddsLabel.Font = Enum.Font.GothamBold
+	oddsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	oddsLabel.TextXAlignment = Enum.TextXAlignment.Right
+	oddsLabel.Text = oddsText
+
+	local oddsStroke = Instance.new("UIStroke")
+	oddsStroke.Thickness = 1.5
+	oddsStroke.Parent = oddsLabel
+	oddsLabel.Parent = tile
+
+	self:attachToolTip(tile, `{utils.getColoredTextForRarity(prize.displayName, prize.rarity)}\n{oddsText} base chance`)
+
+	return tile
+end
+
+-- a gacha card shows the egg, and swaps its Contents row for a grid of every dragon the egg can hatch
+function ClientDealShopManager.fillGachaCard(self: ClientDealShopManager, card: any, deal: DealShopCatalog.Deal)
+	local content = deal.tiers[1].contents[1]
+
+	local gachaFrame: any = card:FindFirstChild("Gacha")
+	local titleText: any = gachaFrame and gachaFrame:FindFirstChild("Title")
+	if titleText then
+		titleText.Text = (content.displayName or content.objectName) :: string
+	end
+
+	local assetFrame: any = gachaFrame and gachaFrame:FindFirstChild("GachaAssetFrame")
+	if assetFrame then
+		local iconAssetId = ItemIcons.getItemIconAssetId(content.objectName :: string)
+		assetFrame.Visible = iconAssetId ~= nil
+		if iconAssetId then
+			assetFrame.Image = iconAssetId
 		end
+	end
 
-		toolTipLabel.Text = toolTipText
-		local offset = card.AbsolutePosition - self.mainFrame.AbsolutePosition
-		toolTipFrame.Position = UDim2.fromOffset(offset.X, offset.Y - toolTipFrame.AbsoluteSize.Y)
-		toolTipFrame.Visible = true
-	end)
+	local prizes = content.prizes
+	local contentsFrame: any = card:FindFirstChild("Contents")
+	if not prizes or not contentsFrame then
+		warn(`ClientDealShopManager: gacha deal {deal.dealKey} needs a prize list and a Contents frame`)
+		return
+	end
 
-	card.MouseLeave:Connect(function()
-		self:hideToolTip()
-	end)
+	-- the authored per-rarity frames are the prize tile templates; the rest of the row is replaced by a grid.
+	-- A frame named after a rarity this project does not have is simply discarded.
+	local rarityFrames: { [number]: any } = {}
+	for _, child in contentsFrame:GetChildren() do
+		local rarity = rarityByPublicName[child.Name]
+		if rarity and child:IsA("Frame") then
+			rarityFrames[rarity] = child:Clone()
+		end
+		if child:IsA("GuiObject") or child:IsA("UIListLayout") then
+			child:Destroy()
+		end
+	end
+
+	local grid: any = contentsFrame:FindFirstChildOfClass("UIGridLayout")
+	if not grid then
+		grid = Instance.new("UIGridLayout")
+		grid.FillDirectionMaxCells = PRIZE_GRID_MAX_COLUMNS
+		grid.CellPadding = UDim2.fromScale(PRIZE_GRID_PADDING_X, PRIZE_GRID_PADDING_Y)
+		grid.SortOrder = Enum.SortOrder.LayoutOrder
+		grid.Parent = contentsFrame
+	end
+
+	-- the cells split the row evenly, and each tile's aspect constraint squares it off against the shorter side
+	local columns = math.max(1, math.min(#prizes, PRIZE_GRID_MAX_COLUMNS))
+	local rows = math.max(1, math.ceil(#prizes / columns))
+	grid.CellSize = UDim2.fromScale(
+		(1 - PRIZE_GRID_PADDING_X * (columns - 1)) / columns,
+		(1 - PRIZE_GRID_PADDING_Y * (rows - 1)) / rows
+	)
+
+	for prizeIndex, prize in prizes do
+		self:buildPrizeTile(prize, prizeIndex, rarityFrames).Parent = contentsFrame
+	end
+
+	for _, rarityFrame in rarityFrames do
+		rarityFrame:Destroy()
+	end
 end
 
 function ClientDealShopManager.buildSectionTab(self: ClientDealShopManager, section: DealShopCatalog.Section, layoutOrder: number)
@@ -723,10 +918,10 @@ function ClientDealShopManager.init(self: ClientDealShopManager)
 	self.bundleTemplate = bundleTemplate
 	self.singleItemTemplate = singleItemTemplate
 
-	-- for future gacha deals; keep it out of the list
 	local gachaTemplate: any = scroll:FindFirstChild("GachaDealCardTemplate")
 	if gachaTemplate then
 		gachaTemplate.Visible = false
+		self.gachaTemplate = gachaTemplate
 	end
 
 	self.mainFrame = main

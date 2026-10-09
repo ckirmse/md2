@@ -97,6 +97,12 @@ function DragonEggObjectType.new(): DragonEggObjectType
 			optional = true,
 		},
 
+		-- hatches the moment it is placed, with no incubation time (premium gacha eggs)
+		instantHatch = {
+			type = "boolean",
+			optional = true,
+		},
+
 		eggBaseLuck = {
 			type = "nonnegativeNumber",
 			optional = true,

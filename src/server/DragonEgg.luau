@@ -194,6 +194,11 @@ function DragonEgg.notifyPlacedInPlot(self: DragonEgg)
 		return
 	end
 
+	if self:getItemData().instantHatch then
+		self:beginIncubating(0)
+		return
+	end
+
 	if self.pausedRemainingSec then
 		local remainingSec = self.pausedRemainingSec
 		self.pausedRemainingSec = nil

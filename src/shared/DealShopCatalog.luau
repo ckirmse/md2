@@ -7,6 +7,13 @@ local enums = require("./Enums")
 
 local DealShopCatalog = {}
 
+export type GachaPrize = {
+	itemName: string,
+	displayName: string,
+	rarity: number, -- Enums.Rarity
+	odds: number, -- 0..1 fraction of the egg's hatch loot table
+}
+
 export type DealContent = {
 	kind: number, -- Enums.ShopContentKind
 	amount: number?, -- COINS
@@ -14,6 +21,7 @@ export type DealContent = {
 	count: number?, -- ITEM
 	displayName: string?, -- ITEM; filled server-side from ObjectDataStore
 	rarity: number?, -- ITEM; filled server-side from ObjectDataStore (Enums.Rarity)
+	prizes: { GachaPrize }?, -- ITEM in a GACHA deal; filled server-side from the egg's hatch loot table
 }
 
 -- a tier is priced either in Robux (productId, a dev product) or in coins (coinCost); never both
@@ -50,6 +58,7 @@ export type DealShopConfig = {
 }
 
 local MAX_TIERS = 2
+local GACHA_MAX_TIERS = 3
 
 function DealShopCatalog.parseIsoDate(isoDate: string): number?
 	local dateTime = DateTime.fromIsoDate(isoDate)
@@ -145,6 +154,43 @@ local function validateTierPair(errors: { string }, where: string, deal: Deal)
 	end
 end
 
+-- a gacha deal sells packs of one egg: a single ITEM per tier, the same egg in every tier, growing pack
+-- sizes, and one currency across the tiers
+local function validateGachaTiers(errors: { string }, where: string, deal: Deal)
+	local firstContent: DealContent? = nil
+	local previousCount = 0
+
+	for tierIndex, tier in deal.tiers do
+		if type(tier.contents) ~= "table" then
+			continue
+		end
+
+		local tierWhere = `{where} tier {tierIndex}`
+		local content = tier.contents[1]
+		if #tier.contents ~= 1 or content.kind ~= enums.ShopContentKind.ITEM then
+			table.insert(errors, `{tierWhere}: GACHA tiers need exactly 1 ITEM content entry`)
+			continue
+		end
+
+		if firstContent == nil then
+			firstContent = content
+		elseif content.objectName ~= firstContent.objectName then
+			table.insert(errors, `{tierWhere}: every GACHA tier must sell the same item as tier 1`)
+		end
+
+		if type(content.count) == "number" then
+			if content.count <= previousCount then
+				table.insert(errors, `{tierWhere}: GACHA pack sizes must grow from tier to tier`)
+			end
+			previousCount = content.count
+		end
+
+		if isRobuxTier(tier) ~= isRobuxTier(deal.tiers[1]) then
+			table.insert(errors, `{tierWhere}: every GACHA tier must use the same currency`)
+		end
+	end
+end
+
 function DealShopCatalog.validateDeal(errors: { string }, where: string, deal: Deal, seenProductIds: { [number]: boolean })
 	if type(deal.title) ~= "string" or deal.title == "" then
 		table.insert(errors, `{where}: missing/empty title`)
@@ -183,8 +229,10 @@ function DealShopCatalog.validateDeal(errors: { string }, where: string, deal: D
 		table.insert(errors, `{where}: invalid cardStyle {tostring(deal.cardStyle)}`)
 		return
 	end
-	if type(deal.tiers) ~= "table" or #deal.tiers == 0 or #deal.tiers > MAX_TIERS then
-		table.insert(errors, `{where}: needs 1-{MAX_TIERS} tiers`)
+	local isGacha = deal.cardStyle == enums.ShopCardStyle.GACHA
+	local maxTiers = if isGacha then GACHA_MAX_TIERS else MAX_TIERS
+	if type(deal.tiers) ~= "table" or #deal.tiers == 0 or #deal.tiers > maxTiers then
+		table.insert(errors, `{where}: needs 1-{maxTiers} tiers`)
 		return
 	end
 
@@ -192,7 +240,9 @@ function DealShopCatalog.validateDeal(errors: { string }, where: string, deal: D
 		validateTier(errors, `{where} tier {tierIndex}`, tier, seenProductIds)
 	end
 
-	if #deal.tiers == 2 then
+	if isGacha then
+		validateGachaTiers(errors, where, deal)
+	elseif #deal.tiers == 2 then
 		validateTierPair(errors, where, deal)
 	end
 

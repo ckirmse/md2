@@ -16,6 +16,7 @@ local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttrib
 
 local analyticsManager = require("./AnalyticsManager")
 local ftueManager = require("./FtueManager")
+local lootTableManager = require("./LootTableManager")
 local objectDataStore = require("./ObjectDataStore")
 local playerAttributesManager = require("./PlayerAttributesManager")
 local Types = require("./Types")
@@ -77,6 +78,20 @@ function DealShopManager.validateTierContents(self: DealShopManager, dealKey: st
 	end
 end
 
+-- the prize grid is the egg's hatch loot table, so the egg needs one
+function DealShopManager.validateGachaDeal(self: DealShopManager, deal: DealShopCatalog.Deal)
+	local objectName = deal.tiers[1].contents[1].objectName :: string
+	local itemData = objectDataStore:getObjectDataByName(objectName)
+	if itemData.type ~= "dragonEgg" or not itemData.hatchLootTableName then
+		error(`DealShopManager: gacha deal {deal.dealKey} must sell a dragon egg with a hatchLootTableName, not {objectName}`)
+	end
+
+	local lootTable = lootTableManager:getLootTable(itemData.hatchLootTableName)
+	if not lootTable or #lootTable == 0 then
+		error(`DealShopManager: gacha deal {deal.dealKey} egg {objectName} has an empty or missing hatch loot table {itemData.hatchLootTableName}`)
+	end
+end
+
 function DealShopManager.validateConfig(self: DealShopManager)
 	local errors = DealShopCatalog.validate(dealShopData)
 	if #errors > 0 then
@@ -107,8 +122,46 @@ function DealShopManager.validateConfig(self: DealShopManager)
 
 				self:validateTierContents(deal.dealKey, tier)
 			end
+
+			if deal.cardStyle == enums.ShopCardStyle.GACHA then
+				self:validateGachaDeal(deal)
+			end
 		end
 	end
+end
+
+-- every dragon the egg can hatch, most likely first; odds are the loot table's base odds, before any luck
+local function buildPrizeList(hatchLootTableName: string): { DealShopCatalog.GachaPrize }
+	local prizes: { DealShopCatalog.GachaPrize } = {}
+
+	for result, odds in lootTableManager:GetLootFractionTable(hatchLootTableName) do
+		if typeof(result) ~= "table" or typeof(result.itemName) ~= "string" then
+			warn("DealShopManager: hatch loot table result is not an item for", hatchLootTableName)
+			continue
+		end
+
+		local prizeData = objectDataStore:getObjectDataByName(result.itemName)
+		if not prizeData then
+			warn("DealShopManager: unknown prize", result.itemName, "in", hatchLootTableName)
+			continue
+		end
+
+		table.insert(prizes, {
+			itemName = result.itemName,
+			displayName = prizeData.displayName or result.itemName,
+			rarity = prizeData.rarity or enums.Rarity.COMMON,
+			odds = odds,
+		})
+	end
+
+	table.sort(prizes, function(a: DealShopCatalog.GachaPrize, b: DealShopCatalog.GachaPrize): boolean
+		if a.odds ~= b.odds then
+			return a.odds > b.odds
+		end
+		return a.displayName < b.displayName
+	end)
+
+	return prizes
 end
 
 -- clients can't read GameData, so they get a display copy, built once and sent in every player's init data
@@ -135,8 +188,11 @@ function DealShopManager.buildClientConfig(self: DealShopManager)
 					local enrichedContent = table.clone(content) :: any
 					if content.kind == enums.ShopContentKind.ITEM then
 						local itemData = objectDataStore:getObjectDataByName(content.objectName :: string)
-						enrichedContent.displayName = itemData.displayName
+						enrichedContent.displayName = content.displayName or itemData.displayName
 						enrichedContent.rarity = itemData.rarity
+						if deal.cardStyle == enums.ShopCardStyle.GACHA then
+							enrichedContent.prizes = buildPrizeList(itemData.hatchLootTableName)
+						end
 					end
 					enrichedTier.contents[contentIndex] = enrichedContent
 				end
