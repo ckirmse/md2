@@ -339,6 +339,12 @@ item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter
   `ITEM` (`objectName`, `count`) or `COINS` (`amount`). Optional per-deal `giftable = false`,
   `oneTimeOnly = true` (saved in `PlayerData.purchasedDealKeys`; never giftable), and
   `startDate`/`endDate` (ISO 8601 UTC).
+- **Gacha deals** (`cardStyle = Enums.ShopCardStyle.GACHA`) sell packs of one premium dragon egg: 1–3 tiers,
+  each a single `ITEM` for the same egg with a growing `count`, all in one currency. The egg's GameData sets
+  `instantHatch = true` (it is ready the moment it is placed, then hatched with the usual hold-E) and a
+  `hatchLootTableName`; the card shows a grid of every dragon in that loot table with its odds. The odds shown
+  are the table's base odds, before plot and rebirth luck. Startup errors if the item is not a dragon egg with
+  a non-empty hatch loot table.
 - **Startup:** `DealShopManager:init` validates the config and errors (stopping the server) on a bad one:
   catalog rules, every `objectName` exists and is deliverable, and no `productId` is already delivered by
   another system (`GameController:isProductIdReserved` mirrors `tryGrantPlayerRobuxProductId` and must
@@ -369,11 +375,15 @@ item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter
   tab); `Main > ToolTip > ToolTipInfo`. Each card has `TitleTimer > DealTitle, TimeLimit`,
   `Contents > Icon` (the tile template, with `NameText` and an optional `CountText`), and
   `BuyTier1`/`BuyTier2` > `Purchase` (the button) > optional `Amount`, `Cost` (frame) > `RBX`, `Coin`,
-  `Cost` (label), optional `PriceSlash`, plus a `Gift` button. `Gifting > Main > Title > Exit` and
+  `Cost` (label), optional `PriceSlash`, plus a `Gift` button. A gacha card (`GachaDealCardTemplate`) holds its
+  buy buttons in `PurchaseTiers > BuyTier1..3`, shows the egg in `Gacha > Title / GachaAssetFrame`, and its
+  `Contents` row holds one authored `Frame` per rarity, named after the rarity (they are used as prize tile
+  templates; frames for rarities this project does not have are discarded).
+  `Gifting > Main > Title > Exit` and
   `Main > Scroll > PlayerTemplate > PlayerName, PlayerAvatar, Select`.
 - **Current limits:** bundles are Robux-only by convention (not enforced); a two-tier single item must sell
   the same item in both tiers but may differ in count, a two-tier bundle must grant identical contents; there
-  is no play-time window or gacha card style yet.
+  is no play-time window yet, and a purchased gacha egg is opened by placing and hatching it (no reveal screen).
 
 ## Design Notes in the Repo
 
