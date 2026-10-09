@@ -30,7 +30,7 @@ local DEFAULT_LAND_PLOT_OUTER_NAME = "Land Plot Outer Template"
 local DEFAULT_EXPANSION_INNER_NAME = "Expansion Inner Template"
 local DEFAULT_EXPANSION_OUTER_NAME = "Expansion Outer Template"
 
-local NUM_PLOTS = 3
+local NUM_PLOTS = 6
 
 -- vanity component data comes from GameData modules and bounds records are simple min/max pairs,
 -- so both stay untyped
