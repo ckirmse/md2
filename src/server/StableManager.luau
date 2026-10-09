@@ -7,6 +7,7 @@ local collectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Level = workspace:WaitForChild("Level")
+local GameAssets = ReplicatedStorage:WaitForChild("GameAssets")
 -- the RemoteEvents children only exist in Studio, so they are untyped here
 local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
@@ -17,18 +18,23 @@ local plotsManager = require("./PlotsManager")
 local rideMixin = require("./RideMixin")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
-local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
+local PlotHelpers = require("@game/ReplicatedStorage/Shared/PlotHelpers")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
-local BASE_STABLE_SLOT_COUNT = StableConfig.STABLE_SLOT_COUNT
+local SLOT_TEMPLATE_PARENT_NAME = "Land"
+local SLOT_TEMPLATE_NAME = "StableSlotTemplate"
 
-type StableManagerFields = {}
+type StableManagerFields = {
+	slotTemplate: Instance?,
+	slotMarkerCFrames: { [number]: CFrame }, -- in plot 1's coordinates, keyed by slot index
+	spawnedSlotCounts: { [Player]: number },
+}
 
 export type StableManager = typeof(setmetatable({} :: StableManagerFields, StableManager))
 
 function StableManager.getStableSlotCount(self: StableManager, player: Player): number
-	return BASE_STABLE_SLOT_COUNT + gameController:getPlayerData(player):getRebirthLevel()
+	return gameController:getDragonSlotCountForRebirthLevel(gameController:getPlayerData(player):getRebirthLevel())
 end
 
 function StableManager.getStableSlotAnchorCFrame(self: StableManager, userId: number, stableSlotIndex: number): CFrame?
@@ -196,7 +202,11 @@ function StableManager.notifyStableSlotsChanged(self: StableManager, player: Pla
 end
 
 function StableManager.new(): StableManager
-	local self = setmetatable({}, StableManager)
+	local self = setmetatable({
+		slotTemplate = nil,
+		slotMarkerCFrames = {},
+		spawnedSlotCounts = {},
+	} :: StableManagerFields, StableManager)
 	return self
 end
 
@@ -205,7 +215,104 @@ function StableManager.initClass(deps: any)
 	gameController = deps.gameController
 end
 
-function StableManager.init(self: StableManager) end
+-- the finished slots are not part of the plot template: each plot gets clones of the StableSlotTemplate model in
+-- GameAssets at the hand-placed StableSlotMarker<N> positions, only up to its owner's slot count. The markers and any
+-- leftover authored StableSlot<N> models are read and removed here so they are not cloned into the plots
+function StableManager.collectStableSlotMarkers(self: StableManager)
+	local markers: { Instance } = {}
+	local authoredSlotModels: { Instance } = {}
+	for _, inst in plotsManager:getPerPlotElements():GetDescendants() do
+		local markerIndexText = string.match(inst.Name, "^StableSlotMarker(%d+)$")
+		if markerIndexText then
+			table.insert(markers, inst)
+			self.slotMarkerCFrames[tonumber(markerIndexText) :: number] = (inst :: any):GetPivot()
+		elseif string.match(inst.Name, "^StableSlot%d+$") then
+			table.insert(authoredSlotModels, inst)
+		end
+	end
+
+	local templateParent = GameAssets:FindFirstChild(SLOT_TEMPLATE_PARENT_NAME)
+	local slotTemplate = templateParent and templateParent:FindFirstChild(SLOT_TEMPLATE_NAME)
+	if not slotTemplate or not slotTemplate:FindFirstChild("Anchor") then
+		warn(`StableManager: GameAssets.{SLOT_TEMPLATE_PARENT_NAME}.{SLOT_TEMPLATE_NAME} with an Anchor part is missing, keeping the authored stable slots`)
+	else
+		self.slotTemplate = slotTemplate
+		for _, authoredSlotModel in authoredSlotModels do
+			authoredSlotModel:Destroy()
+		end
+
+		for slotIndex = 1, gameController:getMaxDragonSlotCount() do
+			local markerCFrame = self.slotMarkerCFrames[slotIndex]
+			if not markerCFrame then
+				warn("StableManager: no StableSlotMarker" .. slotIndex .. " in the plot template, so slot " .. slotIndex .. " will have no model")
+			elseif not plotsManager:isPositionInMainPlotXZ(markerCFrame.Position, 1) then
+				warn("StableManager: StableSlotMarker" .. slotIndex .. " is outside the main plot")
+			end
+		end
+	end
+
+	for _, marker in markers do
+		marker:Destroy()
+	end
+end
+
+-- makes the plot have exactly the slots the player owns: spawns the missing ones and removes the ones above a lowered
+-- count (a data reset). Called whenever the slot count is published, so it covers joining, every rebirth and resets,
+-- and does nothing when the plot is already up to date
+function StableManager.syncStableSlotModels(self: StableManager, player: Player, slotCount: number)
+	local slotTemplate = self.slotTemplate
+	if not slotTemplate then
+		return
+	end
+
+	local plotIndex = plotsManager:getPlotIndexByUserId(player.UserId)
+	if not plotIndex then
+		return
+	end
+
+	local spawnedCount = self.spawnedSlotCounts[player] or 0
+	if spawnedCount == slotCount then
+		return
+	end
+	self.spawnedSlotCounts[player] = slotCount
+
+	if spawnedCount > slotCount then
+		for _, inst in plotsManager:getClonedPlotElements():GetChildren() do
+			local slotIndexText = string.match(inst.Name, "^StableSlot(%d+)$")
+			local slotIndex = if slotIndexText then tonumber(slotIndexText) else nil
+			if slotIndex and slotIndex > slotCount and inst:GetAttribute(Attributes.INDEX) == plotIndex then
+				inst:Destroy()
+			end
+		end
+		return
+	end
+
+	for slotIndex = spawnedCount + 1, slotCount do
+		local markerCFrame = self.slotMarkerCFrames[slotIndex]
+		if not markerCFrame then
+			continue
+		end
+
+		local slotModel: any = slotTemplate:Clone()
+		slotModel.Name = "StableSlot" .. slotIndex
+		slotModel:SetAttribute(Attributes.INDEX, plotIndex)
+		for _, descendantInst in slotModel:GetDescendants() do
+			descendantInst:SetAttribute(Attributes.INDEX, plotIndex)
+		end
+
+		local plotCFrame = PlotHelpers.translateCFrameWorldToPlot(markerCFrame, 1)
+		slotModel:PivotTo(PlotHelpers.translateCFramePlotToWorld(plotCFrame, plotIndex))
+		slotModel.Parent = plotsManager:getClonedPlotElements()
+	end
+end
+
+function StableManager.notifyRemovePlayer(self: StableManager, player: Player)
+	self.spawnedSlotCounts[player] = nil
+end
+
+function StableManager.init(self: StableManager)
+	self:collectStableSlotMarkers()
+end
 
 local singleton = StableManager.new()
 

@@ -334,6 +334,7 @@ export type ClientPlayerAnimationManager = {
 export type ClientPlayerAttributesManager = {
 	get: (self: ClientPlayerAttributesManager, key: string) -> any,
 	getAll: (self: ClientPlayerAttributesManager) -> { [string]: any },
+	getDragonSlotCount: (self: ClientPlayerAttributesManager) -> number,
 	set: (self: ClientPlayerAttributesManager, key: string, value: any) -> (),
 	setAll: (self: ClientPlayerAttributesManager, newAttributes: { [string]: any }) -> (),
 }

@@ -11,6 +11,7 @@ local PlayerAttributeKeys = {
 	REBIRTH_NEXT_INCOME_MULT = "rebirthNextIncomeMult",
 	REBIRTH_NEXT_LUCK_MULT = "rebirthNextLuckMult",
 	REBIRTH_NEXT_REQUIRED_PET_NAME = "rebirthNextRequiredPetName",
+	DRAGON_SLOT_COUNT = "dragonSlotCount",
 	IS_UNLOCKED_FIRE = "isUnlockedFire",
 	IS_UNLOCKED_NATURE = "isUnlockedNature",
 	IS_UNLOCKED_AIR = "isUnlockedAir",

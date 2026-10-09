@@ -16,8 +16,6 @@ local DragonSellStoreTemplate = MainElements:WaitForChild("DragonSellStore")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
-local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
-local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
@@ -117,7 +115,7 @@ local function getBackpackSellPreview(ownedDragons: { any }, ridingObj: any): (n
 			> (b:GetAttribute(Attributes.DRAGON_INCOME_PER_SEC) :: number? or 0)
 	end)
 
-	local stableSlotCount = StableConfig.STABLE_SLOT_COUNT + ((clientPlayerAttributesManager:get(PlayerAttributeKeys.REBIRTH_LEVEL) :: number?) or 0)
+	local stableSlotCount = clientPlayerAttributesManager:getDragonSlotCount()
 	local freeSlotCount = stableSlotCount - occupiedSlotCount
 	local spareCount = math.clamp(freeSlotCount, 0, #backpackDragons)
 

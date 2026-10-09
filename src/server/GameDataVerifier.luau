@@ -8,7 +8,9 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local GameAssets = ReplicatedStorage:WaitForChild("GameAssets")
 
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
+local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
 local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/EggLootTables")
+local rebirthData = require("@game/ServerScriptService/GameData/Control/Rebirth")
 
 local objectDataStore = require("./ObjectDataStore")
 local Validate = require("./Validate")
@@ -180,10 +182,27 @@ function GameDataVerifier.verifyEggLootTables(self: GameDataVerifier)
 	end
 end
 
+function GameDataVerifier.verifyRebirthLevels(self: GameDataVerifier)
+	local previousDragonSlots = StableConfig.STABLE_SLOT_COUNT
+
+	local level = 1
+	while rebirthData.levels[level] do
+		local dragonSlots = rebirthData.levels[level].dragonSlots
+		if type(dragonSlots) ~= "number" or dragonSlots ~= math.floor(dragonSlots) or dragonSlots < previousDragonSlots then
+			warn("GameDataVerifier: Rebirth level needs an integer dragonSlots not below the previous level's", level, dragonSlots, previousDragonSlots)
+		else
+			previousDragonSlots = dragonSlots
+		end
+
+		level += 1
+	end
+end
+
 function GameDataVerifier.verifyAll(self: GameDataVerifier)
 	self:verifyVanity()
 	self:verifyLootTableItems()
 	self:verifyEggLootTables()
+	self:verifyRebirthLevels()
 end
 
 function GameDataVerifier.new(): GameDataVerifier

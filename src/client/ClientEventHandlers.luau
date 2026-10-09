@@ -48,6 +48,7 @@ local clientLuckBillboardManager = require("./ClientLuckBillboardManager")
 local clientPromptGroupManager = require("./ClientPromptGroupManager")
 local clientRideController = require("./ClientRideController")
 local clientSellStore = require("./ClientSellStore")
+local clientStablesManager = require("./ClientStablesManager")
 local clientTradePlayerList = require("./ClientTradePlayerList")
 local clientTradeRequestedOverlay = require("./ClientTradeRequestedOverlay")
 local clientTradingManager = require("./ClientTradingManager")
@@ -184,6 +185,7 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 		clientPlayerAttributesManager:setAll(playerAttributes)
 
 		screenGuiManager:resetPlayerAttributeValues()
+		clientStablesManager:notifySlotCountChanged()
 	end)
 
 	RemoteEvents.NotifySystemMessage.OnClientEvent:Connect(function(systemMessage)
@@ -282,6 +284,8 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 			-- screenGuiManager:notifyGemsValueChange(primaryElement, prevValue, value)
 
 			clientFtueManager:notifyGemsValueChange(primaryElement, prevValue, value)
+		elseif playerDataKey == PlayerAttributeKeys.DRAGON_SLOT_COUNT then
+			clientStablesManager:notifySlotCountChanged()
 		else
 			--print("client doesn't know or care about update to playerDataKey", playerDataKey)
 		end

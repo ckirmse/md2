@@ -86,6 +86,7 @@ local PivotToTargetTween = require("@game/ReplicatedStorage/Shared/PivotToTarget
 local PivotToTween = require("@game/ReplicatedStorage/Shared/PivotToTween")
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 local PlayerOptionKeys = require("@game/ReplicatedStorage/Shared/PlayerOptionKeys")
+local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 -- most of this state is dynamic bookkeeping over untyped items/config, so the fields stay loose
@@ -1639,6 +1640,7 @@ function GameController.processPlayerRemove(self: GameController, player: Player
 	tradeManager:notifyRemovePlayer(player)
 	itemManager:notifyRemovePlayer(player)
 	plotsManager:notifyRemovePlayer(player)
+	stableManager:notifyRemovePlayer(player)
 	incomeManager:notifyRemovePlayer(player)
 	radarManager:notifyRemovePlayer(player)
 	dealShopManager:notifyRemovePlayer(player)
@@ -3567,6 +3569,31 @@ end
 
 function GameController.getRebirthLevelData(self: GameController, level: number): any?
 	return rebirthData.levels[level]
+end
+
+function GameController.getDragonSlotCountForRebirthLevel(self: GameController, level: number): number
+	if level <= 0 then
+		return StableConfig.STABLE_SLOT_COUNT
+	end
+
+	local levelData = self:getRebirthLevelData(level)
+	return (levelData and levelData.dragonSlots) or self:getDragonSlotCountForRebirthLevel(level - 1)
+end
+
+function GameController.notifyDragonSlotCountChanged(self: GameController, player: Player, slotCount: number): ()
+	stableManager:syncStableSlotModels(player, slotCount)
+end
+
+function GameController.getMaxDragonSlotCount(self: GameController): number
+	local maxDragonSlotCount = StableConfig.STABLE_SLOT_COUNT
+
+	local level = 1
+	while rebirthData.levels[level] do
+		maxDragonSlotCount = math.max(maxDragonSlotCount, self:getDragonSlotCountForRebirthLevel(level))
+		level += 1
+	end
+
+	return maxDragonSlotCount
 end
 
 function GameController.getRebirthLuckMultiplierForUserId(self: GameController, userId: number): number

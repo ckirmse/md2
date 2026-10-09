@@ -53,6 +53,14 @@ function PlotsManager.getNumPlots(self: PlotsManager): number
 	return NUM_PLOTS
 end
 
+function PlotsManager.getPerPlotElements(self: PlotsManager): Instance
+	return PerPlotElements
+end
+
+function PlotsManager.getClonedPlotElements(self: PlotsManager): Instance
+	return ClonedPlotElements
+end
+
 function PlotsManager.translatePositionPlotToWorld(self: PlotsManager, position: Vector3, index: number): Vector3
 	-- an unknown plot index crashed here before typing too
 	return (PlotHelpers.getPlotCFrame(index) :: CFrame) * position

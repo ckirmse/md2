@@ -1007,6 +1007,9 @@ function PlayerData.updateRebirthDisplay(self: PlayerData)
 	local currentData = gameController:getRebirthLevelData(level)
 	local nextData = gameController:getRebirthLevelData(level + 1)
 
+	local dragonSlotCount = gameController:getDragonSlotCountForRebirthLevel(level)
+	gameController:notifyDragonSlotCountChanged(self.player, dragonSlotCount)
+	playerAttributesManager:set(self.player, PlayerAttributeKeys.DRAGON_SLOT_COUNT, dragonSlotCount)
 	playerAttributesManager:set(
 		self.player,
 		PlayerAttributeKeys.REBIRTH_CURRENT_INCOME_MULT,

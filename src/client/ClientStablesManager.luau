@@ -15,8 +15,6 @@ local Level = workspace:WaitForChild("Level")
 local player = playersService.LocalPlayer :: Player
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
-local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
-local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
@@ -24,9 +22,6 @@ local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
 local clientRideController = require("./ClientRideController")
 local teleporters = require("./Teleporters")
 
-local function getStableSlotCount(): number
-	return StableConfig.STABLE_SLOT_COUNT + ((clientPlayerAttributesManager:get(PlayerAttributeKeys.REBIRTH_LEVEL) :: number?) or 0)
-end
 local PROMPT_NAME = "StableSlotPrompt"
 local PROMPT_DISTANCE = 12
 local RESOLVE_ATTEMPTS = 40
@@ -40,7 +35,9 @@ type SlotData = {
 }
 
 type ClientStablesManagerFields = {
+	plotIndex: number?,
 	slots: { [number]: SlotData },
+	pendingSlotIndexes: { [number]: boolean }, -- slots whose model is still being waited for
 	-- slotIndex -> the occupying dragon's shadow part, from the EQUIPPED_DRAGON tag
 	occupancy: { [number]: Instance },
 }
@@ -78,7 +75,7 @@ function ClientStablesManager.refreshSlot(self: ClientStablesManager, slotIndex:
 end
 
 function ClientStablesManager.refreshAllSlots(self: ClientStablesManager)
-	for slotIndex = 1, getStableSlotCount() do
+	for slotIndex = 1, clientPlayerAttributesManager:getDragonSlotCount() do
 		self:refreshSlot(slotIndex)
 	end
 end
@@ -158,44 +155,86 @@ function ClientStablesManager.setupSlot(self: ClientStablesManager, slotIndex: n
 	}
 end
 
-function ClientStablesManager.resolveSlots(self: ClientStablesManager)
-	local plotIndex: number?
+function ClientStablesManager.findSlotModel(self: ClientStablesManager, plotIndex: number, slotIndex: number): Instance?
 	for _ = 1, RESOLVE_ATTEMPTS do
-		plotIndex = teleporters:getPlotIndex()
-		if plotIndex then
+		local slotModel = utils.findFirstDescendantWithNameAndAttribute(
+			Level,
+			"StableSlot" .. slotIndex,
+			Attributes.INDEX,
+			plotIndex
+		)
+		if slotModel then
+			return slotModel
+		end
+		task.wait(RESOLVE_INTERVAL)
+	end
+
+	return nil
+end
+
+-- sets up every slot the player currently owns that is not set up yet; each one waits for its own model on its own
+-- thread, so a model that is slow to appear never delays the others
+function ClientStablesManager.setupOwnedSlots(self: ClientStablesManager)
+	local plotIndex = self.plotIndex
+	if not plotIndex then
+		return
+	end
+
+	local slotCount = clientPlayerAttributesManager:getDragonSlotCount()
+
+	-- slots above a lowered count (a data reset) are gone from the world, so their prompts go too
+	for slotIndex, slot in self.slots do
+		if slotIndex > slotCount then
+			slot.promptTriggeredConnect:Disconnect()
+			slot.prompt:Destroy()
+			self.slots[slotIndex] = nil
+		end
+	end
+
+	for slotIndex = 1, slotCount do
+		if self.slots[slotIndex] or self.pendingSlotIndexes[slotIndex] then
+			continue
+		end
+		self.pendingSlotIndexes[slotIndex] = true
+
+		task.spawn(function()
+			local slotModel = self:findSlotModel(plotIndex, slotIndex)
+			self.pendingSlotIndexes[slotIndex] = nil
+
+			if slotIndex > clientPlayerAttributesManager:getDragonSlotCount() then
+				return
+			end
+
+			if not slotModel then
+				warn("ClientStablesManager: could not find StableSlot" .. slotIndex)
+				return
+			end
+
+			self:setupSlot(slotIndex, slotModel)
+			self:refreshSlot(slotIndex)
+		end)
+	end
+end
+
+function ClientStablesManager.resolveSlots(self: ClientStablesManager)
+	for _ = 1, RESOLVE_ATTEMPTS do
+		self.plotIndex = teleporters:getPlotIndex()
+		if self.plotIndex then
 			break
 		end
 		task.wait(RESOLVE_INTERVAL)
 	end
 
-	if not plotIndex then
+	if not self.plotIndex then
 		warn("ClientStablesManager: no plot index, stables disabled")
 		return
 	end
 
-	for slotIndex = 1, getStableSlotCount() do
-		local slotModel: Instance?
-		for _ = 1, RESOLVE_ATTEMPTS do
-			slotModel = utils.findFirstDescendantWithNameAndAttribute(
-				Level,
-				"StableSlot" .. slotIndex,
-				Attributes.INDEX,
-				plotIndex
-			)
-			if slotModel then
-				break
-			end
-			task.wait(RESOLVE_INTERVAL)
-		end
+	self:setupOwnedSlots()
+end
 
-		if slotModel then
-			self:setupSlot(slotIndex, slotModel :: Instance)
-		else
-			warn("ClientStablesManager: could not find StableSlot" .. slotIndex)
-		end
-	end
-
-	self:refreshAllSlots()
+function ClientStablesManager.notifySlotCountChanged(self: ClientStablesManager)
+	self:setupOwnedSlots()
 end
 
 function ClientStablesManager.init(self: ClientStablesManager)
@@ -220,7 +259,9 @@ end
 
 function ClientStablesManager.new(): ClientStablesManager
 	local self = setmetatable({}, ClientStablesManager)
+	self.plotIndex = nil
 	self.slots = {}
+	self.pendingSlotIndexes = {}
 	self.occupancy = {}
 	return self
 end
