@@ -740,7 +740,7 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 
 	if isRidingPickupable then
 		self.latestEquippedItemId = nil
-		local canPutAwayRidingDragon = clientRideController:isRidingAndControllingAndInFreeFlyZone()
+		local canPutAwayRidingDragon = clientRideController:isRidingAndControlling()
 			and not clientRideController:isCarryingUnsafeEgg()
 		PutAwayButton.Visible = canPutAwayRidingDragon
 	end

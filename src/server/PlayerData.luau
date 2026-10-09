@@ -365,7 +365,7 @@ function PlayerData.isLocationInPlotOrUnlockedExpansions(self: PlayerData, locat
 	return isPositionSafe
 end
 
-function PlayerData.doAllowActivateItem(self: PlayerData, item: any): boolean
+function PlayerData.doAllowActivateItem(self: PlayerData, item: any, doRequirePlot: boolean): boolean
 	local maxCapacity = self:getPlayerMaxCapacity()
 	local itemPlotCapacityUsed = self:getPlayerCapacityUsed()
 
@@ -377,12 +377,12 @@ function PlayerData.doAllowActivateItem(self: PlayerData, item: any): boolean
 		return false
 	end
 
-	local position = (self.player.Character :: any).HumanoidRootPart.Position
-	local isPositionSafe = self:isLocationInPlotOrUnlockedExpansions(position)
-
-	if not isPositionSafe then
-		gameController:sendSystemMessageToPlayer(self.player, "You can only place objects in your own plot")
-		return false
+	if doRequirePlot then
+		local position = (self.player.Character :: any).HumanoidRootPart.Position
+		if not self:isLocationInPlotOrUnlockedExpansions(position) then
+			gameController:sendSystemMessageToPlayer(self.player, "You can only place objects in your own plot")
+			return false
+		end
 	end
 
 	if itemPlotCapacityUsed >= maxCapacity then

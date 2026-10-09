@@ -1403,11 +1403,6 @@ function ShadowDragon.notifyUnequippableEquipped(self: ShadowDragon, previousUne
 end
 
 function ShadowDragon.doNotifyUnequippableEquipped(self: ShadowDragon, previousUnequippedItemId: any)
-	if not self:isInFreeFlyZone() then
-		gameController:sendSystemMessageToPlayer(self:getPlayer(), "You cannot release a ridable dragon out here")
-		return
-	end
-
 	local player = self:getPlayer() :: Player
 	if rideMixin:isPlayerRiding(player) then
 		if not gameController:tryStowRidingDragon(player) then
@@ -1667,8 +1662,6 @@ function ShadowDragon.tryStepUpdateStaminaAndFreeFlyZone(self: ShadowDragon)
 	end
 
 	local isInFreeFlyZone = self:isInFreeFlyZone()
-
-	self:getObj():SetAttribute(Attributes.DRAGON_IS_IN_FREE_FLY_ZONE, isInFreeFlyZone)
 
 	local maxStamina = self:getMaxStamina()
 

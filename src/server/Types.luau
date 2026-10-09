@@ -1253,7 +1253,7 @@ export type PlayerData = {
 	createOrUpdateGameConfigInGuiData: (self: PlayerData, splendidDataFolder: any) -> (),
 	createOrUpdateOtherPlayerInGuiData: (self: PlayerData, splendidDataFolder: any, otherPlayer: any) -> (),
 	destroy: (self: PlayerData) -> (),
-	doAllowActivateItem: (self: PlayerData, item: any) -> boolean,
+	doAllowActivateItem: (self: PlayerData, item: any, doRequirePlot: boolean) -> boolean,
 	doesPlayerHaveItemCount: (self: PlayerData, itemName: any, count: number) -> (),
 	equipAbility: (self: PlayerData, ability: any) -> (),
 	equipVanityComponentAtPlacement: (self: PlayerData, vanityPlacement: any, vanityComponentName: any) -> (),

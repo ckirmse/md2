@@ -357,7 +357,6 @@ export type ClientRideController = {
 	isInRideBeginCooldown: (self: ClientRideController) -> (),
 	isRiding: (self: ClientRideController) -> boolean,
 	isRidingAndControlling: (self: ClientRideController) -> boolean,
-	isRidingAndControllingAndInFreeFlyZone: (self: ClientRideController) -> boolean,
 	notifyBeginRideDragonStatus: (self: ClientRideController, isSuccess: any) -> (),
 	notifyBeginSitting: (self: ClientRideController, shadow: any, caster: any) -> (),
 	notifyEndSitting: (self: ClientRideController, skipLaunch: boolean?) -> (),

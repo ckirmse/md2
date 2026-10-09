@@ -1452,18 +1452,6 @@ function ClientRideController.isRidingAndControlling(self: ClientRideController)
 	return true
 end
 
-function ClientRideController.isRidingAndControllingAndInFreeFlyZone(self: ClientRideController): boolean
-	if not self:isRidingAndControlling() then
-		return false
-	end
-
-	if not self.shadow:GetAttribute(Attributes.DRAGON_IS_IN_FREE_FLY_ZONE) then
-		return false
-	end
-
-	return true
-end
-
 function ClientRideController.isInRideBeginCooldown(self: ClientRideController)
 	return workspace:GetServerTimeNow() - RIDE_BEGIN_COOLDOWN_SEC <= self.latestRideStateChangeTime
 end

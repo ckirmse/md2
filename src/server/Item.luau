@@ -437,7 +437,7 @@ function Item.notifyToolActivated(self: Item)
 
 	local playerData = self:getPlayerData()
 	if playerData then
-		if not playerData:doAllowActivateItem(self) then
+		if not playerData:doAllowActivateItem(self, true) then
 			return
 		end
 	end
@@ -625,7 +625,7 @@ function Item.processEquipped(self: Item)
 
 	if self:getItemData().mixins.pickup.equip == false then
 		-- intention is for ridable dragons to get here as of 2026-march-5
-		if not playerData:doAllowActivateItem(self) then
+		if not playerData:doAllowActivateItem(self, false) then
 			return
 		end
 
