@@ -62,11 +62,6 @@ function RideMixin.canRideItem(self: RideMixin, player: Player, itemId: number):
 		return false
 	end
 
-	if item:getStableSlotIndex() ~= nil then
-		print("canRideItem false due to dragon being equipped in a stable slot", player, item)
-		return false
-	end
-
 	if self:isPlayerRiding(player) then
 		print("canRideItem false due to player already riding", player)
 		return false
@@ -127,10 +122,15 @@ function RideMixin.notifyPlayerEndRideDragon(self: RideMixin, player: Player, it
 
 	local item = itemManager:getItemById(itemId) :: Types.ShadowDragon?
 
-	gameController:getPlayerData(player):setRiding(nil, nil)
+	local playerData = gameController:getPlayerData(player)
+	playerData:setRiding(nil, nil)
 
 	if item then
-		item:notifyRideEnd()
+		-- jumping off inside the plot leaves the dragon there if it fits under the dragon limit (it is not counted
+		-- while ridden); anywhere else, or when full, it goes back to the backpack
+		local doStayInPlot = playerData:isLocationInPlotOrUnlockedExpansions(item:getObj():GetPivot().Position)
+			and not playerData:isAtDragonLimit()
+		item:notifyRideEnd(doStayInPlot)
 	end
 end
 

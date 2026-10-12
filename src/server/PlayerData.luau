@@ -77,7 +77,7 @@ type PlayerDataFields = {
 	friendUserIds: any,
 	instantOpenCrystalItemIds: any,
 	abilityStatuses: any,
-	stableSlots: any,
+	eggSlots: any,
 	totalDragonIncome: number,
 	ftueProgress: any,
 	contextualFtueState: any,
@@ -1007,9 +1007,10 @@ function PlayerData.updateRebirthDisplay(self: PlayerData)
 	local currentData = gameController:getRebirthLevelData(level)
 	local nextData = gameController:getRebirthLevelData(level + 1)
 
-	local dragonSlotCount = gameController:getDragonSlotCountForRebirthLevel(level)
-	gameController:notifyDragonSlotCountChanged(self.player, dragonSlotCount)
-	playerAttributesManager:set(self.player, PlayerAttributeKeys.DRAGON_SLOT_COUNT, dragonSlotCount)
+	local eggSlotCount = gameController:getEggSlotCountForRebirthLevel(level)
+	gameController:notifyEggSlotCountChanged(self.player, eggSlotCount)
+	playerAttributesManager:set(self.player, PlayerAttributeKeys.EGG_SLOT_COUNT, eggSlotCount)
+	playerAttributesManager:set(self.player, PlayerAttributeKeys.DRAGON_LIMIT, gameController:getDragonLimitForRebirthLevel(level))
 	playerAttributesManager:set(
 		self.player,
 		PlayerAttributeKeys.REBIRTH_CURRENT_INCOME_MULT,
@@ -1158,12 +1159,31 @@ function PlayerData.getItemForPlayer(self: PlayerData, itemName: any): Types.Ite
 	return nil
 end
 
-function PlayerData.getStableSlots(self: PlayerData): any
-	return self.stableSlots
+-- the dragon being ridden does not count towards the limit
+function PlayerData.getPlacedDragonCount(self: PlayerData): number
+	local count = 0
+	for _, item in itemManager:getItemsOnGroundByUserId(self.player.UserId) do
+		if item:getType() == "shadowDragon" and not (item :: Types.ShadowDragon).isRiding then
+			count += 1
+		end
+	end
+	return count
 end
 
-function PlayerData.getStableDragonInSlot(self: PlayerData, stableSlotIndex: number): number?
-	return self.stableSlots[stableSlotIndex]
+function PlayerData.getDragonLimit(self: PlayerData): number
+	return gameController:getDragonLimitForRebirthLevel(self.rebirthLevel)
+end
+
+function PlayerData.isAtDragonLimit(self: PlayerData): boolean
+	return self:getPlacedDragonCount() >= self:getDragonLimit()
+end
+
+function PlayerData.getEggSlots(self: PlayerData): any
+	return self.eggSlots
+end
+
+function PlayerData.getEggInSlot(self: PlayerData, eggSlotIndex: number): number?
+	return self.eggSlots[eggSlotIndex]
 end
 
 function PlayerData.getTotalDragonIncome(self: PlayerData): number
@@ -1173,27 +1193,30 @@ end
 function PlayerData.recomputeTotalDragonIncome(self: PlayerData)
 	local total = 0
 
-	for _, itemId in self.stableSlots do
-		local item = itemManager:getItemById(itemId)
-		if not item or item:getType() ~= "shadowDragon" then
+	for _, item in itemManager:getItemsOnGroundByUserId(self.player.UserId) do
+		if item:getType() ~= "shadowDragon" then
 			continue
 		end
 
-		total += (item :: Types.ShadowDragon):getIncome()
+		-- the ridden dragon earns ride XP instead of income
+		local dragon = item :: Types.ShadowDragon
+		if dragon.isRiding then
+			continue
+		end
+
+		total += dragon:getIncome()
 	end
 
 	self.totalDragonIncome = total
 	playerAttributesManager:set(self.player, PlayerAttributeKeys.TOTAL_DRAGON_INCOME, total)
 end
 
-function PlayerData.setStableDragonInSlot(self: PlayerData, stableSlotIndex: number, itemId: number)
-	self.stableSlots[stableSlotIndex] = itemId
-	self:recomputeTotalDragonIncome()
+function PlayerData.setEggInSlot(self: PlayerData, eggSlotIndex: number, itemId: number)
+	self.eggSlots[eggSlotIndex] = itemId
 end
 
-function PlayerData.clearStableSlot(self: PlayerData, stableSlotIndex: number)
-	self.stableSlots[stableSlotIndex] = nil
-	self:recomputeTotalDragonIncome()
+function PlayerData.clearEggSlot(self: PlayerData, eggSlotIndex: number)
+	self.eggSlots[eggSlotIndex] = nil
 end
 
 function PlayerData.getAbilityStatuses(self: PlayerData)
@@ -1832,10 +1855,7 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 	self:syncVanityToWorld()
 
 	self.rebirthLevel = (saveData and saveData.rebirthLevel) or 0
-	gameController:notifyDragonSlotCountChanged(
-		self.player,
-		gameController:getDragonSlotCountForRebirthLevel(self.rebirthLevel)
-	)
+	gameController:notifyEggSlotCountChanged(self.player, gameController:getEggSlotCountForRebirthLevel(self.rebirthLevel))
 
 	-- vanity needs to cemo before items because vanity islands can hold items
 	local itemsSaveData = saveData and saveData.items or nil
@@ -3352,7 +3372,7 @@ function PlayerData.new(player: Player?): PlayerData
 	self.stats = {}
 	self.abilityStatuses = {}
 
-	self.stableSlots = {}
+	self.eggSlots = {}
 	self.totalDragonIncome = 0
 
 	self.purchasedSlotUnlocks = {}

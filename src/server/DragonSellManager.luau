@@ -8,10 +8,8 @@ local itemManager: Types.ItemManager -- injected via initClass(deps); typed thro
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local playerAttributesManager = require("./PlayerAttributesManager")
 local rideMixin = require("./RideMixin")
-local stableManager = require("./StableManager")
 
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
-local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 type DragonSellManagerFields = {}
 
@@ -67,7 +65,7 @@ function DragonSellManager.trySellBackpackDragons(self: DragonSellManager, playe
 	end)
 
 	local playerData = gameController:getPlayerData(player)
-	local freeSlotCount = stableManager:getStableSlotCount(player) - utils.getTableSize(playerData:getStableSlots())
+	local freeSlotCount = playerData:getDragonLimit() - playerData:getPlacedDragonCount()
 	local spareCount = math.clamp(freeSlotCount, 0, #dragons)
 
 	local soldCount = 0
@@ -81,7 +79,7 @@ function DragonSellManager.trySellBackpackDragons(self: DragonSellManager, playe
 	end
 
 	if soldCount == 0 then
-		gameController:sendSystemMessageToPlayer(player, "No dragons were sold (all spared for your free stable slots)")
+		gameController:sendSystemMessageToPlayer(player, "No dragons were sold (all spared for your free dragon spots)")
 		return
 	end
 

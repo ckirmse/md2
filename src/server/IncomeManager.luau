@@ -54,13 +54,18 @@ function IncomeManager.tickPlayer(self: IncomeManager, player: Player, playerDat
 end
 
 function IncomeManager.tickDragonXp(self: IncomeManager, player: Player, playerData: Types.PlayerData, elapsedSec: number)
-	for _, itemId in playerData:getStableSlots() do
-		local item = itemManager:getItemById(itemId)
-		if not item or item:getType() ~= "shadowDragon" then
+	for _, item in itemManager:getItemsOnGroundByUserId(player.UserId) do
+		if item:getType() ~= "shadowDragon" then
 			continue
 		end
 
-		(item :: Types.ShadowDragon):addDragonXp(dragonProgressionData.assignXpPerSec * elapsedSec)
+		-- the ridden dragon gets ride XP below instead
+		local dragon = item :: Types.ShadowDragon
+		if dragon.isRiding then
+			continue
+		end
+
+		dragon:addDragonXp(dragonProgressionData.assignXpPerSec * elapsedSec)
 	end
 
 	local ridingDragon = rideMixin:tryGetRidingDragonForPlayer(player)

@@ -94,17 +94,15 @@ local function getOwnedDragons(): { any }
 end
 
 -- mirrors the server's sell-all selection so the preview matches what actually happens
-local function getBackpackSellPreview(ownedDragons: { any }, ridingObj: any): (number, number, number)
-	local ridingShadow = ridingObj
-	local occupiedSlotCount = 0
+local function getBackpackSellPreview(ownedDragons: { any }): (number, number, number)
+	local placedCount = 0
 	local backpackDragons = {}
 
 	for _, shadow in ownedDragons do
-		if shadow:GetAttribute(Attributes.DRAGON_SLOT_INDEX) ~= nil then
-			occupiedSlotCount += 1
-			continue
-		end
-		if shadow == ridingShadow then
+		if shadow.Parent == workspace then
+			if shadow:GetAttribute(Attributes.DRAGON_RIDER) ~= true then
+				placedCount += 1
+			end
 			continue
 		end
 		table.insert(backpackDragons, shadow)
@@ -115,9 +113,8 @@ local function getBackpackSellPreview(ownedDragons: { any }, ridingObj: any): (n
 			> (b:GetAttribute(Attributes.DRAGON_INCOME_PER_SEC) :: number? or 0)
 	end)
 
-	local stableSlotCount = clientPlayerAttributesManager:getDragonSlotCount()
-	local freeSlotCount = stableSlotCount - occupiedSlotCount
-	local spareCount = math.clamp(freeSlotCount, 0, #backpackDragons)
+	local freeDragonSpots = clientPlayerAttributesManager:getDragonLimit() - placedCount
+	local spareCount = math.clamp(freeDragonSpots, 0, #backpackDragons)
 
 	local sellCount = 0
 	local totalValue = 0
@@ -151,8 +148,7 @@ function ClientDragonSellStore.updateStoreInterface(self: ClientDragonSellStore)
 
 	if not backpackSection.pendingConfirm then
 		local ownedDragons = getOwnedDragons()
-		local ridingObj = isRiding and clientRideController:getRidingObj() or nil
-		local sellCount, totalValue, spareCount = getBackpackSellPreview(ownedDragons, ridingObj)
+		local sellCount, totalValue, spareCount = getBackpackSellPreview(ownedDragons)
 
 		backpackSection.cancelButton.Visible = false
 		backpackSection.confirmButton.Visible = false

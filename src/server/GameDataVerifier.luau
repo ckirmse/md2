@@ -8,7 +8,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local GameAssets = ReplicatedStorage:WaitForChild("GameAssets")
 
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
-local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
+local EggSlotConfig = require("@game/ReplicatedStorage/Shared/EggSlotConfig")
 local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/EggLootTables")
 local rebirthData = require("@game/ServerScriptService/GameData/Control/Rebirth")
 
@@ -183,15 +183,23 @@ function GameDataVerifier.verifyEggLootTables(self: GameDataVerifier)
 end
 
 function GameDataVerifier.verifyRebirthLevels(self: GameDataVerifier)
-	local previousDragonSlots = StableConfig.STABLE_SLOT_COUNT
+	local previousEggSlots = EggSlotConfig.EGG_SLOT_COUNT
+	local previousDragonLimit = EggSlotConfig.DRAGON_LIMIT
 
 	local level = 1
 	while rebirthData.levels[level] do
-		local dragonSlots = rebirthData.levels[level].dragonSlots
-		if type(dragonSlots) ~= "number" or dragonSlots ~= math.floor(dragonSlots) or dragonSlots < previousDragonSlots then
-			warn("GameDataVerifier: Rebirth level needs an integer dragonSlots not below the previous level's", level, dragonSlots, previousDragonSlots)
+		local eggSlots = rebirthData.levels[level].eggSlots
+		if type(eggSlots) ~= "number" or eggSlots ~= math.floor(eggSlots) or eggSlots < previousEggSlots then
+			warn("GameDataVerifier: Rebirth level needs an integer eggSlots not below the previous level's", level, eggSlots, previousEggSlots)
 		else
-			previousDragonSlots = dragonSlots
+			previousEggSlots = eggSlots
+		end
+
+		local dragonLimit = rebirthData.levels[level].dragonLimit
+		if type(dragonLimit) ~= "number" or dragonLimit ~= math.floor(dragonLimit) or dragonLimit < previousDragonLimit then
+			warn("GameDataVerifier: Rebirth level needs an integer dragonLimit not below the previous level's", level, dragonLimit, previousDragonLimit)
+		else
+			previousDragonLimit = dragonLimit
 		end
 
 		level += 1

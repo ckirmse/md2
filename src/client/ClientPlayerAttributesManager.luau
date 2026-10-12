@@ -4,7 +4,7 @@ local ClientPlayerAttributesManager = {}
 ClientPlayerAttributesManager.__index = ClientPlayerAttributesManager
 
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
-local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
+local EggSlotConfig = require("@game/ReplicatedStorage/Shared/EggSlotConfig")
 
 -- attribute values are server-defined (numbers/strings/booleans keyed by PlayerAttributeKeys),
 -- so the value side is genuinely dynamic
@@ -26,8 +26,12 @@ function ClientPlayerAttributesManager.get(self: ClientPlayerAttributesManager, 
 	return self.attributes[key]
 end
 
-function ClientPlayerAttributesManager.getDragonSlotCount(self: ClientPlayerAttributesManager): number
-	return (self.attributes[PlayerAttributeKeys.DRAGON_SLOT_COUNT] :: number?) or StableConfig.STABLE_SLOT_COUNT
+function ClientPlayerAttributesManager.getEggSlotCount(self: ClientPlayerAttributesManager): number
+	return (self.attributes[PlayerAttributeKeys.EGG_SLOT_COUNT] :: number?) or EggSlotConfig.EGG_SLOT_COUNT
+end
+
+function ClientPlayerAttributesManager.getDragonLimit(self: ClientPlayerAttributesManager): number
+	return (self.attributes[PlayerAttributeKeys.DRAGON_LIMIT] :: number?) or EggSlotConfig.DRAGON_LIMIT
 end
 
 function ClientPlayerAttributesManager.set(self: ClientPlayerAttributesManager, key: string, value: any)

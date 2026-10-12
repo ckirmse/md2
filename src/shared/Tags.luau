@@ -20,7 +20,7 @@ module = {
 
 	SHADOW_DRAGON = "ShadowDragon",
 
-	EQUIPPED_DRAGON = "EquippedDragon",
+	SLOTTED_EGG = "SlottedEgg",
 
 	GEM = "Gem",
 

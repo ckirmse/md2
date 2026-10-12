@@ -54,7 +54,7 @@ local scatterZoneManager = require("./ScatterZoneManager")
 local sellMixin = require("./SellMixin")
 local serverListener = require("./ServerListener")
 local ShadowDragon = require("./ShadowDragon")
-local stableManager = require("./StableManager")
+local eggSlotManager = require("./EggSlotManager")
 local starterOfferManager = require("./StarterOfferManager")
 local storageManager = require("./StorageManager")
 local Timer = require("./Timer")
@@ -86,7 +86,7 @@ local PivotToTargetTween = require("@game/ReplicatedStorage/Shared/PivotToTarget
 local PivotToTween = require("@game/ReplicatedStorage/Shared/PivotToTween")
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 local PlayerOptionKeys = require("@game/ReplicatedStorage/Shared/PlayerOptionKeys")
-local StableConfig = require("@game/ReplicatedStorage/Shared/StableConfig")
+local EggSlotConfig = require("@game/ReplicatedStorage/Shared/EggSlotConfig")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 -- most of this state is dynamic bookkeeping over untyped items/config, so the fields stay loose
@@ -1640,7 +1640,7 @@ function GameController.processPlayerRemove(self: GameController, player: Player
 	tradeManager:notifyRemovePlayer(player)
 	itemManager:notifyRemovePlayer(player)
 	plotsManager:notifyRemovePlayer(player)
-	stableManager:notifyRemovePlayer(player)
+	eggSlotManager:notifyRemovePlayer(player)
 	incomeManager:notifyRemovePlayer(player)
 	radarManager:notifyRemovePlayer(player)
 	dealShopManager:notifyRemovePlayer(player)
@@ -2578,93 +2578,6 @@ function GameController.tryPickupScatteredEgg(self: GameController, player: Play
 	;(item :: Types.DragonEgg):beginCarrying(dragon)
 end
 
-function GameController.tryDropEggAtPosition(self: GameController, player: Player, position: any): ()
-	if not rideMixin:isPlayerRiding(player) then
-		return
-	end
-
-	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if not dragon then
-		return
-	end
-
-	local eggItemId = dragon:getObj():GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) :: number?
-	if not eggItemId then
-		return
-	end
-
-	if typeof(position) ~= "Vector3" then
-		return
-	end
-
-	if not plotsManager:isPositionInMainPlotXZByUserId(position, player.UserId) then
-		return
-	end
-
-	if DragonEgg.hasReachedHatchingEggCap(player.UserId) then
-		local egg = itemManager:getItemById(eggItemId)
-		if egg then
-			(egg :: Types.DragonEgg):cleanupCarrying()
-			egg:setUserId(player.UserId)
-
-			dragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
-			dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
-			egg:putInBackpack()
-		end
-
-		self:sendSystemMessageToPlayer(player, "Your plot already has the maximum number of eggs hatching, so the egg was placed in your backpack")
-		return
-	end
-
-	local item = itemManager:getItemById(eggItemId)
-	if not item then
-		return
-	end
-
-	local groundPosition = utils.getGroundPositionForLocation(position) + Vector3.new(0, item:getPart().Size.Y / 2, 0)
-
-	local dragonHeightAboveGround = dragon:getObj():GetPivot().Position.Y - groundPosition.Y
-	if dragonHeightAboveGround > Constants.MAX_EGG_DROP_HEIGHT then
-		self:sendSystemMessageToPlayer(player, "Fly closer to the ground to drop the egg")
-		return
-	end
-
-	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
-	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
-
-	;(item :: Types.DragonEgg):cleanupCarrying()
-	item:setUserId(player.UserId)
-
-	utils.setPropertyTreeBaseParts(item:getObj(), "Anchored", true)
-	self:tossEggToGroundPosition(item, groundPosition)
-end
-
-function GameController.tossEggToGroundPosition(self: GameController, item: Types.Item, groundPosition: Vector3)
-	local TOSS_SPEED = 45
-	local FALL_SPEED = 60
-
-	local startPosition = item:getObj():GetPivot().Position
-	local apexHorizontal = startPosition:Lerp(Vector3.new(groundPosition.X, startPosition.Y, groundPosition.Z), 0.8)
-	local apexY = startPosition.Y - (startPosition.Y - groundPosition.Y) * 0.3
-	local apexPosition = Vector3.new(apexHorizontal.X, apexY, apexHorizontal.Z)
-
-	local tossDuration = (apexPosition - startPosition).Magnitude / TOSS_SPEED
-	local tossTweenInfo = TweenInfo.new(tossDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-	local tossTween = PivotToTween(item:getObj(), tossTweenInfo, CFrame.new(apexPosition))
-
-	tossTween.Completed:Connect(function()
-		local fallDuration = (groundPosition - apexPosition).Magnitude / FALL_SPEED
-		local fallTweenInfo = TweenInfo.new(fallDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
-		local fallTween = PivotToTween(item:getObj(), fallTweenInfo, CFrame.new(groundPosition))
-
-		fallTween.Completed:Connect(function()
-			(item :: Types.DragonEgg):notifyPlacedInPlot()
-		end)
-		fallTween:Play()
-	end)
-	tossTween:Play()
-end
-
 -- releases the carried egg where the dragon currently is, as a free unowned world item; the
 -- break timer pauses (not cancels) so a later pickup, by anyone, resumes with the time left
 function GameController.tryDropEggFromBasket(self: GameController, player: Player): ()
@@ -2912,27 +2825,28 @@ function GameController.tryUnequipAbility(self: GameController, player: Player, 
 	RemoteEvents.NotifyAbilityStatuses:FireClient(player, playerData:getAbilityStatuses())
 end
 
-function GameController.tryEquipDragon(self: GameController, player: Player, itemId: any, stableSlotIndex: any): ()
-	if not Validate.isItemIdForPlayer(player, itemId) then
-		print("invalid itemId for equip dragon", player, itemId)
+function GameController.tryPlaceEgg(self: GameController, player: Player, itemId: any, eggSlotIndex: any): ()
+	-- not isItemIdForPlayer: an egg carried in a dragon's basket is not owned yet, tryPlaceEgg checks the carrier
+	if not Validate.isInteger(itemId) then
+		print("invalid itemId for place egg", player, itemId)
 		return
 	end
 
-	if not Validate.isInteger(stableSlotIndex) then
-		print("invalid stable slot index for equip dragon", player, stableSlotIndex)
+	if not Validate.isInteger(eggSlotIndex) then
+		print("invalid egg slot index for place egg", player, eggSlotIndex)
 		return
 	end
 
-	stableManager:tryEquipDragon(player, itemId, stableSlotIndex)
+	eggSlotManager:tryPlaceEgg(player, itemId, eggSlotIndex)
 end
 
-function GameController.tryUnequipDragon(self: GameController, player: Player, stableSlotIndex: any): ()
-	if not Validate.isInteger(stableSlotIndex) then
-		print("invalid stable slot index for unequip dragon", player, stableSlotIndex)
+function GameController.tryRemoveEgg(self: GameController, player: Player, eggSlotIndex: any): ()
+	if not Validate.isInteger(eggSlotIndex) then
+		print("invalid egg slot index for remove egg", player, eggSlotIndex)
 		return
 	end
 
-	stableManager:tryUnequipDragon(player, stableSlotIndex)
+	eggSlotManager:tryRemoveEgg(player, eggSlotIndex)
 end
 
 function GameController.trySellDragons(self: GameController, player: Player, sellType: any): ()
@@ -3571,29 +3485,38 @@ function GameController.getRebirthLevelData(self: GameController, level: number)
 	return rebirthData.levels[level]
 end
 
-function GameController.getDragonSlotCountForRebirthLevel(self: GameController, level: number): number
+function GameController.getEggSlotCountForRebirthLevel(self: GameController, level: number): number
 	if level <= 0 then
-		return StableConfig.STABLE_SLOT_COUNT
+		return EggSlotConfig.EGG_SLOT_COUNT
 	end
 
 	local levelData = self:getRebirthLevelData(level)
-	return (levelData and levelData.dragonSlots) or self:getDragonSlotCountForRebirthLevel(level - 1)
+	return (levelData and levelData.eggSlots) or self:getEggSlotCountForRebirthLevel(level - 1)
 end
 
-function GameController.notifyDragonSlotCountChanged(self: GameController, player: Player, slotCount: number): ()
-	stableManager:syncStableSlotModels(player, slotCount)
+function GameController.getDragonLimitForRebirthLevel(self: GameController, level: number): number
+	if level <= 0 then
+		return EggSlotConfig.DRAGON_LIMIT
+	end
+
+	local levelData = self:getRebirthLevelData(level)
+	return (levelData and levelData.dragonLimit) or self:getDragonLimitForRebirthLevel(level - 1)
 end
 
-function GameController.getMaxDragonSlotCount(self: GameController): number
-	local maxDragonSlotCount = StableConfig.STABLE_SLOT_COUNT
+function GameController.notifyEggSlotCountChanged(self: GameController, player: Player, slotCount: number): ()
+	eggSlotManager:syncEggSlotModels(player, slotCount)
+end
+
+function GameController.getMaxEggSlotCount(self: GameController): number
+	local maxEggSlotCount = EggSlotConfig.EGG_SLOT_COUNT
 
 	local level = 1
 	while rebirthData.levels[level] do
-		maxDragonSlotCount = math.max(maxDragonSlotCount, self:getDragonSlotCountForRebirthLevel(level))
+		maxEggSlotCount = math.max(maxEggSlotCount, self:getEggSlotCountForRebirthLevel(level))
 		level += 1
 	end
 
-	return maxDragonSlotCount
+	return maxEggSlotCount
 end
 
 function GameController.getRebirthLuckMultiplierForUserId(self: GameController, userId: number): number
@@ -3750,8 +3673,8 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryPutAwayRidingDragon", "tryPutAwayRidingDragon")
 	self:addRemoteEventHandler("TryEquipAbility", "tryEquipAbility")
 	self:addRemoteEventHandler("TryUnequipAbility", "tryUnequipAbility")
-	self:addRemoteEventHandler("TryEquipDragon", "tryEquipDragon")
-	self:addRemoteEventHandler("TryUnequipDragon", "tryUnequipDragon")
+	self:addRemoteEventHandler("TryPlaceEgg", "tryPlaceEgg")
+	self:addRemoteEventHandler("TryRemoveEgg", "tryRemoveEgg")
 	self:addRemoteEventHandler("TrySetFtueStep", "trySetFtueStep")
 	self:addRemoteEventHandler("TryTriggerContextualFtue", "tryTriggerContextualFtue")
 	self:addRemoteEventHandler("TryRedeemFirstSessionOffer", "tryRedeemFirstSessionOffer")
@@ -3777,7 +3700,6 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryClaimLuckBillboard", "tryClaimLuckBillboard")
 	self:addRemoteEventHandler("TryRebirth", "tryRebirth")
 	self:addRemoteEventHandler("TryUpgradePlotLuck", "tryUpgradePlotLuck")
-	self:addRemoteEventHandler("TryDropEggAtPosition", "tryDropEggAtPosition")
 	self:addRemoteEventHandler("TryDropEggFromBasket", "tryDropEggFromBasket")
 	self:addRemoteEventHandler("TryPickupScatteredEgg", "tryPickupScatteredEgg")
 	self:addRemoteEventHandler("TryGetEggWorldCounts", "tryGetEggWorldCounts")
@@ -4013,7 +3935,7 @@ function GameController.init(self: GameController): ()
 	dealShopManager:init()
 	islandManager:init()
 	scatterZoneManager:init()
-	stableManager:init()
+	eggSlotManager:init()
 
 	processReceipt:init()
 	serverListener:init()
@@ -4095,7 +4017,7 @@ local function initClasses(gameController: GameController): ()
 
 	ItemMover.initClass(deps)
 	PlayerData.initClass(deps)
-	stableManager.initClass(deps)
+	eggSlotManager.initClass(deps)
 	starterOfferManager.initClass(deps)
 	ftueManager.initClass(deps)
 	contextualFtueManager.initClass(deps)

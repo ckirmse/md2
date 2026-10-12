@@ -137,10 +137,8 @@ function ClientDragonManager.cleanupRiding(self: ClientDragonManager, itemId: an
 
 		indicatorData.isRiding = false
 
-		-- rebuild an equipped dragon's ghost so it flies home from a clean pose, not the ride pose
-		if indicatorData.shadow:GetAttribute(Attributes.DRAGON_SLOT_INDEX) ~= nil then
-			clientShadowManager:recreateCaster(itemId)
-		end
+		-- a dragon dismounted in the plot stays and flies on by itself, so rebuild its ghost from a clean pose
+		clientShadowManager:recreateCaster(itemId)
 	end
 
 	clientRideController:notifyEndSitting(skipLaunch)
@@ -1290,11 +1288,7 @@ function ClientDragonManager.notifyNewInstance(self: ClientDragonManager, shadow
 
 	local indicatorData = self.indicatorMap[itemId]
 
-	if
-		self.autoRidePending
-		and isOwnedByPlayer
-		and shadow:GetAttribute(Attributes.DRAGON_SLOT_INDEX) == nil
-	then
+	if self.autoRidePending and isOwnedByPlayer then
 		self.autoRideItemId = itemId
 	end
 
@@ -1699,10 +1693,6 @@ function ClientDragonManager.init(self: ClientDragonManager)
 					continue
 				end
 				if indicatorData.shadow.Parent ~= workspace then
-					continue
-				end
-				if indicatorData.shadow:GetAttribute(Attributes.DRAGON_SLOT_INDEX) ~= nil then
-					-- equipped in a stable slot: inert, cannot be ridden (RideMixin.canRideItem)
 					continue
 				end
 

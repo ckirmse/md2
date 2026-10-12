@@ -19,7 +19,7 @@ local playerAttributesManager = require("./PlayerAttributesManager")
 local plotsManager = require("./PlotsManager")
 local rideMixin = require("./RideMixin")
 local scatterZoneManager = require("./ScatterZoneManager")
-local stableManager = require("./StableManager")
+local eggSlotManager = require("./EggSlotManager")
 local starterOfferManager = require("./StarterOfferManager")
 local storageManager = require("./StorageManager")
 local tradeManager = require("./TradeManager")
@@ -388,11 +388,11 @@ function DevTools.dumpRebirth(self: DevTools, player: Player)
 
 	if not nextLevelData then
 		print(string.format(
-			"rebirth for %s: level %d, coins %d, no more rebirth levels available, stable slots %d",
+			"rebirth for %s: level %d, coins %d, no more rebirth levels available, egg slots %d",
 			player.Name,
 			level,
 			coins,
-			stableManager:getStableSlotCount(player)
+			eggSlotManager:getEggSlotCount(player)
 		))
 		return
 	end
@@ -402,7 +402,7 @@ function DevTools.dumpRebirth(self: DevTools, player: Player)
 	local petDisplayName = (petData and petData.displayName) or nextLevelData.requiredPetName
 
 	print(string.format(
-		"rebirth for %s: level %d, coins %d, cost to rebirth: %d, required pet: %s (%s), found pet: %s, stable slots %d",
+		"rebirth for %s: level %d, coins %d, cost to rebirth: %d, required pet: %s (%s), found pet: %s, egg slots %d",
 		player.Name,
 		level,
 		coins,
@@ -410,7 +410,7 @@ function DevTools.dumpRebirth(self: DevTools, player: Player)
 		petDisplayName,
 		nextLevelData.requiredPetName,
 		tostring(hasPet),
-		stableManager:getStableSlotCount(player)
+		eggSlotManager:getEggSlotCount(player)
 	))
 end
 
@@ -550,52 +550,45 @@ function DevTools.forceTakeOneScatterEgg(self: DevTools, player: Player, objectI
 	zone:notifyEggTaken(itemId)
 end
 
-function DevTools.equipAllDragons(self: DevTools, player: Player)
-	local playerData = gameController:getPlayerData(player)
-
+function DevTools.placeAllEggs(self: DevTools, player: Player)
 	local allItems = itemManager:getItemsOnGroundByUserId(player.UserId)
 	for _, item in itemManager:getItemsNotOnGroundByUserId(player.UserId) do
 		table.insert(allItems, item)
 	end
 
-	local stableSlotIndex = 0
+	local playerData = gameController:getPlayerData(player)
+	local eggSlotIndex = 0
 	for _, item in allItems do
-		if item:getType() ~= "shadowDragon" then
-			continue
-		end
-		if (item :: Types.ShadowDragon):getStableSlotIndex() ~= nil then
+		if item:getType() ~= "dragonEgg" or (item :: Types.DragonEgg):getEggSlotIndex() ~= nil then
 			continue
 		end
 
-		stableSlotIndex += 1
-		if stableSlotIndex > stableManager:getStableSlotCount(player) then
+		repeat
+			eggSlotIndex += 1
+		until playerData:getEggInSlot(eggSlotIndex) == nil or eggSlotIndex > eggSlotManager:getEggSlotCount(player)
+		if eggSlotIndex > eggSlotManager:getEggSlotCount(player) then
 			break
 		end
 
-		if stableManager:tryEquipDragon(player, item:getItemId(), stableSlotIndex) then
-			print("  equipped", item:getItemName(), "in stable slot", stableSlotIndex)
+		if eggSlotManager:tryPlaceEgg(player, item:getItemId(), eggSlotIndex) then
+			print("  placed", item:getItemName(), "in egg slot", eggSlotIndex)
 		else
-			print("  failed to equip", item:getItemName(), "in stable slot", stableSlotIndex)
-			stableSlotIndex -= 1
+			print("  failed to place", item:getItemName(), "in egg slot", eggSlotIndex)
 		end
 	end
-
-	print("total dragon income =", playerData:getTotalDragonIncome())
 end
 
-function DevTools.unequipAllDragons(self: DevTools, player: Player)
+function DevTools.removeAllEggs(self: DevTools, player: Player)
 	local playerData = gameController:getPlayerData(player)
 
-	local stableSlotIndices = {}
-	for stableSlotIndex in playerData:getStableSlots() do
-		table.insert(stableSlotIndices, stableSlotIndex)
+	local eggSlotIndices = {}
+	for eggSlotIndex in playerData:getEggSlots() do
+		table.insert(eggSlotIndices, eggSlotIndex)
 	end
 
-	for _, stableSlotIndex in stableSlotIndices do
-		stableManager:tryUnequipDragon(player, stableSlotIndex)
+	for _, eggSlotIndex in eggSlotIndices do
+		eggSlotManager:tryRemoveEgg(player, eggSlotIndex)
 	end
-
-	print("unequipped all dragons; total dragon income =", playerData:getTotalDragonIncome())
 end
 
 function DevTools.resetPrimaryElementProgress(self: DevTools, player: Player)

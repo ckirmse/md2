@@ -55,7 +55,7 @@ synced by Rojo.
 | Studio location | Contains | Consumed by |
 |---|---|---|
 | `ServerScriptService.GameData.Objects` | One ModuleScript per item/object definition (`name`, `type`, `mixins`, `templatePath`, `boardSpacing`, …) | `ObjectDataStore:initDataTypes()` |
-| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
+| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `Rebirth` (per level: `cost`, `requiredPetName`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
 | `ServerScriptService.GameData.LootTables` | One ModuleScript per loot table | `LootTableManager:init()` |
 | `ServerScriptService.GameData.Vanity` | `MainPlotInner`, `MainPlotOuter`, `Fence`, `ExpansionInner`, … | `PlotsManager:initVanityData()` |
 | `ReplicatedStorage.RemoteEvents` | Every RemoteEvent instance | server + client (see below) |
@@ -384,6 +384,34 @@ item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter
 - **Current limits:** bundles are Robux-only by convention (not enforced); a two-tier single item must sell
   the same item in both tiers but may differ in count, a two-tier bundle must grant identical contents; there
   is no play-time window yet, and a purchased gacha egg is opened by placing and hatching it (no reveal screen).
+
+## Egg Slots and the Dragon Limit
+
+Eggs incubate only in **egg slots** on the player's plot; dragons roam the open plot. Files:
+`server/EggSlotManager.luau`, `client/ClientEggSlotsManager.luau`, `shared/EggSlotConfig.luau`.
+
+- **Counts** come from `Control/Rebirth` per level: `eggSlots` (how many slots) and `dragonLimit` (how many
+  placed dragons). Level 0 uses `EggSlotConfig.EGG_SLOT_COUNT` / `DRAGON_LIMIT`; a missing value falls back to the
+  previous level's. `GameDataVerifier.verifyRebirthLevels` warns if either is missing or decreases. They reach the
+  client as the player attributes `EGG_SLOT_COUNT` / `DRAGON_LIMIT`.
+- **Slot models are spawned per plot**, only up to the owner's `eggSlots`, from the template
+  `GameAssets.Land.EggSlotTemplate` (needs a direct `Anchor` child; an optional `Hologram` part is toggled by the
+  client) at the hand-placed `EggSlotMarker<N>` parts in `Level.PerPlotElements` (plot 1's coordinates; the markers
+  are read and destroyed at startup). `EggSlotManager:syncEggSlotModels` runs whenever the count is published
+  (join, rebirth, data reset) and `PlayerData.loadSaveData` calls it before items load so a saved egg can be parked.
+- **Placing an egg** is only possible through the slot prompt: `TryPlaceEgg(itemId, slotIndex)` takes the egg the
+  player holds or the one in the ridden dragon's basket; `TryRemoveEgg(slotIndex)` returns an incubating egg to the
+  backpack (refused once it is ready to hatch). Tapping with a held egg is refused (`DragonEgg.getToolActivationItem`).
+  A slotted egg is tagged `Tags.SLOTTED_EGG` with `Attributes.EGG_SLOT_INDEX`, saved as `eggSlotIndex`, and
+  `PlayerData.eggSlots` maps slot to egg id (not saved; rebuilt on load).
+- **The dragon limit** counts dragons out of the backpack except the one being ridden. Releasing a dragon (which is
+  how you mount it) is never blocked; the limit is enforced on dismount (`RideMixin.notifyPlayerEndRideDragon`: a jump-off
+  inside the plot leaves the dragon there only if there is room, otherwise it goes to the backpack; put-away always goes
+  to the backpack) and on hatching (a hatched dragon goes to the backpack when full). Income and passive XP skip the
+  ridden dragon (it earns ride XP); `PlayerData.recomputeTotalDragonIncome` is refreshed when a dragon enters or leaves
+  the world or starts or stops being ridden.
+- **Studio prerequisites:** RemoteEvents `TryPlaceEgg`, `TryRemoveEgg`, `NotifyEggSlotsChanged`; the template and
+  markers above; `eggSlots` and `dragonLimit` on every `Control/Rebirth` level.
 
 ## Design Notes in the Repo
 

@@ -13,6 +13,7 @@ local players = game:GetService("Players")
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local eggSlotManager = require("./EggSlotManager")
 local lootTableManager = require("./LootTableManager")
 local objectDataStore = require("./ObjectDataStore")
 local pickupMixin = require("./PickupMixin")
@@ -62,21 +63,6 @@ function DragonEgg.refreshLuckDisplay(self: DragonEgg)
 		Attributes.NAME_PLATE_EXTRA_TEXT,
 		string.format("Luck: %g", DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck, self:getUserId()))
 	)
-end
-
-function DragonEgg.hasReachedHatchingEggCap(userId: number, excludeItemId: number?): boolean
-	local count = 0
-	for _, item in itemManager:getItemsOnGroundByUserId(userId) do
-		if item:getType() ~= "dragonEgg" then
-			continue
-		end
-		if excludeItemId and item:getItemId() == excludeItemId then
-			continue
-		end
-		count += 1
-	end
-
-	return count >= hatchingData.maxHatchingEggCount
 end
 
 function DragonEgg.applyLuckBiasToLootTable(lootTable: any, luckMultiplier: number): { any }
@@ -143,28 +129,16 @@ function DragonEgg.notifyParentWorkspace(self: DragonEgg)
 		return
 	end
 
-	self:settleOnGroundInWorkspace(
-		function()
-			self:tryBeginIncubatingFromPlacement()
-		end
-	)
+	self:settleOnGroundInWorkspace(function() end)
 end
 
-function DragonEgg.tryBeginIncubatingFromPlacement(self: DragonEgg)
-	if self.hatchTimer then
-		return
+-- eggs are placed by putting them on an egg slot, not by dropping them anywhere in the plot
+function DragonEgg.getToolActivationItem(self: DragonEgg): any
+	local player = self:getPlayer()
+	if player then
+		gameController:sendSystemMessageToPlayer(player, "Put your egg on an egg slot to hatch it")
 	end
-
-	local position = self:getObj():GetPivot().Position
-	if not plotsManager:isPositionInMainPlotXZByUserId(position, self:getUserId()) then
-		return
-	end
-
-	if DragonEgg.hasReachedHatchingEggCap(self:getUserId(), self:getItemId()) then
-		return
-	end
-
-	self:notifyPlacedInPlot()
+	return nil
 end
 
 function DragonEgg.notifyParentPlayer(self: DragonEgg)
@@ -379,6 +353,17 @@ function DragonEgg.finishHatching(self: DragonEgg)
 
 	itemManager:destroyItem(self)
 
+	local player = players:GetPlayerByUserId(userId)
+	local playerData = player and gameController:getPlayerData(player)
+	if playerData and playerData:isAtDragonLimit() then
+		dragonItem:putInBackpack()
+		gameController:sendSystemMessageToPlayer(
+			player,
+			"Your plot is at its dragon limit, so the hatched dragon was placed in your backpack"
+		)
+		return
+	end
+
 	gameController:spawnItemsAtPosition({ dragonItem }, position)
 end
 
@@ -396,6 +381,7 @@ function DragonEgg.getSaveData(self: DragonEgg, itemIdMap: any): any
 
 	retval.type = "dragonEgg"
 	retval.eggSize = self.eggSize
+	retval.eggSlotIndex = self.eggSlotIndex
 
 	if self:isReadyToHatch() then
 		retval.hatch = {
@@ -421,12 +407,18 @@ function DragonEgg.loadSaveData(self: DragonEgg, itemSaveData: any, itemIdMap: a
 	if itemSaveData.eggSize then
 		self.eggSize = itemSaveData.eggSize
 	end
+
+	self.eggSlotIndex = itemSaveData.eggSlotIndex
 end
 
 function DragonEgg.notifyLoadComplete(self: DragonEgg, itemSaveData: any, itemIdMap: any, offlineElapsedSec: number?)
 	local obj = self:getObj()
 	if obj:IsA("Model") then
 		obj:ScaleTo(self.eggSize)
+	end
+
+	if self.eggSlotIndex ~= nil then
+		eggSlotManager:placeEggOnLoad(self)
 	end
 
 	if not itemSaveData.hatch then
@@ -448,7 +440,57 @@ function DragonEgg.notifyLoadComplete(self: DragonEgg, itemSaveData: any, itemId
 	self:beginIncubating(remainingSec)
 end
 
+function DragonEgg.getEggSlotIndex(self: DragonEgg): number?
+	return self.eggSlotIndex
+end
+
+function DragonEgg.markInEggSlot(self: DragonEgg, eggSlotIndex: number)
+	self.eggSlotIndex = eggSlotIndex
+	collectionService:AddTag(self:getObj(), Tags.SLOTTED_EGG)
+	self:getObj():SetAttribute(Attributes.EGG_SLOT_INDEX, eggSlotIndex)
+end
+
+function DragonEgg.clearEggSlot(self: DragonEgg)
+	local eggSlotIndex = self.eggSlotIndex
+	self.eggSlotIndex = nil
+	collectionService:RemoveTag(self:getObj(), Tags.SLOTTED_EGG)
+	self:getObj():SetAttribute(Attributes.EGG_SLOT_INDEX, nil)
+
+	local playerData = self:getPlayerData()
+	if eggSlotIndex and playerData and playerData:getEggInSlot(eggSlotIndex) == self:getItemId() then
+		playerData:clearEggSlot(eggSlotIndex)
+	end
+end
+
+-- moves the egg (held in the backpack, carried by a dragon, or already in the world) onto a slot's anchor and starts
+-- its incubation there
+function DragonEgg.placeInEggSlot(self: DragonEgg, eggSlotIndex: number, slotCFrame: CFrame)
+	self:cleanupCarrying()
+	self:markInEggSlot(eggSlotIndex)
+
+	local obj = self:getObj()
+	if obj.Parent ~= workspace then
+		-- leave the tool the same way a normal placement does, then enter the world without settling
+		self:setPreventSettling()
+		local tool = self:findTool()
+		if tool then
+			self.part.Parent = nil
+			tool:Destroy()
+		end
+		if obj:IsA("Model") then
+			self:setupChildPartsToObj()
+		end
+		self:moveFromPlayerToWorkspace()
+	end
+
+	utils.setPropertyTreeBaseParts(obj, "Anchored", true)
+	obj:PivotTo(slotCFrame)
+
+	self:notifyPlacedInPlot()
+end
+
 function DragonEgg.destroy(self: DragonEgg)
+	self:clearEggSlot()
 	self:cleanupIncubating()
 	self:cleanupCarrying()
 
@@ -489,6 +531,7 @@ function DragonEgg.new(itemId: number, itemName: string, userId: number): Dragon
 	self:refreshLuckDisplay()
 
 	self.eggSize = rollEggSize(self.random, itemData.minEggSize, itemData.maxEggSize)
+	self.eggSlotIndex = nil
 	local obj = self:getObj()
 	if obj:IsA("Model") then
 		obj:ScaleTo(self.eggSize)

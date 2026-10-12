@@ -357,11 +357,11 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			if Iris.Button({ "Dump Dragon Income" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpDragonIncome")
 			end
-			if Iris.Button({ "Equip All Dragons" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("equipAllDragons")
+			if Iris.Button({ "Place All Eggs" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("placeAllEggs")
 			end
-			if Iris.Button({ "Unequip All Dragons" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("unequipAllDragons")
+			if Iris.Button({ "Remove All Eggs" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("removeAllEggs")
 			end
 
 			Iris.SeparatorText({ "Radar" })

@@ -68,23 +68,27 @@ function ClientDragonRosterManager.doesWantBlur(self: ClientDragonRosterManager)
 	return false
 end
 
--- collects the local player's occupied-stable-slot dragons, sorted by slot index (empty slots
--- have no tagged instance, so they never produce a card)
-local function getOwnedSlottedDragons(): { any }
+-- collects the local player's placed dragons (out in the world, not in the backpack and not being ridden), highest
+-- income first
+local function getOwnedPlacedDragons(): { any }
 	local dragons = {}
 	for _, shadow in collectionService:GetTagged(Tags.SHADOW_DRAGON) :: { any } do
 		if shadow:GetAttribute(Attributes.USER_ID) ~= player.UserId then
 			continue
 		end
-		if shadow:GetAttribute(Attributes.DRAGON_SLOT_INDEX) == nil then
+		if shadow.Parent ~= workspace or shadow:GetAttribute(Attributes.DRAGON_RIDER) == true then
 			continue
 		end
 		table.insert(dragons, shadow)
 	end
 
 	table.sort(dragons, function(a, b)
-		return (a:GetAttribute(Attributes.DRAGON_SLOT_INDEX) :: number)
-			< (b:GetAttribute(Attributes.DRAGON_SLOT_INDEX) :: number)
+		local incomeA = (a:GetAttribute(Attributes.DRAGON_INCOME_PER_SEC) :: number?) or 0
+		local incomeB = (b:GetAttribute(Attributes.DRAGON_INCOME_PER_SEC) :: number?) or 0
+		if incomeA ~= incomeB then
+			return incomeA > incomeB
+		end
+		return (a:GetAttribute(Attributes.ITEM_ID) :: number) < (b:GetAttribute(Attributes.ITEM_ID) :: number)
 	end)
 
 	return dragons
@@ -144,7 +148,7 @@ end
 -- destroy-missing/create-new/refresh-existing reconciliation, keyed by item id (mirrors
 -- ClientBuyStore.updateStoreInterface)
 function ClientDragonRosterManager.refreshList(self: ClientDragonRosterManager)
-	local dragons = getOwnedSlottedDragons()
+	local dragons = getOwnedPlacedDragons()
 
 	local currentItemIds: { [number]: boolean } = {}
 	for _, dragon in dragons do
@@ -168,8 +172,8 @@ function ClientDragonRosterManager.refreshList(self: ClientDragonRosterManager)
 		refreshCardRecord(cardRecord, dragon)
 	end
 
-	local stableSlotCount = clientPlayerAttributesManager:getDragonSlotCount()
-	self.rosterAmountText.Text = string.format("%d/%d", #dragons, stableSlotCount)
+	local dragonLimit = clientPlayerAttributesManager:getDragonLimit()
+	self.rosterAmountText.Text = string.format("%d/%d", #dragons, dragonLimit)
 end
 
 function ClientDragonRosterManager.beginRoster(self: ClientDragonRosterManager)
