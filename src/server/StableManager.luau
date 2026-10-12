@@ -180,7 +180,15 @@ function StableManager.equipDragonOnLoad(self: StableManager, dragon: Types.Shad
 		or stableSlotIndex > self:getStableSlotCount(player)
 		or playerData:getStableDragonInSlot(stableSlotIndex) ~= nil
 	then
-		warn("dropping equipped dragon with a bad/duplicate saved stable slot", player, stableSlotIndex)
+		warn(
+			"dropping equipped dragon with a bad/duplicate saved stable slot",
+			player,
+			stableSlotIndex,
+			"slot count",
+			self:getStableSlotCount(player),
+			"occupant",
+			playerData:getStableDragonInSlot(stableSlotIndex)
+		)
 		dragon:setStableSlotIndex(nil)
 		return
 	end

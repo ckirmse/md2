@@ -1831,8 +1831,13 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 
 	self:syncVanityToWorld()
 
-	-- vanity needs to cemo before items because vanity islands can hold items
+	self.rebirthLevel = (saveData and saveData.rebirthLevel) or 0
+	gameController:notifyDragonSlotCountChanged(
+		self.player,
+		gameController:getDragonSlotCountForRebirthLevel(self.rebirthLevel)
+	)
 
+	-- vanity needs to cemo before items because vanity islands can hold items
 	local itemsSaveData = saveData and saveData.items or nil
 	if itemsSaveData then
 		itemManager:loadDataForPlayer(self.player, itemsSaveData, offlineElapsedSec)
