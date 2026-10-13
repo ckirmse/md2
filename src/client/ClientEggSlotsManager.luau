@@ -5,6 +5,7 @@ ClientEggSlotsManager.__index = ClientEggSlotsManager
 
 local collectionService = game:GetService("CollectionService")
 local playersService = game:GetService("Players")
+local runService = game:GetService("RunService")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- the RemoteEvents children only exist in Studio, so they are untyped here
@@ -26,12 +27,20 @@ local PROMPT_NAME = "EggSlotPrompt"
 local PROMPT_DISTANCE = 12
 local RESOLVE_ATTEMPTS = 40
 local RESOLVE_INTERVAL = 0.5
+local BOB_AMPLITUDE = 0.35
+local BOB_PERIOD_SEC = 3
 
 type SlotData = {
 	slotModel: Instance,
 	hologram: Instance?,
 	prompt: ProximityPrompt,
 	promptTriggeredConnect: RBXScriptConnection,
+}
+
+type BobData = {
+	baseCFrame: CFrame,
+	lastCFrame: CFrame,
+	phase: number,
 }
 
 type ClientEggSlotsManagerFields = {
@@ -41,6 +50,7 @@ type ClientEggSlotsManagerFields = {
 	-- slotIndex -> the occupying egg, from the SLOTTED_EGG tag
 	occupancy: { [number]: Instance },
 	carriedEggConnect: RBXScriptConnection?,
+	bobbingEggs: { [Instance]: BobData },
 }
 
 export type ClientEggSlotsManager = typeof(setmetatable({} :: ClientEggSlotsManagerFields, ClientEggSlotsManager))
@@ -118,6 +128,9 @@ function ClientEggSlotsManager.onSlotTriggered(self: ClientEggSlotsManager, slot
 end
 
 function ClientEggSlotsManager.onSlottedEggAdded(self: ClientEggSlotsManager, egg: Instance)
+	local eggPivot = (egg :: any):GetPivot()
+	self.bobbingEggs[egg] = { baseCFrame = eggPivot, lastCFrame = eggPivot, phase = math.random() * BOB_PERIOD_SEC }
+
 	if egg:GetAttribute(Attributes.USER_ID) ~= player.UserId then
 		return
 	end
@@ -132,6 +145,8 @@ function ClientEggSlotsManager.onSlottedEggAdded(self: ClientEggSlotsManager, eg
 end
 
 function ClientEggSlotsManager.onSlottedEggRemoved(self: ClientEggSlotsManager, egg: Instance)
+	self.bobbingEggs[egg] = nil
+
 	for slotIndex, occupantEgg in self.occupancy do
 		if occupantEgg == egg then
 			self.occupancy[slotIndex] = nil
@@ -272,7 +287,29 @@ function ClientEggSlotsManager.watchRiddenDragonCarriedEgg(self: ClientEggSlotsM
 	end)
 end
 
+-- the server pivots a slotted egg once, so the bob is purely visual and runs here; a pivot that is not the one applied
+-- last frame is the server moving the egg, which becomes the new resting point
+function ClientEggSlotsManager.updateBobbing(self: ClientEggSlotsManager)
+	local now = os.clock()
+	for egg, bob in self.bobbingEggs do
+		local pivotOwner = egg :: any
+		local currentCFrame: CFrame = pivotOwner:GetPivot()
+		if (currentCFrame.Position - bob.lastCFrame.Position).Magnitude > 0.01 then
+			bob.baseCFrame = currentCFrame
+		end
+
+		local offsetY = math.sin(2 * math.pi * (now + bob.phase) / BOB_PERIOD_SEC) * BOB_AMPLITUDE
+		local bobbedCFrame = bob.baseCFrame + Vector3.new(0, offsetY, 0)
+		pivotOwner:PivotTo(bobbedCFrame)
+		bob.lastCFrame = bobbedCFrame
+	end
+end
+
 function ClientEggSlotsManager.init(self: ClientEggSlotsManager)
+	runService.Heartbeat:Connect(function()
+		self:updateBobbing()
+	end)
+
 	collectionService:GetInstanceAddedSignal(Tags.SLOTTED_EGG):Connect(function(inst)
 		self:onSlottedEggAdded(inst)
 	end)
@@ -322,6 +359,7 @@ function ClientEggSlotsManager.new(): ClientEggSlotsManager
 	self.pendingSlotIndexes = {}
 	self.occupancy = {}
 	self.carriedEggConnect = nil
+	self.bobbingEggs = {}
 	return self
 end
 
