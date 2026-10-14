@@ -116,6 +116,42 @@ module = {
 			PLANTS = "Plants",
 		},
 	},
+	-- kinds of item a RANDOM_BY_RARITY playtime reward can draw; ObjectTypes maps each to the `type` string
+	-- of the GameData objects (indexed by value)
+	ItemType = {
+		DRAGON_EGG = 1,
+		DRAGON = 2,
+		FOOD = 3,
+		RADAR = 4,
+
+		ObjectTypes = {
+			[1] = "dragonEgg",
+			[2] = "shadowDragon",
+			[3] = "food",
+			[4] = "radar",
+		},
+		PublicNames = {
+			DRAGON_EGG = "Dragon Egg",
+			DRAGON = "Dragon",
+			FOOD = "Food",
+			RADAR = "Radar",
+		},
+	},
+	PlaytimeRewardKind = {
+		FIXED_ITEM = 1,
+		COINS = 2,
+		RANDOM_BY_RARITY = 3,
+		LOOT_TABLE = 4,
+		TIME_SKIP = 5,
+
+		PublicNames = {
+			FIXED_ITEM = "Fixed Item",
+			COINS = "Coins",
+			RANDOM_BY_RARITY = "Random By Rarity",
+			LOOT_TABLE = "Loot Table",
+			TIME_SKIP = "Time Skip",
+		},
+	},
 	ShopContentKind = {
 		ITEM = 1,
 		COINS = 2,

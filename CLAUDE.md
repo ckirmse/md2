@@ -55,7 +55,7 @@ synced by Rojo.
 | Studio location | Contains | Consumed by |
 |---|---|---|
 | `ServerScriptService.GameData.Objects` | One ModuleScript per item/object definition (`name`, `type`, `mixins`, `templatePath`, `boardSpacing`, …) | `ObjectDataStore:initDataTypes()` |
-| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `Rebirth` (per level: `cost`, `requiredPetName`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
+| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `Playtime`, `Rebirth` (per level: `cost`, `requiredPetName`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
 | `ServerScriptService.GameData.LootTables` | One ModuleScript per loot table | `LootTableManager:init()` |
 | `ServerScriptService.GameData.Vanity` | `MainPlotInner`, `MainPlotOuter`, `Fence`, `ExpansionInner`, … | `PlotsManager:initVanityData()` |
 | `ReplicatedStorage.RemoteEvents` | Every RemoteEvent instance | server + client (see below) |
@@ -412,6 +412,44 @@ Eggs incubate only in **egg slots** on the player's plot; dragons roam the open 
   the world or starts or stops being ridden.
 - **Studio prerequisites:** RemoteEvents `TryPlaceEgg`, `TryRemoveEgg`, `NotifyEggSlotsChanged`; the template and
   markers above; `eggSlots` and `dragonLimit` on every `Control/Rebirth` level.
+
+## Playtime Rewards
+
+Session-scoped rewards: each unlocks after a set number of seconds of the current session, and nothing is saved (unclaimed
+rewards are lost when the player leaves; the next session starts a fresh set). Files: `server/PlaytimeRewardManager.luau`,
+`shared/PlaytimeRewardMath.luau`, `client/ClientPlaytimeRewardManager.luau`, `client/RewardTileUi.luau`, plus the generic
+helpers `client/ButtonTwitcher.luau`, `client/Confetti.luau`, `client/ClientTicker.luau`.
+
+- **Config** is the Studio-only `GameData.Control.Playtime`: `rewards`, an array whose position is the reward's stable `index`.
+  Every entry has `kind` (`Enums.PlaytimeRewardKind`) and `unlockSec`, plus per kind: `COINS` `hourlyPercent`, `minCoins`,
+  `maxCoins` (percent of hourly income from `IncomeManager:getIncomePerSec`, clamped, rounded to 3 significant figures); `TIME_SKIP`
+  `skipSec` (coins = income per second x seconds); `FIXED_ITEM` `itemName` (an object name from `GameData/Objects`, not a loot
+  table); `RANDOM_BY_RARITY` `itemType` (`Enums.ItemType`, whose `ObjectTypes` map to the object `type` string) and `rarity`;
+  `LOOT_TABLE` `lootTableName` (every result must be `{ itemName = string }`). `GameDataVerifier.verifyPlaytimeRewards` warns about
+  bad entries at startup, and the server will not boot without the table.
+- **Rolling at claim time, on purpose.** `RANDOM_BY_RARITY` and `LOOT_TABLE` items and `TIME_SKIP` amounts are decided when the
+  player claims, not at join. The set is sent at join and a rejoin is free, so anything shown in advance could be rerolled by
+  relogging. Until claimed, those tiles show a generated label ("Random Rare Dragon Egg", "Mystery Prize") and the client
+  never learns the item; the claimed tile shows what was received. `COINS` amounts are fixed at session start. A time skip that
+  would pay 0 (no income yet) is refused and stays claimable. `claimed` is set only after a successful grant. Random picks come from
+  every object of that type and rarity, so use `LOOT_TABLE` to curate a pool (premium eggs, one dragon level).
+- **Flow:** `GameController` calls `playtimeRewardManager:notifyAddPlayer` before building `initData` (which carries
+  `playtimeRewards`) and `notifyRemovePlayer` on leave. `TryClaimPlaytimeReward(index)` is validated as a positive integer, and
+  the server checks `workspace:GetServerTimeNow() - sessionStartTime >= unlockSec` itself. The manager keeps its own session
+  clock. Every claim answers `NotifyPlaytimeRewardResult(index, isSuccess)` (refusals too, so the client never waits) and a claim
+  or dev reset also sends the whole set in `NotifyPlaytimeRewards`. Items go through `tryDeliverPurchasedItemToPlayer`.
+- **Dev tools:** `fastForwardPlaytime(seconds)` and `resetPlaytimeRewards` (client section "Playtime Rewards").
+- **Studio prerequisites:** RemoteEvents `TryClaimPlaytimeReward`, `NotifyPlaytimeRewards`, `NotifyPlaytimeRewardResult`; the config
+  module. A missing GUI only logs a warning and disables that part.
+- **GUI names the client finds:** HUD ScreenGui `PlaytimeRewardsFrame` > `PlaytimeRewardsButton` > optional `Timer`, `Icon`, `Alert`
+  (no UIListLayout around it or the twitch is invisible); ScreenGui `PlaytimeRewards` > `Dialog` > `Title` > `Exit`, and
+  `Dialog` > `TileGrid` holding the hidden templates `TileTemplate` (locked, with `Timer`), `TileTemplateReady` (with a `Claim`
+  TextButton) and `TileTemplateClaimed`, each with optional `Title`, `Preview`, `Icon`. Attributes on a template's `Icon`
+  (`rbxassetid://` strings): `CoinImage`, `ClockImage`, `MysteryImage` (the picture for a still-hidden random reward).
+  Item pictures come from `ItemIcons` by exact object name; an item missing there keeps the tile's authored `Icon`. The claim
+  sound is a constant in `ClientPlaytimeRewardManager`, and respects the main sound-effects option.
+- **Tuning (from the reference game's notes):** keep reward value per wall-second non-decreasing and avoid long reward-free gaps,
+  otherwise quitting and rejoining pays better than staying; keep `skipSec` in whole minutes (the title shows minutes).
 
 ## Design Notes in the Repo
 

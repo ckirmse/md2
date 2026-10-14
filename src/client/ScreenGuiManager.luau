@@ -27,6 +27,7 @@ local clientRebirthManager = require("./ClientRebirthManager")
 local clientLuckInfoManager = require("./ClientLuckInfoManager")
 local clientOptionsManager = require("./ClientOptionsManager")
 local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
+local clientPlaytimeRewardManager = require("./ClientPlaytimeRewardManager")
 local clientDealShopManager = require("./ClientDealShopManager")
 local clientRadarManager = require("./ClientRadarManager")
 local NumberLabelAnimator = require("./NumberLabelAnimator")
@@ -1173,6 +1174,27 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 		end
 	else
 		warn("ScreenGuiManager: DealShopFrame missing from the HUD; no deal shop button")
+	end
+
+	local playtimeRewardsFrame: any = ScreenGui:FindFirstChild("PlaytimeRewardsFrame")
+	if playtimeRewardsFrame then
+		playtimeRewardsFrame.Visible = not clientFtueManager:isFtueActive()
+
+		clientFtueManager:getIsEnabledEvent():Connect(function(isFtueEnabled: boolean)
+			playtimeRewardsFrame.Visible = not isFtueEnabled
+		end)
+
+		local playtimeRewardsButton: any = playtimeRewardsFrame:FindFirstChild("PlaytimeRewardsButton")
+		if playtimeRewardsButton then
+			clientPlaytimeRewardManager:setHudButton(playtimeRewardsButton)
+			playtimeRewardsButton.Activated:Connect(function()
+				clientPlaytimeRewardManager:togglePanel()
+			end)
+		else
+			warn("ScreenGuiManager: PlaytimeRewardsFrame has no PlaytimeRewardsButton")
+		end
+	else
+		warn("ScreenGuiManager: PlaytimeRewardsFrame missing from the HUD; no playtime rewards button")
 	end
 
 	local friendLuckBoostFrame = ScreenGui:FindFirstChild("FriendLuckBoostFrame")

@@ -973,6 +973,7 @@ export type GameController = {
 	tryClaimCrystal: (self: GameController, player: Player, crystalItemId: any) -> (),
 	tryClaimIndexReward: (self: GameController, player: Player, category: any, scope: any, chainKey: any, tierIndex: any) -> (),
 	tryClaimLuckBillboard: (self: GameController, player: Player) -> (),
+	tryClaimPlaytimeReward: (self: GameController, player: Player, rewardIndex: any) -> (),
 	tryClaimWelcomeBackGift: (self: GameController, player: Player) -> (),
 	tryClearGift: (self: GameController, player: Player) -> (),
 	tryConfirmTrade: (self: GameController, player: Player, partnerPlayerName: any) -> (),

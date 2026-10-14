@@ -16,6 +16,7 @@ local lootTableManager = require("./LootTableManager")
 local mergeMixin = require("./MergeMixin")
 local objectDataStore = require("./ObjectDataStore")
 local playerAttributesManager = require("./PlayerAttributesManager")
+local playtimeRewardManager = require("./PlaytimeRewardManager")
 local plotsManager = require("./PlotsManager")
 local rideMixin = require("./RideMixin")
 local scatterZoneManager = require("./ScatterZoneManager")
@@ -194,6 +195,19 @@ function DevTools.discoverIndexItemsForCategory(self: DevTools, player: Player, 
 	end
 
 	print("index discover complete", player, category, percent .. "% per chain", "newly discovered", newlyDiscoveredCount, "of", discoveredThisRun, "total discovered", totalDiscovered, "total discovered mutations", totalDiscoveredMutations)
+end
+
+function DevTools.resetPlaytimeRewards(self: DevTools, player: Player)
+	playtimeRewardManager:resetPlayer(player)
+end
+
+function DevTools.fastForwardPlaytime(self: DevTools, player: Player, seconds: any)
+	if type(seconds) ~= "number" or seconds < 1 then
+		print("invalid playtime seconds to fast forward", seconds)
+		return
+	end
+
+	playtimeRewardManager:advanceSession(player, math.floor(seconds))
 end
 
 function DevTools.resetCoins(self: DevTools, player: Player)

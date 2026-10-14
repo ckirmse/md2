@@ -728,6 +728,16 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				end
 			end
 
+			Iris.SeparatorText({ "Playtime Rewards" })
+			local playtimeSecondsState = Iris.State(300)
+			Iris.InputNum({ [Iris.Args.InputNum.Text] = "Seconds", [Iris.Args.InputNum.Format] = "%i" }, { number = playtimeSecondsState })
+			if Iris.Button({ "Fast Forward Playtime" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("fastForwardPlaytime", playtimeSecondsState:get())
+			end
+			if Iris.Button({ "Reset Playtime Rewards" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("resetPlaytimeRewards")
+			end
+
 			Iris.SeparatorText({ "Index" })
 			if Iris.Button({ "Dump Index State" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpIndexState")

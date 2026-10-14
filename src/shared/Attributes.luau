@@ -184,6 +184,13 @@ module = {
 
 	-- Category/type specially for shop filtering system
 	SHOP_CATEGORY = "ShopCategory",
+
+	-- authored on the Icon image of a playtime reward tile in Studio (rbxassetid strings): the picture shown for
+	-- coin and time skip rewards
+	COIN_IMAGE = "CoinImage",
+	CLOCK_IMAGE = "ClockImage",
+	-- the same, for a random or loot table reward that has not been claimed yet
+	MYSTERY_IMAGE = "MysteryImage",
 }
 
 return module

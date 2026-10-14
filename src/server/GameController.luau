@@ -46,6 +46,7 @@ local Pack = require("./Pack")
 local pickupMixin = require("./PickupMixin")
 local playerAttributesManager = require("./PlayerAttributesManager")
 local PlayerData = require("./PlayerData")
+local playtimeRewardManager = require("./PlaytimeRewardManager")
 local plotsManager = require("./PlotsManager")
 local processReceipt = require("./ProcessReceipt")
 local rideMixin = require("./RideMixin")
@@ -1582,6 +1583,8 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		}
 	end
 
+	playtimeRewardManager:notifyAddPlayer(player, playerData)
+
 	local ftueProgress = playerData:getFtueProgress()
 	local initData = {
 		plotIndex = plotsManager:getPlotIndexByUserId(player.UserId),
@@ -1594,6 +1597,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		starterOfferData = starterOfferManager:updateAndGetStarterOfferDataForPlayer(player),
 		dealShopConfig = dealShopManager:getClientConfig(),
 		purchasedDealKeys = playerData:getPurchasedDealKeys(),
+		playtimeRewards = playtimeRewardManager:getClientData(player),
 		ftueProgress = ftueProgress,
 		firstSessionOfferState = playerData:getFirstSessionOfferState(),
 		showLuckBillboard = not playerData.hasClaimedGroupLuck and not ftueProgress.isEnabled,
@@ -1644,6 +1648,7 @@ function GameController.processPlayerRemove(self: GameController, player: Player
 	incomeManager:notifyRemovePlayer(player)
 	radarManager:notifyRemovePlayer(player)
 	dealShopManager:notifyRemovePlayer(player)
+	playtimeRewardManager:notifyRemovePlayer(player)
 
 	for otherPlayer, otherPlayerData in self.playerDatas do
 		otherPlayerData:notifyOtherPlayerRemoved(player)
@@ -1831,6 +1836,15 @@ end
 
 function GameController.tryClearGift(self: GameController, player: Player): ()
 	dealShopManager:tryClearGift(player)
+end
+
+function GameController.tryClaimPlaytimeReward(self: GameController, player: Player, rewardIndex: any): ()
+	if not Validate.isInteger(rewardIndex) or rewardIndex < 1 then
+		print("bad parameter to claim playtime reward", player, rewardIndex)
+		return
+	end
+
+	playtimeRewardManager:tryClaim(player, rewardIndex)
 end
 
 function GameController.tryMergeItemsWithHeldItem(self: GameController, player: Player, heldItemId: any, itemIds: any, isMergeAll: any): ()
@@ -3703,6 +3717,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryDropEggFromBasket", "tryDropEggFromBasket")
 	self:addRemoteEventHandler("TryPickupScatteredEgg", "tryPickupScatteredEgg")
 	self:addRemoteEventHandler("TryGetEggWorldCounts", "tryGetEggWorldCounts")
+	self:addRemoteEventHandler("TryClaimPlaytimeReward", "tryClaimPlaytimeReward")
 end
 
 function GameController.processPollTimer(self: GameController): ()
@@ -4029,6 +4044,7 @@ local function initClasses(gameController: GameController): ()
 	mutationStoreManager.initClass(deps)
 	vanityStoreManager.initClass(deps)
 	dealShopManager.initClass(deps)
+	playtimeRewardManager.initClass(deps)
 
 	-- SellMixin and VerticalMixin no longer have an initClass, so the mixinData loop is gone
 	mergeMixin.initClass(deps)

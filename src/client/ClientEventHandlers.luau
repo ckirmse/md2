@@ -43,6 +43,7 @@ local clientOpenablePackManager = require("./ClientOpenablePackManager")
 local clientOptionsManager = require("./ClientOptionsManager")
 local clientPlayerManager = require("./ClientPlayerManager")
 local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
+local clientPlaytimeRewardManager = require("./ClientPlaytimeRewardManager")
 local clientPremiumStore = require("./ClientPremiumStore")
 local clientLuckBillboardManager = require("./ClientLuckBillboardManager")
 local clientPromptGroupManager = require("./ClientPromptGroupManager")
@@ -157,6 +158,7 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 
 		clientDealShopManager:setPurchasedDealKeys(initData.purchasedDealKeys)
 		clientDealShopManager:setConfig(initData.dealShopConfig)
+		clientPlaytimeRewardManager:setRewardData(initData.playtimeRewards)
 
 		local ftueProgress = initData.ftueProgress
 		clientFtueManager:setFtueProgress(ftueProgress)

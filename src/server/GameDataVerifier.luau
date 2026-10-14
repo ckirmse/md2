@@ -9,7 +9,9 @@ local GameAssets = ReplicatedStorage:WaitForChild("GameAssets")
 
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local EggSlotConfig = require("@game/ReplicatedStorage/Shared/EggSlotConfig")
+local Enums = require("@game/ReplicatedStorage/Shared/Enums")
 local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/EggLootTables")
+local playtimeData = require("@game/ServerScriptService/GameData/Control/Playtime")
 local rebirthData = require("@game/ServerScriptService/GameData/Control/Rebirth")
 
 local objectDataStore = require("./ObjectDataStore")
@@ -206,11 +208,86 @@ function GameDataVerifier.verifyRebirthLevels(self: GameDataVerifier)
 	end
 end
 
+-- each playtime reward needs a known kind, a positive unlockSec and the fields its kind reads
+function GameDataVerifier.verifyPlaytimeRewards(self: GameDataVerifier)
+	local rewards = playtimeData.rewards
+	if not Validate.isTable(rewards) or #rewards == 0 then
+		warn("GameDataVerifier: Playtime.rewards is missing or empty")
+		return
+	end
+
+	local LootTables = ServerScriptService:WaitForChild("GameData"):WaitForChild("LootTables")
+	local kinds = Enums.PlaytimeRewardKind
+
+	for i, entry in rewards do
+		if not Validate.isTable(entry) then
+			warn("GameDataVerifier: Playtime reward is not a table", i)
+			continue
+		end
+		if not Enums.isValidValue(kinds, entry.kind) then
+			warn("GameDataVerifier: Playtime reward has an unknown kind", i, entry.kind)
+			continue
+		end
+		if type(entry.unlockSec) ~= "number" or entry.unlockSec <= 0 then
+			warn("GameDataVerifier: Playtime reward needs a positive unlockSec", i, entry.unlockSec)
+		end
+
+		if entry.kind == kinds.COINS then
+			if type(entry.hourlyPercent) ~= "number" or entry.hourlyPercent < 0 then
+				warn("GameDataVerifier: Playtime COINS reward needs hourlyPercent >= 0", i, entry.hourlyPercent)
+			end
+			if type(entry.minCoins) ~= "number" or type(entry.maxCoins) ~= "number" or entry.minCoins > entry.maxCoins then
+				warn("GameDataVerifier: Playtime COINS reward needs numeric minCoins <= maxCoins", i, entry.minCoins, entry.maxCoins)
+			end
+		elseif entry.kind == kinds.TIME_SKIP then
+			if type(entry.skipSec) ~= "number" or entry.skipSec <= 0 then
+				warn("GameDataVerifier: Playtime TIME_SKIP reward needs a positive skipSec", i, entry.skipSec)
+			end
+		elseif entry.kind == kinds.FIXED_ITEM then
+			if type(entry.itemName) ~= "string" or objectDataStore:getObjectDataByName(entry.itemName) == nil then
+				warn("GameDataVerifier: Playtime FIXED_ITEM reward has an unknown itemName", i, entry.itemName)
+			end
+		elseif entry.kind == kinds.RANDOM_BY_RARITY then
+			local objectType = Enums.ItemType.ObjectTypes[entry.itemType]
+			if objectType == nil then
+				warn("GameDataVerifier: Playtime RANDOM_BY_RARITY reward has an unknown itemType (use Enums.ItemType)", i, entry.itemType)
+				continue
+			end
+			if not Enums.isValidValue(Enums.Rarity, entry.rarity) then
+				warn("GameDataVerifier: Playtime RANDOM_BY_RARITY reward has an unknown rarity (use Enums.Rarity)", i, entry.rarity)
+				continue
+			end
+			local hasMatch = false
+			for _, objectName in objectDataStore:getAllObjectNamesByDataKeyValue("type", objectType) do
+				if objectDataStore:getObjectDataByName(objectName).rarity == entry.rarity then
+					hasMatch = true
+					break
+				end
+			end
+			if not hasMatch then
+				warn("GameDataVerifier: Playtime RANDOM_BY_RARITY reward matches no object", i, entry.itemType, entry.rarity)
+			end
+		elseif entry.kind == kinds.LOOT_TABLE then
+			local lootTableModule = if type(entry.lootTableName) == "string" then LootTables:FindFirstChild(entry.lootTableName, true) else nil
+			if not lootTableModule or not lootTableModule:IsA("ModuleScript") then
+				warn("GameDataVerifier: Playtime LOOT_TABLE reward has an unknown lootTableName", i, entry.lootTableName)
+				continue
+			end
+			for lootIndex, lootEntry in require(lootTableModule) :: any do
+				if not Validate.isTable(lootEntry.result) or type(lootEntry.result.itemName) ~= "string" then
+					warn("GameDataVerifier: Playtime loot table results must be { itemName = string }", entry.lootTableName, lootIndex)
+				end
+			end
+		end
+	end
+end
+
 function GameDataVerifier.verifyAll(self: GameDataVerifier)
 	self:verifyVanity()
 	self:verifyLootTableItems()
 	self:verifyEggLootTables()
 	self:verifyRebirthLevels()
+	self:verifyPlaytimeRewards()
 end
 
 function GameDataVerifier.new(): GameDataVerifier
