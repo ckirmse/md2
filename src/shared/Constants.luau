@@ -23,6 +23,8 @@ module = {
 
 	MERGE_COMBO_GAP_SEC = 4,
 
+	DAY_SEC = 86400,
+
 	ANTIGRAVITY_NAME = "Antigravity",
 	ITEM_TOOL_WELD_NAME = "ItemToolWeld",
 	UNEQUIPPABLE_NAME = "Unequippable",

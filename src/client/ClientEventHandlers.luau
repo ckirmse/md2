@@ -23,6 +23,7 @@ local clientClaimableCrystalManager = require("./ClientClaimableCrystalManager")
 local clientConsumableCropManager = require("./ClientConsumableCropManager")
 local clientContextualFtueManager = require("./ClientContextualFtueManager")
 local clientCustomerTools = require("./ClientCustomerTools")
+local clientDailyLoginManager = require("./ClientDailyLoginManager")
 local clientDealShopManager = require("./ClientDealShopManager")
 local clientDevTools = require("./ClientDevTools")
 --local clientDragonManager = nil -- prevent circular reference by not initializing here
@@ -159,6 +160,7 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 		clientDealShopManager:setPurchasedDealKeys(initData.purchasedDealKeys)
 		clientDealShopManager:setConfig(initData.dealShopConfig)
 		clientPlaytimeRewardManager:setRewardData(initData.playtimeRewards)
+		clientDailyLoginManager:setDailyData(initData.dailyLogin)
 
 		local ftueProgress = initData.ftueProgress
 		clientFtueManager:setFtueProgress(ftueProgress)

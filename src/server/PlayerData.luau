@@ -110,6 +110,7 @@ type PlayerDataFields = {
 	vanityAreaStates: any,
 	indexDiscoveredItems: any,
 	purchasedDealKeys: any,
+	dailyLogin: any, -- { lastClaimedDay, nextClaimTime }, see DailyLoginMath
 	indexDiscoveredMutations: any,
 	indexClaimedRewards: any,
 	indexStatBuffs: any,
@@ -1959,6 +1960,20 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 		self.purchasedDealKeys = {}
 	end
 
+	local dailyLoginSaveData = saveData and saveData.dailyLogin or nil
+	if
+		type(dailyLoginSaveData) == "table"
+		and Validate.isValueType(dailyLoginSaveData.lastClaimedDay, "nonnegativeInteger")
+		and Validate.isValueType(dailyLoginSaveData.nextClaimTime, "nonnegativeInteger")
+	then
+		self.dailyLogin = {
+			lastClaimedDay = dailyLoginSaveData.lastClaimedDay,
+			nextClaimTime = dailyLoginSaveData.nextClaimTime,
+		}
+	else
+		self.dailyLogin = self:getDefaultDailyLogin()
+	end
+
 	local indexDiscoveredItemsSaveData = saveData and saveData.indexDiscoveredItems or nil
 	if indexDiscoveredItemsSaveData then
 		self.indexDiscoveredItems = indexDiscoveredItemsSaveData
@@ -2205,6 +2220,26 @@ function PlayerData.getPurchasedDealKeys(self: PlayerData): any
 	return self.purchasedDealKeys
 end
 
+-- day 1 claimable now; nextClaimTime is a server time (see DailyLoginMath)
+function PlayerData.getDefaultDailyLogin(self: PlayerData): any
+	return {
+		lastClaimedDay = 0,
+		nextClaimTime = 0,
+	}
+end
+
+function PlayerData.getDailyLogin(self: PlayerData): any
+	return self.dailyLogin
+end
+
+function PlayerData.setDailyLogin(self: PlayerData, dailyLogin: any)
+	self.dailyLogin = dailyLogin
+end
+
+function PlayerData.resetDailyLogin(self: PlayerData)
+	self.dailyLogin = self:getDefaultDailyLogin()
+end
+
 function PlayerData.hasDiscoveredIndexItem(self: PlayerData, itemName: any)
 	return self.indexDiscoveredItems[itemName] == true
 end
@@ -2363,6 +2398,7 @@ function PlayerData.getSaveData(self: PlayerData): any
 	saveData.firstSessionOfferState = self.firstSessionOfferState
 	saveData.codesRedeemed = self.codesRedeemed
 	saveData.purchasedDealKeys = self.purchasedDealKeys
+	saveData.dailyLogin = self.dailyLogin
 	saveData.contextualFtueState = self.contextualFtueState
 	saveData.indexDiscoveredItems = self.indexDiscoveredItems
 	saveData.indexClaimedRewards = self.indexClaimedRewards
@@ -3388,6 +3424,7 @@ function PlayerData.new(player: Player?): PlayerData
 	self.firstSessionOfferState = {}
 	self.codesRedeemed = {}
 	self.purchasedDealKeys = {}
+	self.dailyLogin = self:getDefaultDailyLogin()
 	self.contextualFtueState = self:getDefaultContextualFtueState()
 	self.indexDiscoveredItems = {}
 	self.indexClaimedRewards = {}

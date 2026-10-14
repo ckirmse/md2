@@ -17,6 +17,7 @@ local contextualFtueManager = require("./ContextualFtueManager")
 local Critter = require("./Critter")
 local Crop = require("./Crop")
 local Crystal = require("./Crystal")
+local dailyLoginManager = require("./DailyLoginManager")
 local customerTools = require("./CustomerTools")
 local dealShopManager = require("./DealShopManager")
 local devTools = require("./DevTools")
@@ -49,6 +50,7 @@ local PlayerData = require("./PlayerData")
 local playtimeRewardManager = require("./PlaytimeRewardManager")
 local plotsManager = require("./PlotsManager")
 local processReceipt = require("./ProcessReceipt")
+local rewardGranter = require("./RewardGranter")
 local rideMixin = require("./RideMixin")
 local ScatterZone = require("./ScatterZone")
 local scatterZoneManager = require("./ScatterZoneManager")
@@ -1598,6 +1600,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		dealShopConfig = dealShopManager:getClientConfig(),
 		purchasedDealKeys = playerData:getPurchasedDealKeys(),
 		playtimeRewards = playtimeRewardManager:getClientData(player),
+		dailyLogin = dailyLoginManager:getClientData(playerData),
 		ftueProgress = ftueProgress,
 		firstSessionOfferState = playerData:getFirstSessionOfferState(),
 		showLuckBillboard = not playerData.hasClaimedGroupLuck and not ftueProgress.isEnabled,
@@ -1836,6 +1839,15 @@ end
 
 function GameController.tryClearGift(self: GameController, player: Player): ()
 	dealShopManager:tryClearGift(player)
+end
+
+function GameController.tryClaimDailyReward(self: GameController, player: Player, tileIndex: any): ()
+	if not Validate.isInteger(tileIndex) or tileIndex < 1 then
+		print("bad parameter to claim daily reward", player, tileIndex)
+		return
+	end
+
+	dailyLoginManager:tryClaim(player, tileIndex)
 end
 
 function GameController.tryClaimPlaytimeReward(self: GameController, player: Player, rewardIndex: any): ()
@@ -3718,6 +3730,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryPickupScatteredEgg", "tryPickupScatteredEgg")
 	self:addRemoteEventHandler("TryGetEggWorldCounts", "tryGetEggWorldCounts")
 	self:addRemoteEventHandler("TryClaimPlaytimeReward", "tryClaimPlaytimeReward")
+	self:addRemoteEventHandler("TryClaimDailyReward", "tryClaimDailyReward")
 end
 
 function GameController.processPollTimer(self: GameController): ()
@@ -4044,7 +4057,9 @@ local function initClasses(gameController: GameController): ()
 	mutationStoreManager.initClass(deps)
 	vanityStoreManager.initClass(deps)
 	dealShopManager.initClass(deps)
+	rewardGranter.initClass(deps)
 	playtimeRewardManager.initClass(deps)
+	dailyLoginManager.initClass(deps)
 
 	-- SellMixin and VerticalMixin no longer have an initClass, so the mixinData loop is gone
 	mergeMixin.initClass(deps)

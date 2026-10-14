@@ -55,7 +55,7 @@ synced by Rojo.
 | Studio location | Contains | Consumed by |
 |---|---|---|
 | `ServerScriptService.GameData.Objects` | One ModuleScript per item/object definition (`name`, `type`, `mixins`, `templatePath`, `boardSpacing`, …) | `ObjectDataStore:initDataTypes()` |
-| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `Playtime`, `Rebirth` (per level: `cost`, `requiredPetName`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
+| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `Playtime`, `DailyLogin`, `Rebirth` (per level: `cost`, `requiredPetName`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
 | `ServerScriptService.GameData.LootTables` | One ModuleScript per loot table | `LootTableManager:init()` |
 | `ServerScriptService.GameData.Vanity` | `MainPlotInner`, `MainPlotOuter`, `Fence`, `ExpansionInner`, … | `PlotsManager:initVanityData()` |
 | `ReplicatedStorage.RemoteEvents` | Every RemoteEvent instance | server + client (see below) |
@@ -450,6 +450,37 @@ helpers `client/ButtonTwitcher.luau`, `client/Confetti.luau`, `client/ClientTick
   sound is a constant in `ClientPlaytimeRewardManager`, and respects the main sound-effects option.
 - **Tuning (from the reference game's notes):** keep reward value per wall-second non-decreasing and avoid long reward-free gaps,
   otherwise quitting and rejoining pays better than staying; keep `skipSec` in whole minutes (the title shows minutes).
+
+## Daily Login Rewards
+
+One reward per day, claim-driven: 8 tiles, Day 1 to Day 7 and a last tile ("Day 8+") that repeats for every later day. Progress
+never resets: day N stays claimable until it is claimed, claiming starts a 24 h timer (`DailyLoginMath.DAY_SEC`), and day N+1
+opens when it ends; missing days costs nothing. Saved per player as `PlayerData.dailyLogin = { lastClaimedDay, nextClaimTime }`
+(server time, whole seconds; invalid saved data falls back to day 1 claimable). Files: `server/DailyLoginManager.luau`,
+`server/RewardGranter.luau` (shared with playtime rewards), `shared/DailyLoginMath.luau`, `client/ClientDailyLoginManager.luau`,
+`client/ClaimFeedback.luau` (claim sound + confetti, shared with playtime), `client/RewardTileUi.luau`.
+
+- **Config** is the Studio-only `GameData.Control.DailyLogin`: `rewards`, exactly 8 entries, only fixed rewards: `COINS` with
+  `minCoins == maxCoins` (the fixed amount), `TIME_SKIP` with `skipSec` and `minCoins`, `FIXED_ITEM` with `itemName` (an object's
+  `name`). `GameDataVerifier.verifyDailyLogin` warns at startup; the server will not boot without the table. There are no random
+  or loot-table kinds on purpose: a tile must show what the claim grants, and an entry that cannot be granted would leave a
+  player stuck on that day. A bad `itemName` is the one way to get stuck, so watch the verifier output.
+- **Time skip** pays `max(income per second x skipSec, minCoins)` at claim time, so a player with no income yet still gets the
+  floor and never burns a day on a zero payout. Day 8+ repeats forever, so it is the long-run value of the feature: choose its
+  reward with a permanent daily supply in mind.
+- **Flow:** `initData.dailyLogin` carries the state and tile list at join; `NotifyDailyLogin` resends it after a claim or dev
+  change. The server runs no timers: the client works out claimability from `nextClaimTime` on a 1 s `ClientTicker`. `TryClaimDailyReward(tileIndex)`
+  is validated as a positive integer, and the server accepts only the tile that is claimable right now. A failed grant leaves the
+  day claimable. Every claim, refusals included, answers `NotifyDailyRewardResult(tileIndex, isSuccess)`.
+- **Dev tools:** `advanceDailyLoginDay` (opens the next day now) and `resetDailyLogin` (also part of `resetFullPlayerState`).
+- **Studio prerequisites:** RemoteEvents `TryClaimDailyReward`, `NotifyDailyLogin`, `NotifyDailyRewardResult`; the config module.
+  A missing GUI only logs a warning and disables that part.
+- **GUI names the client finds:** HUD ScreenGui `DailyRewardsFrame` > `Daily` and `DailyAlert` (two buttons, only one visible; the
+  alert one twitches, so keep a UIListLayout out of its container); ScreenGui `DailyRewards` > `Dialog` > `Title` > `Exit`,
+  `Dialog` > `NextReward` (footer label), `Dialog` > `TileGrid` holding the hidden templates `TileTemplate` (locked),
+  `TileTemplateReady` (with a `Claim` TextButton) and `TileTemplateClaimed` (its `DayLabel` keeps authored "Claimed" text), each with
+  optional `DayLabel`, `Title`, `Preview`, `Icon`. Tiles get `LayoutOrder` 1 to 8, so lay the grid out with a Studio layout object.
+  `Icon` attributes `CoinImage` and `ClockImage` give coin and time-skip tiles their picture; item pictures come from `ItemIcons`.
 
 ## Design Notes in the Repo
 

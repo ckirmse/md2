@@ -8,8 +8,10 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local GameAssets = ReplicatedStorage:WaitForChild("GameAssets")
 
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
+local DailyLoginMath = require("@game/ReplicatedStorage/Shared/DailyLoginMath")
 local EggSlotConfig = require("@game/ReplicatedStorage/Shared/EggSlotConfig")
 local Enums = require("@game/ReplicatedStorage/Shared/Enums")
+local dailyLoginData = require("@game/ServerScriptService/GameData/Control/DailyLogin")
 local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/EggLootTables")
 local playtimeData = require("@game/ServerScriptService/GameData/Control/Playtime")
 local rebirthData = require("@game/ServerScriptService/GameData/Control/Rebirth")
@@ -282,12 +284,52 @@ function GameDataVerifier.verifyPlaytimeRewards(self: GameDataVerifier)
 	end
 end
 
+-- exactly TILE_COUNT fixed rewards: days 1 to 7 and the repeating last tile; only coins, time skips and items
+function GameDataVerifier.verifyDailyLogin(self: GameDataVerifier)
+	local rewards = dailyLoginData.rewards
+	if not Validate.isTable(rewards) or #rewards ~= DailyLoginMath.TILE_COUNT then
+		warn("GameDataVerifier: DailyLogin.rewards must have exactly", DailyLoginMath.TILE_COUNT, "entries")
+		return
+	end
+
+	local kinds = Enums.PlaytimeRewardKind
+
+	for i, entry in rewards do
+		if not Validate.isTable(entry) then
+			warn("GameDataVerifier: DailyLogin reward is not a table", i)
+			continue
+		end
+
+		if entry.kind == kinds.COINS then
+			if type(entry.minCoins) ~= "number" or entry.minCoins < 1 or entry.minCoins ~= math.floor(entry.minCoins) then
+				warn("GameDataVerifier: DailyLogin COINS reward needs a whole minCoins >= 1", i, entry.minCoins)
+			elseif entry.maxCoins ~= entry.minCoins then
+				warn("GameDataVerifier: DailyLogin COINS reward needs maxCoins equal to minCoins (a fixed amount)", i, entry.minCoins, entry.maxCoins)
+			end
+		elseif entry.kind == kinds.TIME_SKIP then
+			if type(entry.skipSec) ~= "number" or entry.skipSec <= 0 then
+				warn("GameDataVerifier: DailyLogin TIME_SKIP reward needs a positive skipSec", i, entry.skipSec)
+			end
+			if type(entry.minCoins) ~= "number" or entry.minCoins < 1 or entry.minCoins ~= math.floor(entry.minCoins) then
+				warn("GameDataVerifier: DailyLogin TIME_SKIP reward needs a whole minCoins >= 1 (paid when income is low)", i, entry.minCoins)
+			end
+		elseif entry.kind == kinds.FIXED_ITEM then
+			if type(entry.itemName) ~= "string" or objectDataStore:getObjectDataByName(entry.itemName) == nil then
+				warn("GameDataVerifier: DailyLogin FIXED_ITEM reward has an unknown itemName", i, entry.itemName)
+			end
+		else
+			warn("GameDataVerifier: DailyLogin supports only COINS, TIME_SKIP and FIXED_ITEM rewards", i, entry.kind)
+		end
+	end
+end
+
 function GameDataVerifier.verifyAll(self: GameDataVerifier)
 	self:verifyVanity()
 	self:verifyLootTableItems()
 	self:verifyEggLootTables()
 	self:verifyRebirthLevels()
 	self:verifyPlaytimeRewards()
+	self:verifyDailyLogin()
 end
 
 function GameDataVerifier.new(): GameDataVerifier

@@ -28,6 +28,7 @@ local clientLuckInfoManager = require("./ClientLuckInfoManager")
 local clientOptionsManager = require("./ClientOptionsManager")
 local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
 local clientPlaytimeRewardManager = require("./ClientPlaytimeRewardManager")
+local clientDailyLoginManager = require("./ClientDailyLoginManager")
 local clientDealShopManager = require("./ClientDealShopManager")
 local clientRadarManager = require("./ClientRadarManager")
 local NumberLabelAnimator = require("./NumberLabelAnimator")
@@ -1195,6 +1196,30 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 		end
 	else
 		warn("ScreenGuiManager: PlaytimeRewardsFrame missing from the HUD; no playtime rewards button")
+	end
+
+	local dailyRewardsFrame: any = ScreenGui:FindFirstChild("DailyRewardsFrame")
+	if dailyRewardsFrame then
+		dailyRewardsFrame.Visible = not clientFtueManager:isFtueActive()
+
+		clientFtueManager:getIsEnabledEvent():Connect(function(isFtueEnabled: boolean)
+			dailyRewardsFrame.Visible = not isFtueEnabled
+		end)
+
+		local dailyButton: any = dailyRewardsFrame:FindFirstChild("Daily")
+		local dailyAlertButton: any = dailyRewardsFrame:FindFirstChild("DailyAlert")
+		if dailyButton and dailyAlertButton then
+			clientDailyLoginManager:setHudButtons(dailyButton, dailyAlertButton)
+			for _, button in { dailyButton, dailyAlertButton } do
+				button.Activated:Connect(function()
+					clientDailyLoginManager:openPanel()
+				end)
+			end
+		else
+			warn("ScreenGuiManager: DailyRewardsFrame needs both a Daily and a DailyAlert button")
+		end
+	else
+		warn("ScreenGuiManager: DailyRewardsFrame missing from the HUD; no daily rewards buttons")
 	end
 
 	local friendLuckBoostFrame = ScreenGui:FindFirstChild("FriendLuckBoostFrame")

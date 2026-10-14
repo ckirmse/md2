@@ -728,6 +728,14 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				end
 			end
 
+			Iris.SeparatorText({ "Daily Rewards" })
+			if Iris.Button({ "Advance Daily Reward Day" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("advanceDailyLoginDay")
+			end
+			if Iris.Button({ "Reset Daily Rewards" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("resetDailyLogin")
+			end
+
 			Iris.SeparatorText({ "Playtime Rewards" })
 			local playtimeSecondsState = Iris.State(300)
 			Iris.InputNum({ [Iris.Args.InputNum.Text] = "Seconds", [Iris.Args.InputNum.Format] = "%i" }, { number = playtimeSecondsState })

@@ -18,15 +18,12 @@ local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local playtimeData = require("@game/ServerScriptService/GameData/Control/Playtime")
-local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 local PlaytimeRewardMath = require("@game/ReplicatedStorage/Shared/PlaytimeRewardMath")
-local utils = require("@game/ReplicatedStorage/Shared/utils")
 
-local analyticsManager = require("./AnalyticsManager")
 local incomeManager = require("./IncomeManager")
 local lootTableManager = require("./LootTableManager")
 local objectDataStore = require("./ObjectDataStore")
-local playerAttributesManager = require("./PlayerAttributesManager")
+local RewardGranter = require("./RewardGranter")
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 
@@ -210,12 +207,7 @@ function PlaytimeRewardManager.rejectClaim(self: PlaytimeRewardManager, player: 
 	RemoteEvents.NotifyPlaytimeRewardResult:FireClient(player, rewardIndex, false)
 end
 
-function PlaytimeRewardManager.grantCoins(self: PlaytimeRewardManager, player: Player, amount: number)
-	playerAttributesManager:addWholeNumber(player, PlayerAttributeKeys.COINS, amount)
-	analyticsManager:logGainCurrency(player, amount, playerAttributesManager:get(player, PlayerAttributeKeys.COINS), ACQUISITION_SOURCE)
-end
-
--- returns the text for the "You received ...!" message, or nil when nothing was delivered
+-- returns the text for the "You received ...!" message, or nil when nothing was delivered (the player has been told)
 function PlaytimeRewardManager.grantReward(
 	self: PlaytimeRewardManager,
 	player: Player,
@@ -223,43 +215,29 @@ function PlaytimeRewardManager.grantReward(
 	reward: PlaytimeRewardState,
 	entry: any
 ): string?
-	if reward.kind == kinds.COINS then
-		local amount = reward.coinAmount :: number
-		self:grantCoins(player, amount)
-		return `{utils.formatLargePositiveInteger(amount)} Coins`
-	elseif reward.kind == kinds.TIME_SKIP then
-		local amount = PlaytimeRewardMath.computeTimeSkipCoins(incomeManager:getIncomePerSec(playerData), reward.skipSec :: number)
-		if amount < 1 then
-			-- nothing to pay out yet (no income); keep the reward claimable
-			self:rejectClaim(player, reward.index, "A time skip pays nothing without income. Place a dragon first!")
+	local grantable: RewardGranter.GrantableReward = {
+		kind = reward.kind,
+		coinAmount = reward.coinAmount,
+		skipSec = reward.skipSec,
+		minCoins = nil,
+		itemName = nil,
+	}
+	if reward.kind ~= kinds.COINS and reward.kind ~= kinds.TIME_SKIP then
+		grantable.itemName = reward.fixedItemName or self:rollItemName(entry)
+		if not grantable.itemName then
+			self:rejectClaim(player, reward.index, nil)
 			return nil
 		end
-		self:grantCoins(player, amount)
-		return `a {utils.formatLargePositiveInteger(amount)} Coin Time Skip`
 	end
 
-	local itemName = reward.fixedItemName or self:rollItemName(entry)
-	if not itemName then
-		self:rejectClaim(player, reward.index, nil)
-		return nil
-	end
-	if not gameController:tryDeliverPurchasedItemToPlayer(player, itemName, 1) then
-		warn("PlaytimeRewardManager: failed to grant", itemName, "to", player)
-		self:rejectClaim(player, reward.index, "Could not deliver your reward. Make room in your backpack and try again.")
+	local grantedText, failureMessage = RewardGranter.grant(player, playerData, grantable, ACQUISITION_SOURCE)
+	if not grantedText then
+		self:rejectClaim(player, reward.index, failureMessage)
 		return nil
 	end
 
-	reward.receivedItemName = itemName
-	local itemData = objectDataStore:getObjectDataByName(itemName)
-	analyticsManager:logEvent(player, analyticsManager.Events.GainItem, {
-		objectName = itemName,
-		rarity = enums.getPublicName(enums.Rarity, itemData.rarity),
-		itemType = itemData.type,
-		acquisitionSource = ACQUISITION_SOURCE,
-		quantity = 1,
-	})
-
-	return utils.getColoredTextForRarity(itemData.displayName or itemName, itemData.rarity)
+	reward.receivedItemName = grantable.itemName
+	return grantedText
 end
 
 -- every refusal replies success = false so the client's pending claim always clears

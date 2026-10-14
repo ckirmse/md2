@@ -6,6 +6,7 @@ DevTools.__index = DevTools
 local analyticsManager = require("./AnalyticsManager")
 local buyStoreManager = require("./BuyStoreManager")
 local contextualFtueManager = require("./ContextualFtueManager")
+local dailyLoginManager = require("./DailyLoginManager")
 local vanityStoreManager = require("./VanityStoreManager")
 local Types = require("./Types")
 local gameController: Types.GameController
@@ -195,6 +196,14 @@ function DevTools.discoverIndexItemsForCategory(self: DevTools, player: Player, 
 	end
 
 	print("index discover complete", player, category, percent .. "% per chain", "newly discovered", newlyDiscoveredCount, "of", discoveredThisRun, "total discovered", totalDiscovered, "total discovered mutations", totalDiscoveredMutations)
+end
+
+function DevTools.advanceDailyLoginDay(self: DevTools, player: Player)
+	dailyLoginManager:advanceDay(player)
+end
+
+function DevTools.resetDailyLogin(self: DevTools, player: Player)
+	dailyLoginManager:resetPlayer(player)
 end
 
 function DevTools.resetPlaytimeRewards(self: DevTools, player: Player)
@@ -963,6 +972,7 @@ function DevTools.resetFullPlayerState(self: DevTools, player: Player)
 	self:resetCodesRedeemed(player)
 	self:resetContextualFtueState(player)
 	self:resetIndexData(player)
+	self:resetDailyLogin(player)
 
 	local playerData = gameController:getPlayerData(player)
 	playerData:resetStats()

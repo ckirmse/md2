@@ -11,15 +11,12 @@ ClientPlaytimeRewardManager.__index = ClientPlaytimeRewardManager
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- the RemoteEvents children only exist in Studio, so they are untyped here
 local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
-local SoundService = game:GetService("SoundService")
 
-local PlayerOptionKeys = require("@game/ReplicatedStorage/Shared/PlayerOptionKeys")
 local PlaytimeRewardMath = require("@game/ReplicatedStorage/Shared/PlaytimeRewardMath")
 
 local ButtonTwitcher = require("./ButtonTwitcher")
-local clientOptionsManager = require("./ClientOptionsManager")
+local ClaimFeedback = require("./ClaimFeedback")
 local ClientTicker = require("./ClientTicker")
-local Confetti = require("./Confetti")
 local overlayTracker = require("./OverlayTracker")
 local RewardTileUi = require("./RewardTileUi")
 local Types = require("./Types")
@@ -27,7 +24,6 @@ local Types = require("./Types")
 local player = game:GetService("Players").LocalPlayer :: Player
 
 local DISPLAY_ORDER = 130
-local CLAIM_SOUND_ID = "rbxassetid://135192579587427"
 -- the server answers every claim; this only unlocks a button whose request was dropped
 local PENDING_TIMEOUT_SEC = 5
 
@@ -59,7 +55,6 @@ type ClientPlaytimeRewardManagerFields = {
 	tileStatesByIndex: { [number]: number },
 	pendingClaimIndex: number?,
 	panelOpen: boolean,
-	claimSound: Sound?,
 }
 
 export type ClientPlaytimeRewardManager = typeof(setmetatable({} :: ClientPlaytimeRewardManagerFields, ClientPlaytimeRewardManager))
@@ -215,24 +210,6 @@ function ClientPlaytimeRewardManager.tryClaim(self: ClientPlaytimeRewardManager,
 	end
 end
 
-function ClientPlaytimeRewardManager.playClaimSound(self: ClientPlaytimeRewardManager)
-	if not clientOptionsManager:getOption(PlayerOptionKeys.MAIN_SOUND_EFFECTS_ENABLED) then
-		return
-	end
-
-	local sound = self.claimSound
-	if not sound then
-		local newSound = Instance.new("Sound")
-		newSound.Name = "PlaytimeRewardClaim"
-		newSound.SoundId = CLAIM_SOUND_ID
-		newSound.Parent = SoundService
-		self.claimSound = newSound
-		sound = newSound
-	end
-
-	SoundService:PlayLocalSound(sound :: Sound)
-end
-
 -- the server's answer to a claim; every refusal comes back with isSuccess false
 function ClientPlaytimeRewardManager.notifyClaimResult(self: ClientPlaytimeRewardManager, rewardIndex: any, isSuccess: any)
 	if self.pendingClaimIndex == rewardIndex then
@@ -240,12 +217,9 @@ function ClientPlaytimeRewardManager.notifyClaimResult(self: ClientPlaytimeRewar
 	end
 
 	if isSuccess == true then
-		if self.panelOpen then
-			self:playClaimSound()
-			local gui = self.gui
-			if gui then
-				Confetti.play(gui, self.random)
-			end
+		local gui = self.gui
+		if self.panelOpen and gui then
+			ClaimFeedback.play(gui, self.random)
 		end
 	elseif self.panelOpen then
 		-- re-enable the Claim button
@@ -473,7 +447,6 @@ function ClientPlaytimeRewardManager.new(): ClientPlaytimeRewardManager
 	self.tileStatesByIndex = {}
 	self.pendingClaimIndex = nil
 	self.panelOpen = false
-	self.claimSound = nil
 
 	return self
 end
