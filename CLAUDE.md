@@ -55,7 +55,7 @@ synced by Rojo.
 | Studio location | Contains | Consumed by |
 |---|---|---|
 | `ServerScriptService.GameData.Objects` | One ModuleScript per item/object definition (`name`, `type`, `mixins`, `templatePath`, `boardSpacing`, …) | `ObjectDataStore:initDataTypes()` |
-| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `Playtime`, `DailyLogin`, `Rebirth` (per level: `cost`, `requiredPetName`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
+| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `Playtime`, `DailyLogin`, `SpinWheel`, `Rebirth` (per level: `cost`, `requiredPetName`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
 | `ServerScriptService.GameData.LootTables` | One ModuleScript per loot table | `LootTableManager:init()` |
 | `ServerScriptService.GameData.Vanity` | `MainPlotInner`, `MainPlotOuter`, `Fence`, `ExpansionInner`, … | `PlotsManager:initVanityData()` |
 | `ReplicatedStorage.RemoteEvents` | Every RemoteEvent instance | server + client (see below) |
@@ -481,6 +481,55 @@ opens when it ends; missing days costs nothing. Saved per player as `PlayerData.
   `TileTemplateReady` (with a `Claim` TextButton) and `TileTemplateClaimed` (its `DayLabel` keeps authored "Claimed" text), each with
   optional `DayLabel`, `Title`, `Preview`, `Icon`. Tiles get `LayoutOrder` 1 to 8, so lay the grid out with a Studio layout object.
   `Icon` attributes `CoinImage` and `ClockImage` give coin and time-skip tiles their picture; item pictures come from `ItemIcons`.
+
+## Spin Wheel
+
+A HUD-only prize wheel (no world presence): one free spin per calendar UTC day, Robux-bought "2x luck" spins, a daily-discounted
+first purchase. Files: `server/SpinWheelManager.luau`, `shared/SpinWheelMath.luau` (pure math: epoch days, accrual, rarity ranking,
+best-of-N odds), `client/ClientSpinWheelManager.luau`, `client/ClientUiStyle.luau` (disabled-button colours). Ported from an imported
+package, keeping its module split and flow; only the seams to the host differ.
+
+- **Free spins** accrue one per UTC day even while offline, up to `maxAccruedFreeSpins`; a brand-new player (`lastGrantDay = 0`) gets
+  exactly one. One server-wide timer (`scheduleNextBoundary`) refreshes everyone at the day boundary; join and every spin refresh too.
+  Saved as `PlayerData.spinWheel = { freeSpins, paidSpins, lastGrantDay, lastDiscountDay }` (epoch days; invalid data falls back to
+  the defaults). Free spins are used before paid ones.
+- **A paid spin** rolls the loot table `paidLuckMultiplier` times and keeps the rarest result (lower weight ranks better, ties go to
+  the earlier row). `LootTableManager.calculateBestLootResults` does the rolling.
+- **Config** is the Studio-only `GameData.Control.SpinWheel`: `lootTableName`, `maxAccruedFreeSpins`, `paidLuckMultiplier`,
+  `prizeClaimTimeoutSec` (must exceed the 4 s spin animation) and `robuxProductIds = { single, singleDiscount, five }` (0 = not
+  created yet: that Robux button stays inactive). Ids live here, not in a central dev-product table (this project has none). The loot
+  table `GameData.LootTables.<lootTableName>` is one row per wheel segment in wheel order (the position is the segment, so no
+  `requiredConfig` or nested tables; a Folder of the same name is fine, only ModuleScripts count). Weights
+  are rates (the reference uses a total of 200). Prize results, all camelCase: `COINS` `minCoins == maxCoins`; `TIME_SKIP` `skipSec`
+  and `minCoins` (a floor, so the prize never pays 0); `FIXED_ITEM` `itemName`; `LOOT_TABLE` `lootTableName` (a table of
+  `{ itemName }` results), `displayName`, `rarity`, `itemType`, optional `iconAssetId`. The segment's `rarity` is display only: it
+  colours the text and picks the face and does not affect which item is rolled, so keep each `LOOT_TABLE`'s dragons at that rarity.
+  `GameDataVerifier.verifySpinWheel` warns about all of this at startup; the server will not boot without `Control/SpinWheel`.
+- **The prize is decided at spin time and delivered after the animation.** `TrySpinWheel` consumes a spin, rolls, resolves a
+  `LOOT_TABLE` result to a concrete item, holds it as the pending prize and replies `NotifySpinWheelResult(segmentIndex, wasPaid)`
+  (the client never learns a rolled item). The client animates, then `TryClaimSpinWheelPrize` releases it. If the client never
+  claims, the prize is delivered on `prizeClaimTimeoutSec`, on the next spin, or on leave (`processPlayerRemove` delivers it before
+  the player data is removed so it lands in the save). A prize that cannot be delivered (backpack full) gives the spin back.
+  Prizes go through `RewardGranter.grant` (source `spinWheel`).
+- **State and catalog:** `initData.spinWheel` carries `freeSpins`, `paidSpins`, `isDiscountAvailable`, the segment catalog (with 1x
+  and 2x odds) and `robuxProductIds`; `NotifySpinWheelState` resends the three state fields after any change.
+- **Robux:** the three ids are handled in `GameController.tryGrantPlayerRobuxProductId` and `isProductIdReserved` via
+  `SpinWheelManager:isProductId` / `tryDeliverToPlayer`. A receipt only adds paid spins; spinning is a separate action. The
+  discounted product stamps `lastDiscountDay` and cannot be rejected, so a stale client that buys it twice in a day still gets the spin.
+- **Dev tools:** `giveFreeSpin`, `givePaidSpin`, `advanceSpinWheelDay`, `resetSpinWheel` (also part of `resetFullPlayerState`); client section
+  "Spin Wheel".
+- **Studio prerequisites:** RemoteEvents `TrySpinWheel`, `TryClaimSpinWheelPrize`, `NotifySpinWheelResult`, `NotifySpinWheelState`; the
+  config module and loot table; optionally three consumable dev products. A missing GUI only logs a warning and disables that part.
+- **GUI names the client finds:** HUD `ScreenGui` > `LuckySpinFrame` (hidden during the FTUE) > `LuckySpin` (a button, with an optional
+  `Alert` label); ScreenGui `SpinWheel` > `Dialog` with `Wheel` > `Face` (its GuiObject children are destroyed and rebuilt),
+  `PrizeTemplate` (plain face, child `PetTitle`), optional `TimeSkipPrizeTemplate` (`Time`), `PetPrizeRareTemplate` and
+  `PetPrizeEpicTemplate` (`PetTitle`, `Icon`; used for dragon prizes by rarity), `BoxPetPrizeTemplate` (`BoxTitle`, `Icon`; used for
+  egg prizes); `OddsList` > `RowTemplate` > `Label`; `Result`; `Exit` (or `Title` > `Exit`); `OddsToggle`; `FastToggle`; `Buttons` >
+  `Spin` (with a `Spin` label), `Buy1` (optional `FullPrice`, `Price`, `DiscountLabel`), `Buy5` (optional `Price`). Other authored faces
+  from the source (legendary, worker box, unknown prizes) are hidden and unused. Segment 1 is drawn at the top, clockwise; the code
+  draws only the segment labels, so painted wedges must match the loot table length.
+- **Sound:** the 4 s spin loops `rbxassetid://1846470940` (a constant in `ClientSpinWheelManager`), honouring the main sound-effects option.
+  Item pictures come from `ItemIcons` by object name, or the segment's `iconAssetId` for a `LOOT_TABLE` prize.
 
 ## Design Notes in the Repo
 

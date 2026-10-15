@@ -30,6 +30,7 @@ local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
 local clientPlaytimeRewardManager = require("./ClientPlaytimeRewardManager")
 local clientDailyLoginManager = require("./ClientDailyLoginManager")
 local clientDealShopManager = require("./ClientDealShopManager")
+local clientSpinWheelManager = require("./ClientSpinWheelManager")
 local clientRadarManager = require("./ClientRadarManager")
 local NumberLabelAnimator = require("./NumberLabelAnimator")
 local overlayTracker = require("./OverlayTracker")
@@ -1220,6 +1221,27 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 		end
 	else
 		warn("ScreenGuiManager: DailyRewardsFrame missing from the HUD; no daily rewards buttons")
+	end
+
+	local luckySpinFrame: any = ScreenGui:FindFirstChild("LuckySpinFrame")
+	if luckySpinFrame then
+		luckySpinFrame.Visible = not clientFtueManager:isFtueActive()
+
+		clientFtueManager:getIsEnabledEvent():Connect(function(isFtueEnabled: boolean)
+			luckySpinFrame.Visible = not isFtueEnabled
+		end)
+
+		local luckySpinButton: any = luckySpinFrame:FindFirstChild("LuckySpin")
+		if luckySpinButton then
+			clientSpinWheelManager:setHudButton(luckySpinButton)
+			luckySpinButton.Activated:Connect(function()
+				clientSpinWheelManager:openDialog()
+			end)
+		else
+			warn("ScreenGuiManager: LuckySpinFrame has no LuckySpin button")
+		end
+	else
+		warn("ScreenGuiManager: LuckySpinFrame missing from the HUD; no spin wheel button")
 	end
 
 	local friendLuckBoostFrame = ScreenGui:FindFirstChild("FriendLuckBoostFrame")

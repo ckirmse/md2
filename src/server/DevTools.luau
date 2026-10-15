@@ -21,6 +21,7 @@ local playtimeRewardManager = require("./PlaytimeRewardManager")
 local plotsManager = require("./PlotsManager")
 local rideMixin = require("./RideMixin")
 local scatterZoneManager = require("./ScatterZoneManager")
+local spinWheelManager = require("./SpinWheelManager")
 local eggSlotManager = require("./EggSlotManager")
 local starterOfferManager = require("./StarterOfferManager")
 local storageManager = require("./StorageManager")
@@ -204,6 +205,22 @@ end
 
 function DevTools.resetDailyLogin(self: DevTools, player: Player)
 	dailyLoginManager:resetPlayer(player)
+end
+
+function DevTools.giveFreeSpin(self: DevTools, player: Player)
+	spinWheelManager:debugAddSpins(player, 1, 0)
+end
+
+function DevTools.givePaidSpin(self: DevTools, player: Player)
+	spinWheelManager:debugAddSpins(player, 0, 1)
+end
+
+function DevTools.advanceSpinWheelDay(self: DevTools, player: Player)
+	spinWheelManager:debugAdvanceDay(player)
+end
+
+function DevTools.resetSpinWheel(self: DevTools, player: Player)
+	spinWheelManager:resetPlayer(player)
 end
 
 function DevTools.resetPlaytimeRewards(self: DevTools, player: Player)
@@ -973,6 +990,7 @@ function DevTools.resetFullPlayerState(self: DevTools, player: Player)
 	self:resetContextualFtueState(player)
 	self:resetIndexData(player)
 	self:resetDailyLogin(player)
+	self:resetSpinWheel(player)
 
 	local playerData = gameController:getPlayerData(player)
 	playerData:resetStats()

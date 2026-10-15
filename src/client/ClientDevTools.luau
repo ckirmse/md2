@@ -736,6 +736,20 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("resetDailyLogin")
 			end
 
+			Iris.SeparatorText({ "Spin Wheel" })
+			if Iris.Button({ "Give Free Spin" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("giveFreeSpin")
+			end
+			if Iris.Button({ "Give Paid Spin" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("givePaidSpin")
+			end
+			if Iris.Button({ "Advance Spin Wheel Day" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("advanceSpinWheelDay")
+			end
+			if Iris.Button({ "Reset Spin Wheel" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("resetSpinWheel")
+			end
+
 			Iris.SeparatorText({ "Playtime Rewards" })
 			local playtimeSecondsState = Iris.State(300)
 			Iris.InputNum({ [Iris.Args.InputNum.Text] = "Seconds", [Iris.Args.InputNum.Format] = "%i" }, { number = playtimeSecondsState })

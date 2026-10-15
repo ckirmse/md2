@@ -15,6 +15,7 @@ local dailyLoginData = require("@game/ServerScriptService/GameData/Control/Daily
 local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/EggLootTables")
 local playtimeData = require("@game/ServerScriptService/GameData/Control/Playtime")
 local rebirthData = require("@game/ServerScriptService/GameData/Control/Rebirth")
+local spinWheelData = require("@game/ServerScriptService/GameData/Control/SpinWheel")
 
 local objectDataStore = require("./ObjectDataStore")
 local Validate = require("./Validate")
@@ -323,6 +324,127 @@ function GameDataVerifier.verifyDailyLogin(self: GameDataVerifier)
 	end
 end
 
+-- a loot table ModuleScript by name at any depth; a Folder of the same name is skipped (LootTableManager loads
+-- ModuleScripts only)
+local function findLootTableModule(name: any): ModuleScript?
+	if type(name) ~= "string" then
+		return nil
+	end
+	for _, inst in ServerScriptService:WaitForChild("GameData"):WaitForChild("LootTables"):GetDescendants() do
+		if inst:IsA("ModuleScript") and inst.Name == name then
+			return inst
+		end
+	end
+	return nil
+end
+
+-- the wheel: control numbers, product ids, and a loot table whose position is the wheel segment (so no filtering or
+-- nesting), holding coin, time skip, fixed item and loot-table (rolled item) prizes
+function GameDataVerifier.verifySpinWheel(self: GameDataVerifier)
+	local function isWholeNumberAtLeast(value: any, least: number): boolean
+		return type(value) == "number" and value >= least and value == math.floor(value)
+	end
+
+	if not isWholeNumberAtLeast(spinWheelData.maxAccruedFreeSpins, 1) then
+		warn("GameDataVerifier: SpinWheel.maxAccruedFreeSpins must be a whole number >= 1", spinWheelData.maxAccruedFreeSpins)
+	end
+	if not isWholeNumberAtLeast(spinWheelData.paidLuckMultiplier, 1) then
+		warn("GameDataVerifier: SpinWheel.paidLuckMultiplier must be a whole number >= 1", spinWheelData.paidLuckMultiplier)
+	end
+	-- the client's longest spin animation is 4 seconds
+	if type(spinWheelData.prizeClaimTimeoutSec) ~= "number" or spinWheelData.prizeClaimTimeoutSec <= 4 then
+		warn("GameDataVerifier: SpinWheel.prizeClaimTimeoutSec must exceed the 4s spin animation", spinWheelData.prizeClaimTimeoutSec)
+	end
+
+	local robuxProductIds = spinWheelData.robuxProductIds
+	if not Validate.isTable(robuxProductIds) then
+		warn("GameDataVerifier: SpinWheel.robuxProductIds is missing; the Robux buttons stay inactive")
+	else
+		local seen: { [number]: string } = {}
+		for _, name in { "single", "singleDiscount", "five" } do
+			local id = robuxProductIds[name]
+			if id == nil or id == 0 then
+				warn("GameDataVerifier: SpinWheel.robuxProductIds has no id for", name, "(that Robux button stays inactive)")
+			elseif not isWholeNumberAtLeast(id, 1) then
+				warn("GameDataVerifier: SpinWheel.robuxProductIds has an invalid id for", name, id)
+			elseif seen[id] then
+				warn("GameDataVerifier: SpinWheel.robuxProductIds reuses an id for", seen[id], "and", name, id)
+			else
+				seen[id] = name
+			end
+		end
+	end
+
+	-- the verifier runs before LootTableManager loads, so read the module itself
+	local lootTableModule = findLootTableModule(spinWheelData.lootTableName)
+	if not lootTableModule then
+		warn("GameDataVerifier: no ModuleScript named", spinWheelData.lootTableName, "anywhere under GameData/LootTables (a Folder of that name does not count)")
+		return
+	end
+	local lootTable: any = require(lootTableModule)
+	if not Validate.isTable(lootTable) then
+		warn("GameDataVerifier: SpinWheel loot table returned a", typeof(lootTable), "at", lootTableModule:GetFullName(), "but must return an array")
+		return
+	elseif #lootTable == 0 then
+		warn("GameDataVerifier: SpinWheel loot table has no array entries (a dictionary or empty table?) at", lootTableModule:GetFullName())
+		return
+	end
+
+	local kinds = Enums.PlaytimeRewardKind
+
+	for i, entry in lootTable do
+		if not Validate.isTable(entry) or not Validate.isTable(entry.result) then
+			warn("GameDataVerifier: SpinWheel loot entry needs a result table", i)
+			continue
+		end
+		if entry.requiredConfig or entry.resultLootTable or entry.resultLootTables then
+			warn("GameDataVerifier: SpinWheel loot entry must not use requiredConfig or nested tables (position is the wheel segment)", i)
+		end
+
+		local result = entry.result
+		if result.kind == kinds.COINS then
+			if not isWholeNumberAtLeast(result.minCoins, 1) or result.maxCoins ~= result.minCoins then
+				warn("GameDataVerifier: SpinWheel COINS prize needs a whole minCoins >= 1 and maxCoins equal to it", i, result.minCoins, result.maxCoins)
+			end
+		elseif result.kind == kinds.TIME_SKIP then
+			if type(result.skipSec) ~= "number" or result.skipSec <= 0 then
+				warn("GameDataVerifier: SpinWheel TIME_SKIP prize needs a positive skipSec", i, result.skipSec)
+			end
+			if not isWholeNumberAtLeast(result.minCoins, 1) then
+				warn("GameDataVerifier: SpinWheel TIME_SKIP prize needs a whole minCoins >= 1 (paid when income is low)", i, result.minCoins)
+			end
+		elseif result.kind == kinds.FIXED_ITEM then
+			if type(result.itemName) ~= "string" or objectDataStore:getObjectDataByName(result.itemName) == nil then
+				warn("GameDataVerifier: SpinWheel FIXED_ITEM prize has an unknown itemName", i, result.itemName)
+			end
+		elseif result.kind == kinds.LOOT_TABLE then
+			-- the segment shows displayName; the item is rolled from lootTableName when the spin is decided
+			if type(result.displayName) ~= "string" then
+				warn("GameDataVerifier: SpinWheel LOOT_TABLE prize needs a displayName", i)
+			end
+			if result.rarity ~= nil and Enums.getName(Enums.Rarity, result.rarity) == nil then
+				warn("GameDataVerifier: SpinWheel LOOT_TABLE prize has an unknown rarity", i, result.rarity)
+			end
+			if result.iconAssetId ~= nil and type(result.iconAssetId) ~= "string" then
+				warn("GameDataVerifier: SpinWheel LOOT_TABLE iconAssetId must be an rbxassetid:// string", i, result.iconAssetId)
+			end
+			local rolledModule = findLootTableModule(result.lootTableName)
+			if not rolledModule then
+				warn("GameDataVerifier: SpinWheel LOOT_TABLE prize has an unknown lootTableName", i, result.lootTableName)
+				continue
+			end
+			for rolledIndex, rolledEntry in require(rolledModule) :: any do
+				local rolledName = if Validate.isTable(rolledEntry.result) then rolledEntry.result.itemName else nil
+				if type(rolledName) ~= "string" or objectDataStore:getObjectDataByName(rolledName) == nil then
+					warn("GameDataVerifier: SpinWheel loot table results must be { itemName = an existing object }", result.lootTableName, rolledIndex, rolledName)
+				end
+			end
+		else
+			warn("GameDataVerifier: SpinWheel supports only COINS, TIME_SKIP, FIXED_ITEM and LOOT_TABLE prizes", i, result.kind)
+		end
+	end
+end
+
 function GameDataVerifier.verifyAll(self: GameDataVerifier)
 	self:verifyVanity()
 	self:verifyLootTableItems()
@@ -330,6 +452,7 @@ function GameDataVerifier.verifyAll(self: GameDataVerifier)
 	self:verifyRebirthLevels()
 	self:verifyPlaytimeRewards()
 	self:verifyDailyLogin()
+	self:verifySpinWheel()
 end
 
 function GameDataVerifier.new(): GameDataVerifier

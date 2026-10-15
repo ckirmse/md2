@@ -57,6 +57,7 @@ local scatterZoneManager = require("./ScatterZoneManager")
 local sellMixin = require("./SellMixin")
 local serverListener = require("./ServerListener")
 local ShadowDragon = require("./ShadowDragon")
+local spinWheelManager = require("./SpinWheelManager")
 local eggSlotManager = require("./EggSlotManager")
 local starterOfferManager = require("./StarterOfferManager")
 local storageManager = require("./StorageManager")
@@ -1377,6 +1378,10 @@ function GameController.tryGrantPlayerRobuxProductId(self: GameController, playe
 		return dealShopManager:tryDeliverToPlayer(player, productId)
 	end
 
+	if spinWheelManager:isProductId(productId) then
+		return spinWheelManager:tryDeliverToPlayer(player, productId)
+	end
+
 	if productId == WelcomeBack.DOUBLE_WELCOME_BACK_PRODUCT_ID then
 		return playerData:tryDeliverDoubleWelcomeBackGift()
 	end
@@ -1423,6 +1428,7 @@ function GameController.isProductIdReserved(self: GameController, productId: num
 
 	return vanityStoreManager:isProductId(productId)
 		or mutationStoreManager:isProductId(productId)
+		or spinWheelManager:isProductId(productId)
 		or productId == WelcomeBack.DOUBLE_WELCOME_BACK_PRODUCT_ID
 end
 
@@ -1586,6 +1592,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 	end
 
 	playtimeRewardManager:notifyAddPlayer(player, playerData)
+	spinWheelManager:notifyAddPlayer(player, playerData)
 
 	local ftueProgress = playerData:getFtueProgress()
 	local initData = {
@@ -1601,6 +1608,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		purchasedDealKeys = playerData:getPurchasedDealKeys(),
 		playtimeRewards = playtimeRewardManager:getClientData(player),
 		dailyLogin = dailyLoginManager:getClientData(playerData),
+		spinWheel = spinWheelManager:getClientData(playerData),
 		ftueProgress = ftueProgress,
 		firstSessionOfferState = playerData:getFirstSessionOfferState(),
 		showLuckBillboard = not playerData.hasClaimedGroupLuck and not ftueProgress.isEnabled,
@@ -1628,6 +1636,9 @@ function GameController.processPlayerRemove(self: GameController, player: Player
 
 	local playerData = self.playerDatas[player]
 
+	-- an unclaimed wheel prize is delivered while the player data is still reachable, so it lands in the save
+	spinWheelManager:deliverPendingOnLeave(player)
+
 	playerData:notifyRemovingPlayer()
 
 	local options = playerData:getOptions()
@@ -1652,6 +1663,7 @@ function GameController.processPlayerRemove(self: GameController, player: Player
 	radarManager:notifyRemovePlayer(player)
 	dealShopManager:notifyRemovePlayer(player)
 	playtimeRewardManager:notifyRemovePlayer(player)
+	spinWheelManager:notifyRemovePlayer(player)
 
 	for otherPlayer, otherPlayerData in self.playerDatas do
 		otherPlayerData:notifyOtherPlayerRemoved(player)
@@ -1848,6 +1860,14 @@ function GameController.tryClaimDailyReward(self: GameController, player: Player
 	end
 
 	dailyLoginManager:tryClaim(player, tileIndex)
+end
+
+function GameController.trySpinWheel(self: GameController, player: Player): ()
+	spinWheelManager:trySpin(player)
+end
+
+function GameController.tryClaimSpinWheelPrize(self: GameController, player: Player): ()
+	spinWheelManager:tryClaimPrize(player)
 end
 
 function GameController.tryClaimPlaytimeReward(self: GameController, player: Player, rewardIndex: any): ()
@@ -3731,6 +3751,8 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryGetEggWorldCounts", "tryGetEggWorldCounts")
 	self:addRemoteEventHandler("TryClaimPlaytimeReward", "tryClaimPlaytimeReward")
 	self:addRemoteEventHandler("TryClaimDailyReward", "tryClaimDailyReward")
+	self:addRemoteEventHandler("TrySpinWheel", "trySpinWheel")
+	self:addRemoteEventHandler("TryClaimSpinWheelPrize", "tryClaimSpinWheelPrize")
 end
 
 function GameController.processPollTimer(self: GameController): ()
@@ -3961,6 +3983,7 @@ function GameController.init(self: GameController): ()
 	mutationStoreManager:init()
 	vanityStoreManager:init()
 	dealShopManager:init()
+	spinWheelManager:init()
 	islandManager:init()
 	scatterZoneManager:init()
 	eggSlotManager:init()
@@ -4060,6 +4083,7 @@ local function initClasses(gameController: GameController): ()
 	rewardGranter.initClass(deps)
 	playtimeRewardManager.initClass(deps)
 	dailyLoginManager.initClass(deps)
+	spinWheelManager.initClass(deps)
 
 	-- SellMixin and VerticalMixin no longer have an initClass, so the mixinData loop is gone
 	mergeMixin.initClass(deps)

@@ -111,6 +111,7 @@ type PlayerDataFields = {
 	indexDiscoveredItems: any,
 	purchasedDealKeys: any,
 	dailyLogin: any, -- { lastClaimedDay, nextClaimTime }, see DailyLoginMath
+	spinWheel: any, -- { freeSpins, paidSpins, lastGrantDay, lastDiscountDay }, see SpinWheelMath
 	indexDiscoveredMutations: any,
 	indexClaimedRewards: any,
 	indexStatBuffs: any,
@@ -1974,6 +1975,24 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 		self.dailyLogin = self:getDefaultDailyLogin()
 	end
 
+	local spinWheelSaveData = saveData and saveData.spinWheel or nil
+	if
+		type(spinWheelSaveData) == "table"
+		and Validate.isValueType(spinWheelSaveData.freeSpins, "nonnegativeInteger")
+		and Validate.isValueType(spinWheelSaveData.paidSpins, "nonnegativeInteger")
+		and Validate.isValueType(spinWheelSaveData.lastGrantDay, "nonnegativeInteger")
+		and Validate.isValueType(spinWheelSaveData.lastDiscountDay, "nonnegativeInteger")
+	then
+		self.spinWheel = {
+			freeSpins = spinWheelSaveData.freeSpins,
+			paidSpins = spinWheelSaveData.paidSpins,
+			lastGrantDay = spinWheelSaveData.lastGrantDay,
+			lastDiscountDay = spinWheelSaveData.lastDiscountDay,
+		}
+	else
+		self.spinWheel = self:getDefaultSpinWheel()
+	end
+
 	local indexDiscoveredItemsSaveData = saveData and saveData.indexDiscoveredItems or nil
 	if indexDiscoveredItemsSaveData then
 		self.indexDiscoveredItems = indexDiscoveredItemsSaveData
@@ -2240,6 +2259,29 @@ function PlayerData.resetDailyLogin(self: PlayerData)
 	self.dailyLogin = self:getDefaultDailyLogin()
 end
 
+-- lastGrantDay 0 is the never-granted sentinel: the first refresh grants exactly one free spin (see SpinWheelMath)
+function PlayerData.getDefaultSpinWheel(self: PlayerData): any
+	return {
+		freeSpins = 0,
+		paidSpins = 0,
+		lastGrantDay = 0,
+		lastDiscountDay = 0,
+	}
+end
+
+-- the spin wheel manager always clones before mutating
+function PlayerData.getSpinWheel(self: PlayerData): any
+	return self.spinWheel
+end
+
+function PlayerData.setSpinWheel(self: PlayerData, spinWheel: any)
+	self.spinWheel = spinWheel
+end
+
+function PlayerData.resetSpinWheel(self: PlayerData)
+	self.spinWheel = self:getDefaultSpinWheel()
+end
+
 function PlayerData.hasDiscoveredIndexItem(self: PlayerData, itemName: any)
 	return self.indexDiscoveredItems[itemName] == true
 end
@@ -2399,6 +2441,7 @@ function PlayerData.getSaveData(self: PlayerData): any
 	saveData.codesRedeemed = self.codesRedeemed
 	saveData.purchasedDealKeys = self.purchasedDealKeys
 	saveData.dailyLogin = self.dailyLogin
+	saveData.spinWheel = self.spinWheel
 	saveData.contextualFtueState = self.contextualFtueState
 	saveData.indexDiscoveredItems = self.indexDiscoveredItems
 	saveData.indexClaimedRewards = self.indexClaimedRewards
@@ -3425,6 +3468,7 @@ function PlayerData.new(player: Player?): PlayerData
 	self.codesRedeemed = {}
 	self.purchasedDealKeys = {}
 	self.dailyLogin = self:getDefaultDailyLogin()
+	self.spinWheel = self:getDefaultSpinWheel()
 	self.contextualFtueState = self:getDefaultContextualFtueState()
 	self.indexDiscoveredItems = {}
 	self.indexClaimedRewards = {}

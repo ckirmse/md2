@@ -147,6 +147,28 @@ function LootTableManager.calculateLootResults(self: LootTableManager, lootTable
 	return self:calculateLootResultsWithRandom(lootTableName, self.random)
 end
 
+-- rolls rollCount times and keeps the best single result (isBetterResult compares the raw `result` values)
+function LootTableManager.calculateBestLootResults(
+	self: LootTableManager,
+	lootTableName: string,
+	rollCount: number,
+	isBetterResult: (any, any) -> boolean
+): { any }
+	local bestEntries: { any } = {}
+
+	for _ = 1, rollCount do
+		local lootEntries = self:calculateLootResults(lootTableName)
+		if #lootEntries == 0 then
+			continue
+		end
+		if #bestEntries == 0 or isBetterResult(lootEntries[1].result, bestEntries[1].result) then
+			bestEntries = lootEntries
+		end
+	end
+
+	return bestEntries
+end
+
 -- returns map from itemName to count
 function LootTableManager.getItemCreationDataFromItemLootResults(self: LootTableManager, lootEntries: { any }): { [string]: number }
 	local retval: { [string]: number } = {}
