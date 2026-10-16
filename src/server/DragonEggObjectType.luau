@@ -108,12 +108,12 @@ function DragonEggObjectType.new(): DragonEggObjectType
 			optional = true,
 		},
 
-		minEggSize = {
+		sizePercentileMin = {
 			type = "nonnegativeNumber",
 			optional = true,
 		},
 
-		maxEggSize = {
+		sizePercentileMax = {
 			type = "nonnegativeNumber",
 			optional = true,
 		},

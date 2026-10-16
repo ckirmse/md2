@@ -225,6 +225,19 @@ function GameDataVerifier.verifyRarities(self: GameDataVerifier)
 	end
 end
 
+function GameDataVerifier.verifyEggSizes(self: GameDataVerifier)
+	for _, eggName in objectDataStore:getAllObjectNamesByDataKeyValue("type", "dragonEgg") do
+		local itemData = objectDataStore:getObjectDataByName(eggName)
+		local low = itemData.sizePercentileMin
+		local high = itemData.sizePercentileMax
+		if (low == nil) ~= (high == nil) then
+			warn("GameDataVerifier: egg needs both sizePercentileMin and sizePercentileMax, or neither (Standard 0 to 70)", eggName)
+		elseif low ~= nil and (low > high or high > 100) then
+			warn("GameDataVerifier: egg size percentile range must satisfy min <= max <= 100", eggName, low, high)
+		end
+	end
+end
+
 function GameDataVerifier.verifyRebirthLevels(self: GameDataVerifier)
 	local previousEggSlots = EggSlotConfig.EGG_SLOT_COUNT
 	local previousDragonLimit = EggSlotConfig.DRAGON_LIMIT
@@ -488,6 +501,7 @@ function GameDataVerifier.verifyAll(self: GameDataVerifier)
 	self:verifyLootTableItems()
 	self:verifyEggLootTables()
 	self:verifyRarities()
+	self:verifyEggSizes()
 	self:verifyRebirthLevels()
 	self:verifyPlaytimeRewards()
 	self:verifyDailyLogin()

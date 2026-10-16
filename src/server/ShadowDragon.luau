@@ -1507,7 +1507,7 @@ function ShadowDragon.getSaveData(self: ShadowDragon, itemIdMap: any): any
 	local retval = super.getSaveData(self, itemIdMap)
 
 	retval.state = self.state
-	retval.dragonSize = self.dragonSize
+	retval.sizePercentile = self.sizePercentile
 	retval.dragonLevel = self.dragonLevel
 	retval.dragonXp = self.dragonXp
 	if self.state == enums.DragonState.OPENING then
@@ -1535,7 +1535,7 @@ end
 function ShadowDragon.loadSaveData(self: ShadowDragon, itemSaveData: any, itemIdMap: any)
 	super.loadSaveData(self, itemSaveData, itemIdMap)
 
-	self.dragonSize = itemSaveData.dragonSize or self.dragonSize
+	self.sizePercentile = itemSaveData.sizePercentile or self.sizePercentile
 	self.dragonLevel = itemSaveData.dragonLevel or self.dragonLevel
 	self.dragonXp = itemSaveData.dragonXp or self.dragonXp
 
@@ -1746,19 +1746,27 @@ function ShadowDragon.destroy(self: ShadowDragon)
 	super.destroy(self)
 end
 
-function ShadowDragon.setDragonSize(self: ShadowDragon, size: number)
-	self.dragonSize = size
+function ShadowDragon.setSizePercentile(self: ShadowDragon, sizePercentile: number)
+	self.sizePercentile = sizePercentile
 	self:recomputeSize()
+	self:recomputeIncome()
+
+	local playerData = self:getPlayerData()
+	if playerData then
+		playerData:recomputeTotalDragonIncome()
+	end
 end
 
-function ShadowDragon.getDragonSize(self: ShadowDragon): number
-	return self.dragonSize or 1
+function ShadowDragon.getSizePercentile(self: ShadowDragon): number
+	return self.sizePercentile
+end
+
+function ShadowDragon.getSizeScale(self: ShadowDragon): number
+	return RarityMath.getSizeScale(self.sizePercentile)
 end
 
 function ShadowDragon.recomputeSize(self: ShadowDragon)
-	-- Model Scale = RarityScale(r) x SizeScale x Growth(L). The egg's size stands in for SizeScale until the egg
-	-- size percentile (0.85x to 1.15x) is built
-	local modelScale = RarityMath.getModelScale(self:getRarityRow(), self:getDragonSize(), self.dragonLevel)
+	local modelScale = RarityMath.getModelScale(self:getRarityRow(), self:getSizeScale(), self.dragonLevel)
 	self:getObj():SetAttribute(Attributes.DRAGON_SIZE, modelScale)
 end
 
@@ -1843,9 +1851,9 @@ end
 
 function ShadowDragon.recomputeIncome(self: ShadowDragon)
 	-- v1.0 spec: Income = BaseIncome(r) x LevelMod x Size x Mutation. Traits affect speed only, never income.
-	-- Size is the egg's size stat until the size percentile and its absolute range per rarity are decided
+	-- Size: the spec leaves the absolute size range per rarity open, so SizeScale feeds the old sizeIncomeCoeff stand-in
 	local row = self:getRarityRow()
-	local sizeMult = DragonIncome.sizeMult(dragonIncomeValues.sizeIncomeCoeff, self:getDragonSize())
+	local sizeMult = DragonIncome.sizeMult(dragonIncomeValues.sizeIncomeCoeff, self:getSizeScale())
 	local levelMod = RarityMath.getLevelMod(row, self.dragonLevel)
 	local mutationBonus = MItem.getMutationBonus(self.mutation)
 
@@ -1918,7 +1926,7 @@ function ShadowDragon.init(self: ShadowDragon)
 	self.lastKnownGoodIdleLocation = nil
 	self.lastKnownGoodOutsidePosition = nil
 
-	self.dragonSize = 1
+	self.sizePercentile = RarityMath.DEFAULT_SIZE_PERCENTILE
 	self.dragonLevel = 1
 	self.dragonXp = 0
 

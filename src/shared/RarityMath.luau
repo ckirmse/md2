@@ -29,6 +29,15 @@ RarityMath.MODEL_GROWTH_AT_CAP = 0.2
 -- LevelSpeed gains at most +25% at the cap (consumed by the speed module)
 RarityMath.SPEED_GAIN_AT_CAP = 0.25
 
+RarityMath.SIZE_SCALE_MIN = 0.85
+RarityMath.SIZE_SCALE_SPAN = 0.30
+
+RarityMath.DEFAULT_SIZE_PERCENTILE = 50
+
+-- an egg that authors no size range rolls as Standard
+RarityMath.STANDARD_SIZE_PERCENTILE_MIN = 0
+RarityMath.STANDARD_SIZE_PERCENTILE_MAX = 70
+
 -- progress through the levels: 0 at level 1, 1 at the cap
 local function levelProgress(level: number, levelCap: number): number
 	if levelCap <= 1 then
@@ -66,6 +75,10 @@ end
 -- Growth(L) = 1 + 0.2 * (L - 1) / (cap - 1): visual only, the Size stat never changes with level
 function RarityMath.getGrowth(row: RarityRow, level: number): number
 	return 1 + RarityMath.MODEL_GROWTH_AT_CAP * levelProgress(level, row.levelCap)
+end
+
+function RarityMath.getSizeScale(sizePercentile: number): number
+	return RarityMath.SIZE_SCALE_MIN + RarityMath.SIZE_SCALE_SPAN * math.clamp(sizePercentile, 0, 100) / 100
 end
 
 -- Model Scale = RarityScale(r) * SizeScale * Growth(L)

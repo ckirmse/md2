@@ -22,6 +22,7 @@ local Timer = require("./Timer")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
+local RarityMath = require("@game/ReplicatedStorage/Shared/RarityMath")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
@@ -85,12 +86,11 @@ function DragonEgg.applyLuckBiasToLootTable(lootTable: any, luckMultiplier: numb
 	return biasedLootTable
 end
 
-local function rollEggSize(random: Random, minSize: number?, maxSize: number?): number
-	if not minSize or not maxSize then
-		return 1
-	end
+local function rollSizePercentile(random: Random, minPercentile: number?, maxPercentile: number?): number
+	local low = minPercentile or RarityMath.STANDARD_SIZE_PERCENTILE_MIN
+	local high = maxPercentile or RarityMath.STANDARD_SIZE_PERCENTILE_MAX
 
-	return minSize + random:NextNumber() * (maxSize - minSize)
+	return low + random:NextNumber() * (high - low)
 end
 
 local function computeCarryReturnSec(distanceFromHub: number): number
@@ -349,7 +349,7 @@ function DragonEgg.finishHatching(self: DragonEgg)
 
 	local hatchedDragon = dragonItem :: Types.ShadowDragon
 	hatchedDragon:setMutation(mutation)
-	hatchedDragon:setDragonSize(self.eggSize)
+	hatchedDragon:setSizePercentile(self.sizePercentile)
 
 	itemManager:destroyItem(self)
 
@@ -380,7 +380,7 @@ function DragonEgg.getSaveData(self: DragonEgg, itemIdMap: any): any
 	local retval = super.getSaveData(self, itemIdMap)
 
 	retval.type = "dragonEgg"
-	retval.eggSize = self.eggSize
+	retval.sizePercentile = self.sizePercentile
 	retval.eggSlotIndex = self.eggSlotIndex
 
 	if self:isReadyToHatch() then
@@ -404,8 +404,8 @@ end
 function DragonEgg.loadSaveData(self: DragonEgg, itemSaveData: any, itemIdMap: any)
 	super.loadSaveData(self, itemSaveData, itemIdMap)
 
-	if itemSaveData.eggSize then
-		self.eggSize = itemSaveData.eggSize
+	if itemSaveData.sizePercentile then
+		self.sizePercentile = itemSaveData.sizePercentile
 	end
 
 	self.eggSlotIndex = itemSaveData.eggSlotIndex
@@ -414,7 +414,7 @@ end
 function DragonEgg.notifyLoadComplete(self: DragonEgg, itemSaveData: any, itemIdMap: any, offlineElapsedSec: number?)
 	local obj = self:getObj()
 	if obj:IsA("Model") then
-		obj:ScaleTo(self.eggSize)
+		obj:ScaleTo(RarityMath.getSizeScale(self.sizePercentile))
 	end
 
 	if self.eggSlotIndex ~= nil then
@@ -510,10 +510,10 @@ function DragonEgg.notifyNewClone(self: DragonEgg)
 	self:getObj():SetAttribute(Attributes.EGG_BASE_LUCK, itemData.eggBaseLuck or 1)
 	self:refreshLuckDisplay()
 
-	self.eggSize = rollEggSize(self.random, itemData.minEggSize, itemData.maxEggSize)
+	self.sizePercentile = rollSizePercentile(self.random, itemData.sizePercentileMin, itemData.sizePercentileMax)
 	local obj = self:getObj()
 	if obj:IsA("Model") then
-		obj:ScaleTo(self.eggSize)
+		obj:ScaleTo(RarityMath.getSizeScale(self.sizePercentile))
 	end
 
 	collectionService:AddTag(self:getObj(), Tags.DRAGON_EGG)
@@ -530,11 +530,11 @@ function DragonEgg.new(itemId: number, itemName: string, userId: number): Dragon
 	self:getObj():SetAttribute(Attributes.EGG_BASE_LUCK, itemData.eggBaseLuck or 1)
 	self:refreshLuckDisplay()
 
-	self.eggSize = rollEggSize(self.random, itemData.minEggSize, itemData.maxEggSize)
+	self.sizePercentile = rollSizePercentile(self.random, itemData.sizePercentileMin, itemData.sizePercentileMax)
 	self.eggSlotIndex = nil
 	local obj = self:getObj()
 	if obj:IsA("Model") then
-		obj:ScaleTo(self.eggSize)
+		obj:ScaleTo(RarityMath.getSizeScale(self.sizePercentile))
 	end
 
 	collectionService:AddTag(self:getObj(), Tags.DRAGON_EGG)
