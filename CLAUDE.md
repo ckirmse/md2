@@ -55,7 +55,7 @@ synced by Rojo.
 | Studio location | Contains | Consumed by |
 |---|---|---|
 | `ServerScriptService.GameData.Objects` | One ModuleScript per item/object definition (`name`, `type`, `mixins`, `templatePath`, `boardSpacing`, …) | `ObjectDataStore:initDataTypes()` |
-| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `Playtime`, `DailyLogin`, `SpinWheel`, `Rebirth` (per level: `cost`, `requiredPetName`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
+| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `FeaturedDeals`, `Playtime`, `DailyLogin`, `SpinWheel`, `Rebirth` (per level: `cost`, `requiredPetName`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
 | `ServerScriptService.GameData.LootTables` | One ModuleScript per loot table | `LootTableManager:init()` |
 | `ServerScriptService.GameData.Vanity` | `MainPlotInner`, `MainPlotOuter`, `Fence`, `ExpansionInner`, … | `PlotsManager:initVanityData()` |
 | `ReplicatedStorage.RemoteEvents` | Every RemoteEvent instance | server + client (see below) |
@@ -384,6 +384,38 @@ item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter
 - **Current limits:** bundles are Robux-only by convention (not enforced); a two-tier single item must sell
   the same item in both tiers but may differ in count, a two-tier bundle must grant identical contents; there
   is no play-time window yet, and a purchased gacha egg is opened by placing and hatching it (no reveal screen).
+
+### Featured deal (HUD promo button)
+
+A HUD button promotes **one Robux deal at a time** from a designer-authored list, rotating on a timer. Ported from an imported
+package and kept faithful to it. Files: `shared/FeaturedDealCatalog.luau` (validation and the rotation math, pure),
+`DealShopManager.validateFeaturedDeals` / `getFeaturedConfig`, `client/ClientFeaturedDealManager.luau`, `client/ClientProductInfo.luau`
+(cached, shared Robux price lookup), `client/RainbowSweep.luau`. No save data, no remotes of its own.
+
+- **Config** is the Studio-only `GameData.Control.FeaturedDeals`: `rotationSec` (> 0) and `deals`, an ordered array of deals, each
+  with a `dealKey` (unique, and different from every Deal Shop `dealKey`), `title`, a non-empty `icon`, optional ISO `startDate` /
+  `endDate`, and exactly one Robux tier `{ productId, contents }` (contents as in the shop: `ITEM` or `COINS`). A featured deal cannot
+  set `oneTimeOnly`, `giftable`, `coinCost` or `cardStyle`. `deals = {}` is valid and hides the button. `DealShopManager.validateConfig`
+  errors at startup naming the deal; the server will not boot without the table or with a placeholder product id (0 is invalid).
+- **Rotation is a pure function of server time:** the slot is `floor(now / rotationSec) % #activeDeals`, over the deals whose window is
+  open, in list order (removing a deal shifts every later slot). Every player sees the same deal; there is no server state and no
+  per-player filter (`getActiveDeals` keeps the source's optional `isEligible` parameter, but nothing uses it: the source's only
+  filter was a coin-multiplier chain this game lacks). The client re-evaluates on a 1 s ticker.
+- **Delivery reuses the Deal Shop's receipt path:** each featured product id is registered in `tiersByProductId`, so
+  `ProcessReceipt` -> `tryGrantPlayerRobuxProductId` -> `DealShopManager:tryDeliverToPlayer` grants the contents and sends the
+  "purchased!" message. A featured deal may reuse a shop product id only when its contents are identical (compared field by field);
+  then the shop's own deal delivers it. Featured-only products are registered non-giftable, so `TryBeginGift` refuses them.
+  `GameController.isProductIdReserved` is checked for clashes with the other systems' ids.
+- **Flow:** the config (ISO dates turned into `startTime` / `endTime`) travels in `initData.featuredDeals`. Tapping fires
+  `TryClearGift` (an abandoned gift selection must not hijack the purchase) and prompts the product; there is no dialog.
+- **Button:** shows the icon (twitches every 2.5 s), the title with a rainbow sweep, and the live Robux price ("..." while loading,
+  "N/A" if not for sale; the button stays inactive until the price resolves). Price lookups for a rotation that moved on are discarded.
+- **GUI names the client finds:** HUD ScreenGui `ScreenGui` > `FeaturedDealFrame` (hidden during the FTUE) > `FeaturedDeal` (a
+  TextButton, hidden until a deal is active) with optional `Icon` (ImageLabel), `Title` (TextLabel), `Price` > `Cost` (TextLabel) and
+  `Shine` (any GuiObject, spun once every 8 s). Keep a UIListLayout out of the button's container or the icon twitch is invisible.
+- **Dev tool:** `dumpFeaturedDeals` prints the config the server sends and whether each product id is registered (client dev panel
+  section "Featured Deals"). Singleton managers cannot be required from the command bar (it builds a second copy), so use dev tools.
+- **Not tested:** a shared product id with a Robux store deal (the sample store deal is coin-priced) and a purchase with a real dev product.
 
 ## Egg Slots and the Dragon Limit
 

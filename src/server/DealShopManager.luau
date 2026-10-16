@@ -12,6 +12,8 @@ local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 local DealShopCatalog = require("@game/ReplicatedStorage/Shared/DealShopCatalog")
 local dealShopData: DealShopCatalog.DealShopConfig = require("@game/ServerScriptService/GameData/Control/DealShop")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
+local FeaturedDealCatalog = require("@game/ReplicatedStorage/Shared/FeaturedDealCatalog")
+local featuredDealsData: FeaturedDealCatalog.FeaturedDealsConfig = require("@game/ServerScriptService/GameData/Control/FeaturedDeals")
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 
 local analyticsManager = require("./AnalyticsManager")
@@ -45,6 +47,7 @@ type DealShopManagerFields = {
 	dealWindows: { [string]: DealWindow }, -- keyed by dealKey
 	pendingGiftsByPlayer: { [Player]: PendingGift },
 	clientConfig: DealShopCatalog.DealShopConfig?,
+	featuredConfig: FeaturedDealCatalog.FeaturedDealsConfig?,
 }
 
 export type DealShopManager = typeof(setmetatable({} :: DealShopManagerFields, DealShopManager))
@@ -128,6 +131,60 @@ function DealShopManager.validateConfig(self: DealShopManager)
 			end
 		end
 	end
+
+	self:validateFeaturedDeals()
+end
+
+-- whether two tiers grant exactly the same thing; compared field by field so key order never matters
+local function areContentsIdentical(first: { DealShopCatalog.DealContent }, second: { DealShopCatalog.DealContent }): boolean
+	if #first ~= #second then
+		return false
+	end
+
+	for index, content in first do
+		local other = second[index]
+		if content.kind ~= other.kind or content.objectName ~= other.objectName or content.count ~= other.count or content.amount ~= other.amount then
+			return false
+		end
+	end
+
+	return true
+end
+
+-- featured deals are the HUD button's single-tier Robux promos. They join the same receipt path as the shop's deals, and
+-- may reuse a shop product id only when they grant exactly the same thing (otherwise the receipt would be ambiguous)
+function DealShopManager.validateFeaturedDeals(self: DealShopManager)
+	local errors = FeaturedDealCatalog.validate(featuredDealsData)
+	if #errors > 0 then
+		error("DealShopManager: invalid FeaturedDeals config: " .. table.concat(errors, "; "))
+	end
+
+	for _, deal in featuredDealsData.deals do
+		if self.tiersByDealKey[deal.dealKey] then
+			error(`DealShopManager: featured deal {deal.dealKey} reuses the dealKey of a Deal Shop deal`)
+		end
+
+		local tier = deal.tiers[1]
+		local productId = tier.productId
+		if gameController:isProductIdReserved(productId) then
+			error(`DealShopManager: featured deal {deal.dealKey} reuses product id {productId} already delivered by another system`)
+		end
+		self:validateTierContents(deal.dealKey, tier :: any)
+
+		local existing = self.tiersByProductId[productId]
+		if existing then
+			if not areContentsIdentical(existing.tier.contents, tier.contents) then
+				error(`DealShopManager: featured deal {deal.dealKey} reuses product id {productId} from deal {existing.deal.dealKey} with different contents`)
+			end
+			-- the shop's own deal already delivers it
+			continue
+		end
+
+		-- the HUD button never starts a gift, so the server refuses to gift one (see isDealGiftable)
+		local registeredDeal = table.clone(deal) :: any
+		registeredDeal.giftable = false
+		self.tiersByProductId[productId] = { deal = registeredDeal, tier = tier :: any, tierIndex = 1 }
+	end
 end
 
 -- every dragon the egg can hatch, most likely first; odds are the loot table's base odds, before any luck
@@ -207,10 +264,27 @@ function DealShopManager.buildClientConfig(self: DealShopManager)
 	end
 
 	self.clientConfig = enriched :: any
+
+	-- the featured deals travel in the same shape with the ISO window turned into server times; the HUD button only
+	-- needs the key, title, icon, window and product id, but the tiers are sent whole as in the source
+	local featuredDeals: { any } = {}
+	for dealIndex, deal in featuredDealsData.deals do
+		local clientDeal = table.clone(deal) :: any
+		clientDeal.startDate = nil
+		clientDeal.endDate = nil
+		clientDeal.startTime = if deal.startDate then DealShopCatalog.parseIsoDate(deal.startDate) else nil
+		clientDeal.endTime = if deal.endDate then DealShopCatalog.parseIsoDate(deal.endDate) else nil
+		featuredDeals[dealIndex] = clientDeal
+	end
+	self.featuredConfig = { rotationSec = featuredDealsData.rotationSec, deals = featuredDeals }
 end
 
 function DealShopManager.getClientConfig(self: DealShopManager): DealShopCatalog.DealShopConfig?
 	return self.clientConfig
+end
+
+function DealShopManager.getFeaturedConfig(self: DealShopManager): FeaturedDealCatalog.FeaturedDealsConfig?
+	return self.featuredConfig
 end
 
 function DealShopManager.isProductId(self: DealShopManager, productId: number): boolean
@@ -472,6 +546,7 @@ function DealShopManager.new(): DealShopManager
 	self.dealWindows = {}
 	self.pendingGiftsByPlayer = {}
 	self.clientConfig = nil
+	self.featuredConfig = nil
 
 	return self
 end

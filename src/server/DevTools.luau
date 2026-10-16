@@ -7,6 +7,7 @@ local analyticsManager = require("./AnalyticsManager")
 local buyStoreManager = require("./BuyStoreManager")
 local contextualFtueManager = require("./ContextualFtueManager")
 local dailyLoginManager = require("./DailyLoginManager")
+local dealShopManager = require("./DealShopManager")
 local vanityStoreManager = require("./VanityStoreManager")
 local Types = require("./Types")
 local gameController: Types.GameController
@@ -294,6 +295,21 @@ function DevTools.dumpGems(self: DevTools, player: Player)
 
 		local gem = item :: Types.NumberItem
 		print(" ", item:getItemName(), "count", gem:getCount())
+	end
+end
+
+-- prints the featured deals the server will send to clients, and whether each product id is registered for receipts
+function DevTools.dumpFeaturedDeals(self: DevTools, player: Player)
+	local config = dealShopManager:getFeaturedConfig()
+	if not config then
+		print("no featured deals config")
+		return
+	end
+
+	print("Featured deals: rotationSec", config.rotationSec, "count", #config.deals)
+	for _, deal in config.deals do
+		local productId = deal.tiers[1].productId
+		print(" ", deal.dealKey, "productId", productId, "registered", dealShopManager:isProductId(productId), "startTime", deal.startTime, "endTime", deal.endTime)
 	end
 end
 

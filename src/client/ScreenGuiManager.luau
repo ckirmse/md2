@@ -30,6 +30,7 @@ local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
 local clientPlaytimeRewardManager = require("./ClientPlaytimeRewardManager")
 local clientDailyLoginManager = require("./ClientDailyLoginManager")
 local clientDealShopManager = require("./ClientDealShopManager")
+local clientFeaturedDealManager = require("./ClientFeaturedDealManager")
 local clientSpinWheelManager = require("./ClientSpinWheelManager")
 local clientRadarManager = require("./ClientRadarManager")
 local NumberLabelAnimator = require("./NumberLabelAnimator")
@@ -1242,6 +1243,24 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 		end
 	else
 		warn("ScreenGuiManager: LuckySpinFrame missing from the HUD; no spin wheel button")
+	end
+
+	local featuredDealFrame: any = ScreenGui:FindFirstChild("FeaturedDealFrame")
+	if featuredDealFrame then
+		featuredDealFrame.Visible = not clientFtueManager:isFtueActive()
+
+		clientFtueManager:getIsEnabledEvent():Connect(function(isFtueEnabled: boolean)
+			featuredDealFrame.Visible = not isFtueEnabled
+		end)
+
+		local featuredDealButton: any = featuredDealFrame:FindFirstChild("FeaturedDeal")
+		if featuredDealButton then
+			clientFeaturedDealManager:setHudButton(featuredDealButton)
+		else
+			warn("ScreenGuiManager: FeaturedDealFrame has no FeaturedDeal button")
+		end
+	else
+		warn("ScreenGuiManager: FeaturedDealFrame missing from the HUD; no featured deal button")
 	end
 
 	local friendLuckBoostFrame = ScreenGui:FindFirstChild("FriendLuckBoostFrame")

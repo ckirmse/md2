@@ -29,6 +29,7 @@ local clientDevTools = require("./ClientDevTools")
 --local clientDragonManager = nil -- prevent circular reference by not initializing here
 local clientEggWorldCountsManager = require("./ClientEggWorldCountsManager")
 local clientExpansionTeleporter = require("./ClientExpansionTeleporter")
+local clientFeaturedDealManager = require("./ClientFeaturedDealManager")
 local clientFtueManager = require("./ClientFtueManager")
 local clientGiftingManager = require("./ClientGiftingManager")
 local clientFirstSessionOfferManager = require("./ClientFirstSessionOfferManager")
@@ -162,6 +163,7 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 		clientDealShopManager:setConfig(initData.dealShopConfig)
 		clientPlaytimeRewardManager:setRewardData(initData.playtimeRewards)
 		clientDailyLoginManager:setDailyData(initData.dailyLogin)
+		clientFeaturedDealManager:setConfig(initData.featuredDeals)
 		clientSpinWheelManager:setSpinWheelData(initData.spinWheel)
 
 		local ftueProgress = initData.ftueProgress
