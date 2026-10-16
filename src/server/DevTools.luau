@@ -40,8 +40,10 @@ local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 local PlayerOptionKeys = require("@game/ReplicatedStorage/Shared/PlayerOptionKeys")
 local PlotHelpers = require("@game/ReplicatedStorage/Shared/PlotHelpers")
+local RarityMath = require("@game/ReplicatedStorage/Shared/RarityMath")
 
 local progressionData = require("@game/ServerScriptService/GameData/Control/Progression")
+local rarityData = require("@game/ServerScriptService/GameData/Control/Rarities")
 local startData = require("@game/ServerScriptService/GameData/Control/Start")
 
 type DevToolsFields = {}
@@ -299,6 +301,36 @@ function DevTools.dumpGems(self: DevTools, player: Player)
 end
 
 -- prints the featured deals the server will send to clients, and whether each product id is registered for receipts
+-- prints each rarity's row and the derived leveling numbers, to compare with the spec's Master Table
+function DevTools.dumpRarityTable(self: DevTools, player: Player)
+	print("Rarity table (GameData/Control/Rarities)")
+	for _, rarity in enums.getAllValues(enums.Rarity) do
+		local row = rarityData.rarities[rarity]
+		if not row then
+			print(" ", enums.getName(enums.Rarity, rarity), "MISSING")
+			continue
+		end
+
+		local totalXp = 0
+		for level = 1, row.levelCap - 1 do
+			totalXp += RarityMath.getNextLevelXp(row, level) :: number
+		end
+		print(
+			" ",
+			enums.getName(enums.Rarity, rarity),
+			"cap", row.levelCap,
+			"xp L2", RarityMath.getNextLevelXp(row, 1),
+			"xp final", RarityMath.getNextLevelXp(row, row.levelCap - 1),
+			"xp total", totalXp, "of", row.xpToCap,
+			"baseIncome", row.baseIncome,
+			"levelMod@cap", RarityMath.getLevelMod(row, row.levelCap),
+			"levelSpeed@cap", RarityMath.getLevelSpeed(row, row.levelCap),
+			"scale L1", RarityMath.getModelScale(row, 1, 1),
+			"scale cap", RarityMath.getModelScale(row, 1, row.levelCap)
+		)
+	end
+end
+
 function DevTools.dumpFeaturedDeals(self: DevTools, player: Player)
 	local config = dealShopManager:getFeaturedConfig()
 	if not config then

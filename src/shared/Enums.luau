@@ -99,12 +99,16 @@ module = {
 		UNCOMMON = 2,
 		RARE = 3,
 		EPIC = 4,
+		LEGENDARY = 5,
+		MYTHIC = 6,
 
 		PublicNames = {
 			COMMON = "Common",
 			UNCOMMON = "Uncommon",
 			RARE = "Rare",
 			EPIC = "Epic",
+			LEGENDARY = "Legendary",
+			MYTHIC = "Mythic",
 		},
 	},
 	ShopCategory = {

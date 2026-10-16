@@ -31,12 +31,15 @@ local DragonSellValue = require("@game/ReplicatedStorage/Shared/DragonSellValue"
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PivotToIndependentTween = require("@game/ReplicatedStorage/Shared/PivotToIndependentTween")
+local RarityMath = require("@game/ReplicatedStorage/Shared/RarityMath")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local dragonIncomeValues = require("@game/ServerScriptService/GameData/Control/DragonIncomeValues")
+local incomeData = require("@game/ServerScriptService/GameData/Control/Income")
 local dragonProgressionData = require("@game/ServerScriptService/GameData/Control/DragonProgression")
 local dragonSellValues = require("@game/ServerScriptService/GameData/Control/DragonSellValues")
+local rarityData = require("@game/ServerScriptService/GameData/Control/Rarities")
 
 local analyticsManager = require("./AnalyticsManager")
 
@@ -1547,6 +1550,13 @@ function ShadowDragon.notifyLoadComplete(
 	itemIdMap: any,
 	offlineElapsedSec: number?
 )
+	-- the level cap is per rarity now (v1.0), so a dragon saved above its cap is held at the cap
+	local levelCap = self:getRarityRow().levelCap
+	if self.dragonLevel > levelCap then
+		self.dragonLevel = levelCap
+		self.dragonXp = 0
+	end
+
 	self:getObj():SetAttribute(Attributes.DRAGON_LEVEL, self.dragonLevel)
 	self:replicateXpAttributes()
 	self:recomputeIncome()
@@ -1554,8 +1564,9 @@ function ShadowDragon.notifyLoadComplete(
 	self:recomputeSize()
 
 	if self:getObj().Parent == workspace and offlineElapsedSec and offlineElapsedSec > 0 then
-		local creditedSec = math.min(offlineElapsedSec, dragonProgressionData.offlineXpMaxSeconds)
-		self:addDragonXp(dragonProgressionData.assignXpPerSec * creditedSec * dragonProgressionData.offlineXpEfficiency)
+		-- v1.0 spec: plot dragons earn offline XP at the same capped percentage as offline income
+		local creditedSec = math.min(offlineElapsedSec, incomeData.offlineMaxSeconds)
+		self:addDragonXp(dragonProgressionData.assignXpPerSec * creditedSec * incomeData.offlineEfficiency)
 	end
 
 	if itemSaveData.state == enums.DragonState.OPENING then
@@ -1745,8 +1756,10 @@ function ShadowDragon.getDragonSize(self: ShadowDragon): number
 end
 
 function ShadowDragon.recomputeSize(self: ShadowDragon)
-	local sizeMult = 1 + dragonProgressionData.levelSizeMultPerLevel * (self.dragonLevel - 1)
-	self:getObj():SetAttribute(Attributes.DRAGON_SIZE, self:getDragonSize() * sizeMult)
+	-- Model Scale = RarityScale(r) x SizeScale x Growth(L). The egg's size stands in for SizeScale until the egg
+	-- size percentile (0.85x to 1.15x) is built
+	local modelScale = RarityMath.getModelScale(self:getRarityRow(), self:getDragonSize(), self.dragonLevel)
+	self:getObj():SetAttribute(Attributes.DRAGON_SIZE, modelScale)
 end
 
 function ShadowDragon.getDragonLevel(self: ShadowDragon): number
@@ -1757,16 +1770,27 @@ function ShadowDragon.getDragonXp(self: ShadowDragon): number
 	return self.dragonXp
 end
 
-function ShadowDragon.getNextLevelXp(self: ShadowDragon, level: number): number?
-	if level >= dragonProgressionData.maxDragonLevel then
-		return nil
+-- the dragon's row of the Master Table (GameData/Control/Rarities). GameDataVerifier checks every rarity has one;
+-- a missing row falls back to Common's so a bad data edit never crashes the income tick
+function ShadowDragon.getRarityRow(self: ShadowDragon): RarityMath.RarityRow
+	local row = rarityData.rarities[self:getItemData().rarity]
+	if not row then
+		warn("ShadowDragon: no Rarities row for", self:getItemName(), self:getItemData().rarity)
+		row = rarityData.rarities[enums.Rarity.COMMON]
 	end
+	return row
+end
 
-	return math.floor(dragonProgressionData.baseXpPerLevel * dragonProgressionData.xpGrowthRate ^ (level - 1))
+function ShadowDragon.getLevelCap(self: ShadowDragon): number
+	return self:getRarityRow().levelCap
+end
+
+function ShadowDragon.getNextLevelXp(self: ShadowDragon, level: number): number?
+	return RarityMath.getNextLevelXp(self:getRarityRow(), level)
 end
 
 function ShadowDragon.isAtMaxLevel(self: ShadowDragon): boolean
-	return self.dragonLevel >= dragonProgressionData.maxDragonLevel
+	return self.dragonLevel >= self:getLevelCap()
 end
 
 function ShadowDragon.replicateXpAttributes(self: ShadowDragon)
@@ -1818,21 +1842,14 @@ function ShadowDragon.addDragonXp(self: ShadowDragon, amount: number)
 end
 
 function ShadowDragon.recomputeIncome(self: ShadowDragon)
-	local itemData = self:getItemData()
-
-	local tierIndex = itemData.rarity - enums.Rarity.COMMON
-	local rarityMult = dragonIncomeValues.rarityMultipliers[tierIndex + 1] or 1
-	local staticBase = dragonIncomeValues.staticLevelBase[itemData.level] or 1
-
+	-- v1.0 spec: Income = BaseIncome(r) x LevelMod x Size x Mutation. Traits affect speed only, never income.
+	-- Size is the egg's size stat until the size percentile and its absolute range per rarity are decided
+	local row = self:getRarityRow()
 	local sizeMult = DragonIncome.sizeMult(dragonIncomeValues.sizeIncomeCoeff, self:getDragonSize())
-	local levelMult = DragonIncome.levelMult(dragonProgressionData.levelIncomeMultPerLevel, self.dragonLevel)
-
+	local levelMod = RarityMath.getLevelMod(row, self.dragonLevel)
 	local mutationBonus = MItem.getMutationBonus(self.mutation)
 
-	-- weather traits aren't in the game yet
-	local traitBonus = 0
-
-	self.income = DragonIncome.compute(staticBase, rarityMult, sizeMult, levelMult, mutationBonus, traitBonus)
+	self.income = DragonIncome.compute(row.baseIncome, levelMod, sizeMult, mutationBonus)
 
 	self:getObj():SetAttribute(Attributes.DRAGON_INCOME_PER_SEC, incomeManager:getDragonIncomePerSec(self))
 end

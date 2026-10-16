@@ -11,9 +11,11 @@ local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local DailyLoginMath = require("@game/ReplicatedStorage/Shared/DailyLoginMath")
 local EggSlotConfig = require("@game/ReplicatedStorage/Shared/EggSlotConfig")
 local Enums = require("@game/ReplicatedStorage/Shared/Enums")
+local RarityMath = require("@game/ReplicatedStorage/Shared/RarityMath")
 local dailyLoginData = require("@game/ServerScriptService/GameData/Control/DailyLogin")
 local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/EggLootTables")
 local playtimeData = require("@game/ServerScriptService/GameData/Control/Playtime")
+local rarityData = require("@game/ServerScriptService/GameData/Control/Rarities")
 local rebirthData = require("@game/ServerScriptService/GameData/Control/Rebirth")
 local spinWheelData = require("@game/ServerScriptService/GameData/Control/SpinWheel")
 
@@ -184,6 +186,42 @@ function GameDataVerifier.verifyEggLootTables(self: GameDataVerifier)
 			"GameDataVerifier: standardLootTables is missing the reserved default fallback table",
 			Constants.DEFAULT_STANDARD_LOOT_TABLE_NAME
 		)
+	end
+end
+
+-- the v1.0 Master Table: every Enums.Rarity needs a complete row, and income, speed, model scale, level cap and
+-- time to cap must not decrease as rarity rises (each rarity step is a fixed multiple in the spec)
+function GameDataVerifier.verifyRarities(self: GameDataVerifier)
+	if type(rarityData.rarities) ~= "table" then
+		warn("GameDataVerifier: Control/Rarities needs a rarities table keyed by Enums.Rarity")
+		return
+	end
+
+	local previousRow: any = nil
+	for _, rarity in Enums.getAllValues(Enums.Rarity) do
+		local rarityName = Enums.getName(Enums.Rarity, rarity)
+		local row = rarityData.rarities[rarity]
+		for _, problem in RarityMath.validateRow(row) do
+			warn("GameDataVerifier: Rarities", rarityName, problem)
+		end
+
+		-- fusionPremium is only for rarities above Common
+		if rarity == Enums.Rarity.COMMON and type(row) == "table" and row.fusionPremium ~= nil then
+			warn("GameDataVerifier: Rarities Common must not have a fusionPremium (nothing fuses into it)")
+		elseif rarity ~= Enums.Rarity.COMMON and type(row) == "table" and row.fusionPremium == nil then
+			warn("GameDataVerifier: Rarities", rarityName, "needs a fusionPremium")
+		end
+
+		if previousRow and type(row) == "table" and #RarityMath.validateRow(row) == 0 then
+			for _, field in { "hatchOddsN", "hatchTimerSec", "baseIncome", "baseSpeed", "modelScale", "levelCap", "timeToCapSec", "xpToCap" } do
+				if row[field] < previousRow[field] then
+					warn("GameDataVerifier: Rarities", rarityName, field, "is lower than the previous rarity's")
+				end
+			end
+		end
+		if type(row) == "table" then
+			previousRow = row
+		end
 	end
 end
 
@@ -449,6 +487,7 @@ function GameDataVerifier.verifyAll(self: GameDataVerifier)
 	self:verifyVanity()
 	self:verifyLootTableItems()
 	self:verifyEggLootTables()
+	self:verifyRarities()
 	self:verifyRebirthLevels()
 	self:verifyPlaytimeRewards()
 	self:verifyDailyLogin()

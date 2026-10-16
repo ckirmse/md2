@@ -1,15 +1,12 @@
 --!strict
 
--- Fuse Dragons 2 core stat: a dragon's per-second income contribution, built to match the v0.5
--- design spec's income factor list directly (Rarity, Size, Level, Mutation, Traits):
+-- Dragon Riders 2 core stat: a dragon's per-second income contribution, from the v1.0 design spec:
 --
---   sizeMult    = 1 + sizeIncomeCoeff * (size - 1)
---   levelMult   = 1 + levelIncomeMultPerLevel * (dragonLevel - 1)
---   income      = staticBase * rarityMult * sizeMult * levelMult * (1 + mutationBonus) * (1 + traitBonus)
+--   income = BaseIncome(r) x LevelMod x Size x Mutation
 --
--- Callers own all policy: resolving `staticBase` (per static item-tier) and `rarityMult` (per
--- rarity) from GameData lookup tables, clamping `traitBonus` to its cap, guarding bad inputs. This
--- module never reads GameData and never warns, so it runs unchanged on client or server.
+-- BaseIncome and LevelMod come from RarityMath / GameData/Control/Rarities. Traits never affect income (they multiply
+-- speed only). Callers own all policy: resolving the rarity row, guarding bad inputs. This module never reads GameData
+-- and never warns, so it runs unchanged on client or server.
 
 local DragonIncome = {}
 
@@ -18,23 +15,16 @@ function DragonIncome.sizeMult(sizeIncomeCoeff: number, size: number): number
 	return 1 + sizeIncomeCoeff * (size - 1)
 end
 
--- 1 + levelIncomeMultPerLevel * (dragonLevel - 1)  -- the per-instance XP-level income multiplier
-function DragonIncome.levelMult(levelIncomeMultPerLevel: number, dragonLevel: number): number
-	return 1 + levelIncomeMultPerLevel * (dragonLevel - 1)
+-- 1 + multPerLevel * (dragonLevel - 1). No longer used for income (RarityMath.getLevelMod is); kept for the sell value
+-- until the sell module is reworked to 20 minutes of income
+function DragonIncome.levelMult(multPerLevel: number, dragonLevel: number): number
+	return 1 + multPerLevel * (dragonLevel - 1)
 end
 
--- The full per-dragon product. `staticBase` and `rarityMult` are GameData lookups the caller
--- resolves; `mutationBonus` and `traitBonus` are fractions (0.10 = +10%); the caller has already
--- clamped `traitBonus` to the configured cap.
-function DragonIncome.compute(
-	staticBase: number,
-	rarityMult: number,
-	sizeMult: number,
-	levelMult: number,
-	mutationBonus: number,
-	traitBonus: number
-): number
-	return staticBase * rarityMult * sizeMult * levelMult * (1 + mutationBonus) * (1 + traitBonus)
+-- The full per-dragon product. `baseIncome` and `levelMod` are resolved by the caller (RarityMath); `mutationBonus` is
+-- a fraction (0.10 = +10%).
+function DragonIncome.compute(baseIncome: number, levelMod: number, sizeMult: number, mutationBonus: number): number
+	return baseIncome * levelMod * sizeMult * (1 + mutationBonus)
 end
 
 return DragonIncome

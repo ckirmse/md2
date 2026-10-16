@@ -758,6 +758,15 @@ function utils.getColorForRarity(rarity: number?): Color3
 		return Color3.fromRGB(192, 24, 192)
 	end
 
+	-- as of 2026-october-16: Legendary and Mythic colours are placeholders (the spec names no colours)
+	if rarity == enums.Rarity.LEGENDARY then
+		return Color3.fromRGB(255, 170, 0)
+	end
+
+	if rarity == enums.Rarity.MYTHIC then
+		return Color3.fromRGB(255, 48, 96)
+	end
+
 	warn("unknown rarity", rarity)
 	return Color3.new(0, 0, 0)
 end

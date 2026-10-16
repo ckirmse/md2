@@ -85,6 +85,10 @@ function ClientVanityStore.beginDialog(self: ClientVanityStore, name: string)
 
 	for _, rarity in enums.getAllValues(enums.Rarity) do
 		local rarityName = enums.getPublicName(enums.Rarity, rarity) :: string
+		-- the vanity store only rolls the first four rarities; Legendary and Mythic (2026-october-16) have no odds or GUI row
+		if inst:GetAttribute(rarityName) == nil then
+			continue
+		end
 
 		local textLabel = (utils.findFirstDescendant(Main, rarityName) :: any):FindFirstChild("TextLabel")
 		textLabel.Text = string.format("%s %g%%", rarityName, 100 * (inst:GetAttribute(rarityName) :: number))
@@ -229,6 +233,9 @@ function ClientVanityStore.initWorldInterface(self: ClientVanityStore)
 
 		for _, rarity in enums.getAllValues(enums.Rarity) do
 			local rarityName = enums.getPublicName(enums.Rarity, rarity) :: string
+			if inst:GetAttribute(rarityName) == nil then
+				continue
+			end
 
 			local surfaceGuis = utils.getAllDescendantsByName(chestInst:FindFirstChild("CTA_Frame"), "SurfaceGui") :: { any }
 			for _, surfaceGui in surfaceGuis do

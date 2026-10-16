@@ -405,6 +405,7 @@ export type ShadowDragon = MItem & {
 	getEatingItemId: (self: ShadowDragon) -> any,
 	getFlapDataForCurrentState: (self: ShadowDragon) -> (number, number),
 	getIncome: (self: ShadowDragon) -> number,
+	getLevelCap: (self: ShadowDragon) -> number,
 	getMaxStamina: (self: ShadowDragon) -> number,
 	getMovingToEatItemId: (self: ShadowDragon) -> any,
 	getMovingToOpenItemId: (self: ShadowDragon) -> any,

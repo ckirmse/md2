@@ -736,6 +736,11 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("resetDailyLogin")
 			end
 
+			Iris.SeparatorText({ "Rarities" })
+			if Iris.Button({ "Dump Rarity Table" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpRarityTable")
+			end
+
 			Iris.SeparatorText({ "Featured Deals" })
 			if Iris.Button({ "Dump Featured Deals" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpFeaturedDeals")
