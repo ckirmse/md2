@@ -39,7 +39,6 @@ local utils = require("@game/ReplicatedStorage/Shared/utils")
 local dragonIncomeValues = require("@game/ServerScriptService/GameData/Control/DragonIncomeValues")
 local incomeData = require("@game/ServerScriptService/GameData/Control/Income")
 local dragonProgressionData = require("@game/ServerScriptService/GameData/Control/DragonProgression")
-local dragonSellValues = require("@game/ServerScriptService/GameData/Control/DragonSellValues")
 local rarityData = require("@game/ServerScriptService/GameData/Control/Rarities")
 
 local analyticsManager = require("./AnalyticsManager")
@@ -1752,6 +1751,7 @@ function ShadowDragon.setSizePercentile(self: ShadowDragon, sizePercentile: numb
 	self.sizePercentile = sizePercentile
 	self:recomputeSize()
 	self:recomputeIncome()
+	self:recomputeSellValue()
 
 	local playerData = self:getPlayerData()
 	if playerData then
@@ -1896,15 +1896,7 @@ function ShadowDragon.getIncome(self: ShadowDragon): number
 end
 
 function ShadowDragon.recomputeSellValue(self: ShadowDragon)
-	local itemData = self:getItemData()
-
-	local tierIndex = itemData.rarity - enums.Rarity.COMMON
-	local rarityBaseValue = dragonSellValues.rarityBaseValue[tierIndex + 1] or 0
-	local elementMultiplier = dragonSellValues.elementMultiplier[itemData.primaryElement] or 1
-
-	local levelMult = DragonIncome.levelMult(dragonSellValues.levelSellMultPerLevel, self.dragonLevel)
-
-	self.sellValue = DragonSellValue.compute(rarityBaseValue, elementMultiplier, levelMult)
+	self.sellValue = DragonSellValue.compute(self:getIncome())
 
 	self:getObj():SetAttribute(Attributes.DRAGON_SELL_VALUE, self.sellValue)
 end

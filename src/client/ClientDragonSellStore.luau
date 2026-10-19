@@ -37,6 +37,7 @@ DragonSellStoreGui.DisplayOrder = 130
 local GREETING_DISTANCE = 10
 local AUTO_OPEN_DISTANCE = 8
 local REFRESH_INTERVAL_SEC = 1
+local CONFIRM_MIN_RARITY = enums.Rarity.EPIC
 
 type SellSectionRecord = {
 	sellButton: any,
@@ -94,7 +95,7 @@ local function getOwnedDragons(): { any }
 end
 
 -- mirrors the server's sell-all selection so the preview matches what actually happens
-local function getBackpackSellPreview(ownedDragons: { any }): (number, number, number)
+local function getBackpackSellPreview(ownedDragons: { any }): (number, number, number, boolean)
 	local placedCount = 0
 	local backpackDragons = {}
 
@@ -118,12 +119,16 @@ local function getBackpackSellPreview(ownedDragons: { any }): (number, number, n
 
 	local sellCount = 0
 	local totalValue = 0
+	local hasConfirmRarity = false
 	for i = spareCount + 1, #backpackDragons do
 		sellCount += 1
 		totalValue += (backpackDragons[i]:GetAttribute(Attributes.DRAGON_SELL_VALUE) :: number? or 0)
+		if (backpackDragons[i]:GetAttribute(Attributes.RARITY) :: number? or 0) >= CONFIRM_MIN_RARITY then
+			hasConfirmRarity = true
+		end
 	end
 
-	return sellCount, totalValue, spareCount
+	return sellCount, totalValue, spareCount, hasConfirmRarity
 end
 
 function ClientDragonSellStore.updateStoreInterface(self: ClientDragonSellStore)
@@ -183,6 +188,15 @@ local function setupSellSection(self: ClientDragonSellStore, sectionName: string
 	record.cancelButton.Visible = false
 
 	record.sellButton.Activated:Connect(function()
+		if sellType == "backpack" then
+			local _, _, _, hasConfirmRarity = getBackpackSellPreview(getOwnedDragons())
+			if not hasConfirmRarity then
+				RemoteEvents.TrySellDragons:FireServer(sellType)
+				self:updateStoreInterface()
+				return
+			end
+		end
+
 		record.pendingConfirm = true
 		record.sellButton.Visible = false
 		record.confirmButton.Visible = true
