@@ -16,6 +16,7 @@ local clientRideController = require("./ClientRideController")
 local Types = require("./Types")
 
 local CLIENT_ITEM_TOOL_WELD_NAME = "ClientItemToolWeld"
+local CASTER_INTEGRITY_TOLERANCE = 1.5
 
 local player = game:GetService("Players").LocalPlayer :: Player
 
@@ -161,7 +162,7 @@ function ClientShadowManager.testCasterIntegrity(self: ClientShadowManager, cast
 			end
 
 			local distance = ((part1.Position :: Vector3) - part2.Position).Magnitude
-			if distance > originalDistance * scale * 1.2 then
+			if distance > originalDistance * scale * CASTER_INTEGRITY_TOLERANCE then
 				--print("seems kinda far", caster, part1, part2, distance, originalDistance)
 				return false
 			end

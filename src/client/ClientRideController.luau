@@ -590,7 +590,8 @@ function ClientRideController.updateMovement(self: ClientRideController, deltaTi
 			speedMultiplier = 1
 		end
 
-		local velocityVector = (speedFrac * moveFrac * Constants.BASE_RIDE_SPEED * speedMultiplier) * forwardDirection
+		local dragonSpeed = self.shadow:GetAttribute(Attributes.DRAGON_SPEED) or 1
+		local velocityVector = (speedFrac * moveFrac * Constants.BASE_RIDE_SPEED * dragonSpeed * speedMultiplier) * forwardDirection
 
 		--local forwardDirectionXZ = Vector3.new(forwardDirection.X, 0, forwardDirection.Z)
 		--local forwardAngle = forwardDirection:Angle(forwardDirectionXZ, Vector3.zAxis)

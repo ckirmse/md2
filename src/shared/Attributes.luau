@@ -86,6 +86,7 @@ module = {
 	PRIMARY_ELEMENT = "PrimaryElement",
 	EGG_BASE_LUCK = "EggBaseLuck",
 	DRAGON_SIZE = "DragonSize",
+	DRAGON_SPEED = "DragonSpeed",
 
 	OBJECT_ID = "ObjectId",
 

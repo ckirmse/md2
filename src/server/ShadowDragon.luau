@@ -28,6 +28,7 @@ local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local DragonIncome = require("@game/ReplicatedStorage/Shared/DragonIncome")
 local DragonSellValue = require("@game/ReplicatedStorage/Shared/DragonSellValue")
+local DragonSpeed = require("@game/ReplicatedStorage/Shared/DragonSpeed")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PivotToIndependentTween = require("@game/ReplicatedStorage/Shared/PivotToIndependentTween")
@@ -1263,7 +1264,7 @@ function ShadowDragon.trySetRidingItemCFrame(self: ShadowDragon, time: number, c
 		else
 			speedMultiplier = 1
 		end
-		local maxLegalDistance = durationSec * Constants.BASE_RIDE_SPEED * speedMultiplier
+		local maxLegalDistance = durationSec * Constants.BASE_RIDE_SPEED * self:getSpeed() * speedMultiplier
 
 		local prevPosition = self:getObj().Position
 		local diff = cframe.Position - prevPosition
@@ -1562,6 +1563,7 @@ function ShadowDragon.notifyLoadComplete(
 	self:recomputeIncome()
 	self:recomputeSellValue()
 	self:recomputeSize()
+	self:recomputeSpeed()
 
 	if self:getObj().Parent == workspace and offlineElapsedSec and offlineElapsedSec > 0 then
 		-- v1.0 spec: plot dragons earn offline XP at the same capped percentage as offline income
@@ -1842,6 +1844,7 @@ function ShadowDragon.addDragonXp(self: ShadowDragon, amount: number)
 	self:recomputeIncome()
 	self:recomputeSellValue()
 	self:recomputeSize()
+	self:recomputeSpeed()
 
 	local playerData = self:getPlayerData()
 	if playerData then
@@ -1860,6 +1863,28 @@ function ShadowDragon.recomputeIncome(self: ShadowDragon)
 	self.income = DragonIncome.compute(row.baseIncome, levelMod, sizeMult, mutationBonus)
 
 	self:getObj():SetAttribute(Attributes.DRAGON_INCOME_PER_SEC, incomeManager:getDragonIncomePerSec(self))
+end
+
+function ShadowDragon.recomputeSpeed(self: ShadowDragon)
+	local row = self:getRarityRow()
+	local levelSpeed = RarityMath.getLevelSpeed(row, self.dragonLevel)
+	local mutationMult = 1 + MItem.getMutationBonus(self.mutation)
+
+	-- placeholders until biomes and traits exist
+	local biomeTypeMult = 1
+	local traitMult = 1
+
+	self.speed = DragonSpeed.compute(row.baseSpeed, levelSpeed, mutationMult, biomeTypeMult, traitMult)
+
+	self:getObj():SetAttribute(Attributes.DRAGON_SPEED, self.speed)
+end
+
+function ShadowDragon.getSpeed(self: ShadowDragon): number
+	if self.speed == nil then
+		self:recomputeSpeed()
+	end
+
+	return self.speed :: number
 end
 
 function ShadowDragon.getIncome(self: ShadowDragon): number
@@ -1897,6 +1922,7 @@ function ShadowDragon.processMutationChanged(self: ShadowDragon)
 
 	self:recomputeIncome()
 	self:recomputeSellValue()
+	self:recomputeSpeed()
 end
 
 function ShadowDragon.init(self: ShadowDragon)
@@ -1949,6 +1975,7 @@ function ShadowDragon.init(self: ShadowDragon)
 
 	self:recomputeIncome()
 	self:recomputeSellValue()
+	self:recomputeSpeed()
 end
 
 function ShadowDragon.notifyNewClone(self: ShadowDragon)

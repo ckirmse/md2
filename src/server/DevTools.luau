@@ -542,12 +542,13 @@ function DevTools.dumpDragonLevel(self: DevTools, player: Player, itemId: any)
 	local nextLevelXp = dragon:getNextLevelXp(level)
 
 	print(string.format(
-		"dragon %s level %d xp %.1f/%s income %.2f size percentile %.1f (SizeScale %.3f)",
+		"dragon %s level %d xp %.1f/%s income %.2f speed %.3f size percentile %.1f (SizeScale %.3f)",
 		tostring(itemId),
 		level,
 		dragon:getDragonXp(),
 		nextLevelXp and string.format("%.1f", nextLevelXp) or "MAX",
 		dragon:getIncome(),
+		dragon:getSpeed(),
 		dragon:getSizePercentile(),
 		dragon:getSizeScale()
 	))
