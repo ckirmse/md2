@@ -2915,9 +2915,7 @@ function GameController.tryRemoveEgg(self: GameController, player: Player, eggSl
 end
 
 function GameController.trySellDragons(self: GameController, player: Player, sellType: any): ()
-	if sellType == "ridden" then
-		dragonSellManager:trySellRiddenDragon(player)
-	elseif sellType == "backpack" then
+	if sellType == "backpack" then
 		dragonSellManager:trySellBackpackDragons(player)
 	else
 		warn("invalid sell type", player, sellType)

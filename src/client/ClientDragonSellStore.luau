@@ -20,7 +20,6 @@ local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
-local clientRideController = require("./ClientRideController")
 local overlayTracker = require("./OverlayTracker")
 local ProximityThresholdTracker = require("./ProximityThresholdTracker")
 local Types = require("./Types")
@@ -53,7 +52,6 @@ type ClientDragonSellStoreFields = {
 	rigHighlight: any,
 	dragonSellStore: any,
 	dialogFit: any,
-	riddenSection: SellSectionRecord?,
 	backpackSection: SellSectionRecord?,
 	refreshConnect: RBXScriptConnection?,
 	timeSinceRefresh: number,
@@ -94,10 +92,16 @@ local function getOwnedDragons(): { any }
 	return dragons
 end
 
+-- a stack of identical dragons is one object with a Count attribute
+local function getStackCount(shadow: any): number
+	return (shadow:GetAttribute(Attributes.COUNT) :: number?) or 1
+end
+
 -- mirrors the server's sell-all selection so the preview matches what actually happens
 local function getBackpackSellPreview(ownedDragons: { any }): (number, number, number, boolean)
 	local placedCount = 0
 	local backpackDragons = {}
+	local totalCount = 0
 
 	for _, shadow in ownedDragons do
 		if shadow.Parent == workspace then
@@ -107,6 +111,7 @@ local function getBackpackSellPreview(ownedDragons: { any }): (number, number, n
 			continue
 		end
 		table.insert(backpackDragons, shadow)
+		totalCount += getStackCount(shadow)
 	end
 
 	table.sort(backpackDragons, function(a, b)
@@ -115,15 +120,25 @@ local function getBackpackSellPreview(ownedDragons: { any }): (number, number, n
 	end)
 
 	local freeDragonSpots = clientPlayerAttributesManager:getDragonLimit() - placedCount
-	local spareCount = math.clamp(freeDragonSpots, 0, #backpackDragons)
+	local spareCount = math.clamp(freeDragonSpots, 0, totalCount)
 
 	local sellCount = 0
 	local totalValue = 0
 	local hasConfirmRarity = false
-	for i = spareCount + 1, #backpackDragons do
-		sellCount += 1
-		totalValue += (backpackDragons[i]:GetAttribute(Attributes.DRAGON_SELL_VALUE) :: number? or 0)
-		if (backpackDragons[i]:GetAttribute(Attributes.RARITY) :: number? or 0) >= CONFIRM_MIN_RARITY then
+	local remainingSpare = spareCount
+	for _, shadow in backpackDragons do
+		local stackCount = getStackCount(shadow)
+		local spared = math.min(remainingSpare, stackCount)
+		remainingSpare -= spared
+
+		local stackSellCount = stackCount - spared
+		if stackSellCount == 0 then
+			continue
+		end
+
+		sellCount += stackSellCount
+		totalValue += (shadow:GetAttribute(Attributes.DRAGON_SELL_VALUE) :: number? or 0) * stackSellCount
+		if (shadow:GetAttribute(Attributes.RARITY) :: number? or 0) >= CONFIRM_MIN_RARITY then
 			hasConfirmRarity = true
 		end
 	end
@@ -132,24 +147,7 @@ local function getBackpackSellPreview(ownedDragons: { any }): (number, number, n
 end
 
 function ClientDragonSellStore.updateStoreInterface(self: ClientDragonSellStore)
-	local riddenSection = self.riddenSection :: SellSectionRecord
 	local backpackSection = self.backpackSection :: SellSectionRecord
-
-	local isRiding = clientRideController:isRiding()
-
-	if not riddenSection.pendingConfirm then
-		riddenSection.sellButton.Visible = isRiding
-		riddenSection.cancelButton.Visible = false
-		riddenSection.confirmButton.Visible = false
-
-		if isRiding then
-			local ridingObj = clientRideController:getRidingObj()
-			local sellValue = (ridingObj:GetAttribute(Attributes.DRAGON_SELL_VALUE) :: number?) or 0
-			riddenSection.label.Text = string.format("Sell Ridden Dragon (~%d coins)", sellValue)
-		else
-			riddenSection.label.Text = "Not riding a dragon"
-		end
-	end
 
 	if not backpackSection.pendingConfirm then
 		local ownedDragons = getOwnedDragons()
@@ -301,7 +299,10 @@ function ClientDragonSellStore.initWorldInterface(self: ClientDragonSellStore)
 		tryAutoOpenStore(self)
 	end)
 
-	self.riddenSection = setupSellSection(self, "RiddenDragonSection", "ridden")
+	local riddenSection: any = utils.findFirstDescendant(DialogFit, "RiddenDragonSection")
+	if riddenSection then
+		riddenSection.Visible = false
+	end
 	self.backpackSection = setupSellSection(self, "BackpackDragonsSection", "backpack")
 
 	local exitButton: any = utils.findFirstDescendant(DialogFit, "ExitButton")

@@ -7,7 +7,6 @@ local Types = require("./Types")
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local playerAttributesManager = require("./PlayerAttributesManager")
-local rideMixin = require("./RideMixin")
 
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 
@@ -29,30 +28,6 @@ function DragonSellManager.getBackpackDragons(self: DragonSellManager, player: P
 	return dragons
 end
 
-function DragonSellManager.trySellRiddenDragon(self: DragonSellManager, player: Player)
-	if not rideMixin:isPlayerRiding(player) then
-		gameController:sendSystemMessageToPlayer(player, "You must be riding a dragon to sell it")
-		return
-	end
-
-	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
-	if not dragon then
-		return
-	end
-
-	if not gameController:tryStowRidingDragon(player) then
-		return
-	end
-
-	local sellValue = dragon:getSellValue()
-	local dragonName = dragon:getDisplayName()
-
-	itemManager:destroyItem(dragon)
-
-	playerAttributesManager:addWholeNumber(player, PlayerAttributeKeys.COINS, sellValue)
-	gameController:sendSystemMessageToPlayer(player, string.format("Sold %s for %d coins", dragonName, sellValue))
-end
-
 function DragonSellManager.trySellBackpackDragons(self: DragonSellManager, player: Player)
 	local dragons = self:getBackpackDragons(player)
 	if #dragons == 0 then
@@ -64,18 +39,36 @@ function DragonSellManager.trySellBackpackDragons(self: DragonSellManager, playe
 		return a:getIncome() > b:getIncome()
 	end)
 
+	local totalCount = 0
+	for _, dragon in dragons do
+		totalCount += dragon:getCount()
+	end
+
 	local playerData = gameController:getPlayerData(player)
 	local freeSlotCount = playerData:getDragonLimit() - playerData:getPlacedDragonCount()
-	local spareCount = math.clamp(freeSlotCount, 0, #dragons)
+	local remainingSpare = math.clamp(freeSlotCount, 0, totalCount)
 
 	local soldCount = 0
 	local totalValue = 0
 
-	for i = spareCount + 1, #dragons do
-		local dragon = dragons[i]
-		totalValue += dragon:getSellValue()
-		itemManager:destroyItem(dragon)
-		soldCount += 1
+	-- a stack holds several identical dragons, so spare and sell by dragon, not by stack
+	for _, dragon in dragons do
+		local stackCount = dragon:getCount()
+		local spared = math.min(remainingSpare, stackCount)
+		remainingSpare -= spared
+
+		local sellCount = stackCount - spared
+		if sellCount == 0 then
+			continue
+		end
+
+		totalValue += dragon:getSellValue() * sellCount
+		soldCount += sellCount
+		if sellCount == stackCount then
+			itemManager:destroyItem(dragon)
+		else
+			dragon:reduceCount(sellCount)
+		end
 	end
 
 	if soldCount == 0 then
