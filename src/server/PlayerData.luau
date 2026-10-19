@@ -84,6 +84,7 @@ type PlayerDataFields = {
 	firstSessionOfferState: any,
 	starterOfferProgress: any,
 	buyStorePurchases: any,
+	dealShopPurchases: any,
 	codesRedeemed: any,
 	mergeData: any,
 	ridingItemId: any,
@@ -1935,6 +1936,13 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 		self.buyStorePurchases = { era = 0, counts = {} }
 	end
 
+	local dealShopPurchasesSaveData = saveData and saveData.dealShopPurchases or nil
+	if dealShopPurchasesSaveData then
+		self.dealShopPurchases = dealShopPurchasesSaveData
+	else
+		self.dealShopPurchases = { era = 0, counts = {} }
+	end
+
 	-- intro FTUE is bypassed for now (old egg flow); restore this block once it's rewritten.
 	-- local ftueProgressSaveData = saveData and saveData.ftueProgress or nil
 	-- if ftueProgressSaveData then
@@ -2165,6 +2173,14 @@ function PlayerData.getBuyStorePurchaseCountsForEra(self: PlayerData, era: numbe
 		self.buyStorePurchases = { era = era, counts = {} }
 	end
 	return self.buyStorePurchases.counts
+end
+
+-- dealKey -> units bought in the given restock era; same lazy reset as the buy store's counts
+function PlayerData.getDealShopPurchaseCountsForEra(self: PlayerData, era: number): any
+	if self.dealShopPurchases.era ~= era then
+		self.dealShopPurchases = { era = era, counts = {} }
+	end
+	return self.dealShopPurchases.counts
 end
 
 function PlayerData.getFtueProgress(self: PlayerData)
@@ -2441,6 +2457,7 @@ function PlayerData.getSaveData(self: PlayerData): any
 	saveData.purchasedSlotUnlocks = self.purchasedSlotUnlocks
 	saveData.starterOfferProgress = self.starterOfferProgress
 	saveData.buyStorePurchases = self.buyStorePurchases
+	saveData.dealShopPurchases = self.dealShopPurchases
 	saveData.ftueProgress = self.ftueProgress
 	saveData.firstSessionOfferState = self.firstSessionOfferState
 	saveData.codesRedeemed = self.codesRedeemed
@@ -3468,6 +3485,7 @@ function PlayerData.new(player: Player?): PlayerData
 
 	self.starterOfferProgress = {}
 	self.buyStorePurchases = { era = 0, counts = {} }
+	self.dealShopPurchases = { era = 0, counts = {} }
 	self.ftueProgress = {}
 	self.firstSessionOfferState = {}
 	self.codesRedeemed = {}

@@ -1605,6 +1605,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		abilityStatuses = playerData:getAbilityStatuses(),
 		starterOfferData = starterOfferManager:updateAndGetStarterOfferDataForPlayer(player),
 		dealShopConfig = dealShopManager:getClientConfig(),
+		dealShopStock = dealShopManager:getStockState(playerData),
 		featuredDeals = dealShopManager:getFeaturedConfig(),
 		purchasedDealKeys = playerData:getPurchasedDealKeys(),
 		playtimeRewards = playtimeRewardManager:getClientData(player),

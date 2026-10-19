@@ -331,6 +331,10 @@ function DevTools.dumpRarityTable(self: DevTools, player: Player)
 	end
 end
 
+function DevTools.restockDealShop(self: DevTools, player: Player)
+	dealShopManager:devRestock()
+end
+
 function DevTools.dumpFeaturedDeals(self: DevTools, player: Player)
 	local config = dealShopManager:getFeaturedConfig()
 	if not config then

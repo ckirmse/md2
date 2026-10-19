@@ -55,6 +55,7 @@ type CardRecord = {
 	sectionKey: string,
 	deal: DealShopCatalog.Deal,
 	timeLimitText: any?,
+	stockText: any?,
 	isAvailable: boolean,
 }
 
@@ -80,6 +81,10 @@ type ClientDealShopManagerFields = {
 	lastCoins: number?,
 	nextPendingToken: number,
 	purchasedDealKeys: { [string]: boolean },
+	stockByDealKey: { [string]: number },
+	stockPurchases: { [string]: number },
+	nextRestockTime: number?,
+	restockTimerText: any?,
 	panelOpen: boolean,
 	isReady: boolean,
 	hasAttemptedBuild: boolean,
@@ -179,6 +184,16 @@ function ClientDealShopManager.doesWantBlur(self: ClientDealShopManager): boolea
 	return false
 end
 
+-- nil when the deal has no stock
+function ClientDealShopManager.getRemainingStock(self: ClientDealShopManager, deal: DealShopCatalog.Deal): number?
+	if not deal.hasStock then
+		return nil
+	end
+
+	local stock = self.stockByDealKey[deal.dealKey] or 0
+	return math.max(0, stock - (self.stockPurchases[deal.dealKey] or 0))
+end
+
 function ClientDealShopManager.refreshTierRecord(self: ClientDealShopManager, tierRecord: TierRecord)
 	local tier = tierRecord.tier
 	local canBuy: boolean
@@ -206,6 +221,11 @@ function ClientDealShopManager.refreshTierRecord(self: ClientDealShopManager, ti
 		end
 	end
 
+	if self:getRemainingStock(tierRecord.deal) == 0 then
+		tierRecord.priceText.Text = "Sold out"
+		canBuy = false
+	end
+
 	tierRecord.priceText.TextColor3 = textColor
 	tierRecord.button.Active = canBuy
 	if tierRecord.giftButton then
@@ -229,6 +249,10 @@ end
 
 function ClientDealShopManager.onTierActivated(self: ClientDealShopManager, tierRecord: TierRecord)
 	local tier = tierRecord.tier
+
+	if self:getRemainingStock(tierRecord.deal) == 0 then
+		return
+	end
 
 	if tier.coinCost then
 		if tierRecord.pendingToken ~= nil or getCoins() < tier.coinCost then
@@ -276,6 +300,23 @@ function ClientDealShopManager.notifyDealPurchaseResult(self: ClientDealShopMana
 	if isSuccess and tierRecord.deal.oneTimeOnly then
 		self.purchasedDealKeys[dealKey] = true
 		self:updateTimeLimits()
+	end
+end
+
+-- the server's stock for this restock and what this player has bought of it; sent at join, after each purchase of a
+-- deal with stock, and to everyone at a restock
+function ClientDealShopManager.setStockState(self: ClientDealShopManager, stockState: any)
+	if type(stockState) ~= "table" then
+		return
+	end
+
+	self.stockByDealKey = stockState.stock or {}
+	self.stockPurchases = stockState.purchases or {}
+	self.nextRestockTime = stockState.nextRestockTime
+
+	if self.isReady then
+		self:updateTimeLimits()
+		self:refreshAllTierRecords()
 	end
 end
 
@@ -443,11 +484,17 @@ function ClientDealShopManager.buildCard(self: ClientDealShopManager, section: D
 		end
 	end
 
+	local stockText: any = utils.findFirstDescendant(card, "StockAmount")
+	if stockText then
+		stockText.Visible = deal.hasStock == true
+	end
+
 	local cardRecord: CardRecord = {
 		card = card,
 		sectionKey = section.sectionKey,
 		deal = deal,
 		timeLimitText = if deal.endTime then timeLimitText else nil,
+		stockText = if deal.hasStock then stockText else nil,
 		isAvailable = true,
 	}
 	table.insert(self.cardRecords, cardRecord)
@@ -742,11 +789,22 @@ function ClientDealShopManager.updateTimeLimits(self: ClientDealShopManager)
 			cardRecord.timeLimitText.Text = utils.convertDurationSecToString(math.max(0, endTime - now))
 		end
 
+		local remainingStock = self:getRemainingStock(cardRecord.deal)
+		if remainingStock ~= nil and cardRecord.stockText then
+			cardRecord.stockText.Text = `Stock: {remainingStock}`
+		end
+
 		local isAvailable = self:isDealAvailable(cardRecord.deal)
 		if isAvailable ~= cardRecord.isAvailable then
 			cardRecord.isAvailable = isAvailable
 			self:refreshCardVisibility(cardRecord)
 		end
+	end
+
+	local nextRestockTime = self.nextRestockTime
+	if self.restockTimerText and nextRestockTime then
+		local timeText = utils.convertDurationSecToString(math.max(0, nextRestockTime - now))
+		self.restockTimerText.Text = `RESTOCK IN: {(string.gsub(timeText, "^%s+", ""))}`
 	end
 end
 
@@ -949,6 +1007,8 @@ function ClientDealShopManager.init(self: ClientDealShopManager)
 		warn("ClientDealShopManager: DealShop has no SectionTabs/SectionTabTemplate; every section is shown at once")
 	end
 
+	self.restockTimerText = utils.findFirstDescendant(main, "RestockTimer")
+
 	local title: any = main:FindFirstChild("Title")
 	local exitButton: any = title and title:FindFirstChild("Exit")
 	if exitButton then
@@ -977,6 +1037,10 @@ function ClientDealShopManager.new(): ClientDealShopManager
 	self.lastCoins = nil
 	self.nextPendingToken = 0
 	self.purchasedDealKeys = {}
+	self.stockByDealKey = {}
+	self.stockPurchases = {}
+	self.nextRestockTime = nil
+	self.restockTimerText = nil
 	self.panelOpen = false
 	self.isReady = false
 	self.hasAttemptedBuild = false

@@ -25,6 +25,12 @@ export type DealContent = {
 }
 
 -- a tier is priced either in Robux (productId, a dev product) or in coins (coinCost); never both
+-- one roll group of a deal's stock per restock: `count` rolls, each succeeding with `percent` (0 to 100) chance
+export type StockEntry = {
+	count: number,
+	percent: number,
+}
+
 export type Tier = {
 	productId: number?,
 	coinCost: number?,
@@ -44,6 +50,8 @@ export type Deal = {
 	endDate: string?, -- ISO 8601 UTC; hidden (and counted down to) after this
 	startTime: number?, -- startDate and endDate as server times, filled server-side for clients
 	endTime: number?,
+	stock: { StockEntry }?, -- units each player can buy per restock; the server rolls them, clients never see this list
+	hasStock: boolean?, -- filled server-side for clients when the deal has stock
 	tiers: { Tier },
 }
 
@@ -55,6 +63,7 @@ export type Section = {
 
 export type DealShopConfig = {
 	SECTIONS: { Section },
+	RESTOCK_SEC: number?, -- seconds between restocks; required when any deal has stock
 }
 
 local MAX_TIERS = 2
@@ -207,6 +216,19 @@ function DealShopCatalog.validateDeal(errors: { string }, where: string, deal: D
 	if deal.oneTimeOnly == true and deal.giftable == true then
 		table.insert(errors, `{where}: oneTimeOnly deals cannot be giftable`)
 	end
+	if deal.stock ~= nil then
+		if type(deal.stock) ~= "table" or #deal.stock == 0 then
+			table.insert(errors, where .. ": stock must be a non-empty array of { count, percent }")
+		else
+			for stockIndex, stockEntry in deal.stock do
+				local isCountValid = type(stockEntry.count) == "number" and stockEntry.count > 0 and stockEntry.count == math.floor(stockEntry.count)
+				local isPercentValid = type(stockEntry.percent) == "number" and stockEntry.percent >= 0 and stockEntry.percent <= 100
+				if not isCountValid or not isPercentValid then
+					table.insert(errors, `{where} stock entry {stockIndex}: count must be an integer > 0 and percent between 0 and 100`)
+				end
+			end
+		end
+	end
 
 	local startTime: number? = nil
 	local endTime: number? = nil
@@ -267,6 +289,7 @@ function DealShopCatalog.validate(config: DealShopConfig): { string }
 	local seenSectionKeys: { [string]: boolean } = {}
 	local seenDealKeys: { [string]: boolean } = {}
 	local seenProductIds: { [number]: boolean } = {}
+	local hasStockDeal = false
 
 	for _, section in config.SECTIONS do
 		if type(section.sectionKey) ~= "string" or section.sectionKey == "" then
@@ -297,7 +320,16 @@ function DealShopCatalog.validate(config: DealShopConfig): { string }
 			end
 			seenDealKeys[deal.dealKey] = true
 			DealShopCatalog.validateDeal(errors, where, deal, seenProductIds)
+			if deal.stock ~= nil then
+				hasStockDeal = true
+			end
 		end
+	end
+
+	if config.RESTOCK_SEC ~= nil and (type(config.RESTOCK_SEC) ~= "number" or config.RESTOCK_SEC <= 0) then
+		table.insert(errors, "RESTOCK_SEC must be a number > 0")
+	elseif hasStockDeal and config.RESTOCK_SEC == nil then
+		table.insert(errors, "RESTOCK_SEC (seconds between restocks) is required when a deal has stock")
 	end
 
 	return errors

@@ -160,6 +160,7 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 		clientPremiumStore:initStarterOfferData(starterOfferData)
 
 		clientDealShopManager:setPurchasedDealKeys(initData.purchasedDealKeys)
+		clientDealShopManager:setStockState(initData.dealShopStock)
 		clientDealShopManager:setConfig(initData.dealShopConfig)
 		clientPlaytimeRewardManager:setRewardData(initData.playtimeRewards)
 		clientDailyLoginManager:setDailyData(initData.dailyLogin)
@@ -246,6 +247,14 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 	RemoteEvents.NotifyDealPurchaseResult.OnClientEvent:Connect(function(dealKey, tierIndex, isSuccess)
 		clientDealShopManager:notifyDealPurchaseResult(dealKey, tierIndex, isSuccess)
 	end)
+
+	-- only created in Studio once a deal has stock
+	local dealShopStockRemote: any = RemoteEvents:FindFirstChild("NotifyDealShopStock")
+	if dealShopStockRemote then
+		dealShopStockRemote.OnClientEvent:Connect(function(stockState)
+			clientDealShopManager:setStockState(stockState)
+		end)
+	end
 
 	RemoteEvents.NotifyGiftReceived.OnClientEvent:Connect(function(fromDisplayName, dealTitle)
 		clientGiftingManager:notifyGiftReceived(fromDisplayName, dealTitle)

@@ -66,6 +66,9 @@ function FeaturedDealCatalog.validate(config: FeaturedDealsConfig): { string }
 		if looseDeal.giftable ~= nil then
 			table.insert(errors, `{where}: a featured deal cannot set giftable (it is never gifted)`)
 		end
+		if looseDeal.stock ~= nil then
+			table.insert(errors, `{where}: a featured deal cannot set stock`)
+		end
 
 		if type(deal.tiers) ~= "table" or #deal.tiers ~= 1 then
 			table.insert(errors, `{where}: needs exactly 1 tier`)

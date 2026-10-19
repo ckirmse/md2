@@ -381,6 +381,16 @@ item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter
   templates; frames for rarities this project does not have are discarded).
   `Gifting > Main > Title > Exit` and
   `Main > Scroll > PlayerTemplate > PlayerName, PlayerAvatar, Select`.
+- **Stock and restock** (ported from the old buy store's era system): a deal can set `stock = { { count, percent }, ... }`; at each
+  restock the server rolls it (`count` rolls, each succeeding with `percent`%, seeded by the era and the deal key) into the units
+  **each player** can buy that restock (the roll is global, purchases are per player and saved as `PlayerData.dealShopPurchases = { era, counts }`,
+  discarded when the era changes). The config root needs `RESTOCK_SEC` (seconds between restocks) when any deal has stock; startup errors
+  otherwise. A coin purchase refuses ("That deal is out of stock") and rolls back if the grant fails; a gift is refused when out of stock and
+  counts against the buyer; a Robux receipt for a deal that is out of stock is still granted and still counts. `initData.dealShopStock` and
+  the RemoteEvent `NotifyDealShopStock` (created in Studio only when a deal has stock) carry `{ stock, purchases, nextRestockTime }`: to one
+  player after each purchase of a stock deal, to everyone at a restock (purchases empty). Clients never receive the `stock` list itself, only
+  `hasStock`. Cards optionally hold a `StockAmount` label (inside `TitleTimer`), `Main` an optional `RestockTimer` label; an out-of-stock tier shows "Sold out".
+  Dev tool `restockDealShop` (client section "Deal Shop") restocks now with a random roll. Not allowed on featured deals.
 - **Current limits:** bundles are Robux-only by convention (not enforced); a two-tier single item must sell
   the same item in both tiers but may differ in count, a two-tier bundle must grant identical contents; there
   is no play-time window yet, and a purchased gacha egg is opened by placing and hatching it (no reveal screen).

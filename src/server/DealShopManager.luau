@@ -17,6 +17,7 @@ local featuredDealsData: FeaturedDealCatalog.FeaturedDealsConfig = require("@gam
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 
 local analyticsManager = require("./AnalyticsManager")
+local EraManager = require("./EraManager")
 local ftueManager = require("./FtueManager")
 local lootTableManager = require("./LootTableManager")
 local objectDataStore = require("./ObjectDataStore")
@@ -48,6 +49,10 @@ type DealShopManagerFields = {
 	pendingGiftsByPlayer: { [Player]: PendingGift },
 	clientConfig: DealShopCatalog.DealShopConfig?,
 	featuredConfig: FeaturedDealCatalog.FeaturedDealsConfig?,
+	stockDeals: { DealShopCatalog.Deal },
+	stockByDealKey: { [string]: number }, -- units a player can buy this restock, for deals that have stock
+	eraManager: EraManager.EraManager?,
+	currentEra: number,
 }
 
 export type DealShopManager = typeof(setmetatable({} :: DealShopManagerFields, DealShopManager))
@@ -55,6 +60,18 @@ export type DealShopManager = typeof(setmetatable({} :: DealShopManagerFields, D
 -- a purchase prompt should resolve within seconds; the expiry only guards against an abandoned
 -- prompt hijacking a much later purchase of the same product
 local PENDING_GIFT_LIFETIME_SEC = 300
+
+-- seeds the stock roll so it is the same on every call but cannot be predicted from timestamps
+local function stockHash(str: string): number
+	local hash = 2166136261
+
+	for i = 1, #str do
+		hash = bit32.bxor(hash, string.byte(str, i))
+		hash = (hash * 16777619) % 2 ^ 32
+	end
+
+	return hash
+end
 
 local function isWholeNumber(value: any): boolean
 	return type(value) == "number" and value == math.floor(value)
@@ -105,6 +122,9 @@ function DealShopManager.validateConfig(self: DealShopManager)
 		for _, deal in section.deals do
 			local dealTiers: { TierEntry } = {}
 			self.tiersByDealKey[deal.dealKey] = dealTiers
+			if deal.stock then
+				table.insert(self.stockDeals, deal)
+			end
 			self.dealWindows[deal.dealKey] = {
 				startTime = if deal.startDate then DealShopCatalog.parseIsoDate(deal.startDate) else nil,
 				endTime = if deal.endDate then DealShopCatalog.parseIsoDate(deal.endDate) else nil,
@@ -234,6 +254,8 @@ function DealShopManager.buildClientConfig(self: DealShopManager)
 			enrichedDeal.tiers = {}
 			enrichedDeal.startDate = nil
 			enrichedDeal.endDate = nil
+			enrichedDeal.stock = nil
+			enrichedDeal.hasStock = if deal.stock then true else nil
 			enrichedDeal.startTime = self.dealWindows[deal.dealKey].startTime
 			enrichedDeal.endTime = self.dealWindows[deal.dealKey].endTime
 
@@ -352,6 +374,106 @@ function DealShopManager.isDealAvailable(self: DealShopManager, deal: DealShopCa
 	return not (deal.oneTimeOnly and playerData:hasPurchasedDeal(deal.dealKey))
 end
 
+function DealShopManager.rollStock(self: DealShopManager)
+	self.stockByDealKey = {}
+
+	for _, deal in self.stockDeals do
+		local random = Random.new(stockHash(`DealShopStockKey!{self.currentEra}{deal.dealKey}`))
+
+		local count = 0
+		for _, stockEntry in deal.stock :: { DealShopCatalog.StockEntry } do
+			for _ = 1, stockEntry.count do
+				if random:NextNumber(0, 100) <= stockEntry.percent then
+					count += 1
+				end
+			end
+		end
+
+		self.stockByDealKey[deal.dealKey] = count
+	end
+end
+
+-- nil when the deal has no stock
+function DealShopManager.getRemainingStock(self: DealShopManager, deal: DealShopCatalog.Deal, playerData: any): number?
+	local stock = self.stockByDealKey[deal.dealKey]
+	if stock == nil then
+		return nil
+	end
+
+	local bought = playerData:getDealShopPurchaseCountsForEra(self.currentEra)[deal.dealKey] or 0
+	return math.max(0, stock - bought)
+end
+
+function DealShopManager.addStockPurchase(self: DealShopManager, playerData: any, deal: DealShopCatalog.Deal, amount: number)
+	if self.stockByDealKey[deal.dealKey] == nil then
+		return
+	end
+
+	local counts = playerData:getDealShopPurchaseCountsForEra(self.currentEra)
+	counts[deal.dealKey] = math.max(0, (counts[deal.dealKey] or 0) + amount)
+end
+
+-- what a client needs to show stock; nil when no deal has stock
+function DealShopManager.getStockState(self: DealShopManager, playerData: any): any
+	local eraManager = self.eraManager
+	if not eraManager then
+		return nil
+	end
+
+	return {
+		stock = self.stockByDealKey,
+		purchases = playerData:getDealShopPurchaseCountsForEra(self.currentEra),
+		nextRestockTime = eraManager:calculateNextEra(),
+	}
+end
+
+function DealShopManager.notifyStock(self: DealShopManager, player: Player)
+	local playerData = gameController:getPlayerData(player)
+	if not playerData or not self.eraManager then
+		return
+	end
+
+	RemoteEvents.NotifyDealShopStock:FireClient(player, self:getStockState(playerData))
+end
+
+function DealShopManager.restock(self: DealShopManager, era: number?)
+	local eraManager = self.eraManager :: EraManager.EraManager
+	eraManager:clearTimer()
+
+	self.currentEra = era or eraManager:calculateCurrentEra()
+	self:rollStock()
+
+	-- a new era means every player's purchase counts start from zero
+	RemoteEvents.NotifyDealShopStock:FireAllClients({
+		stock = self.stockByDealKey,
+		purchases = {},
+		nextRestockTime = eraManager:calculateNextEra(),
+	})
+
+	eraManager:setTimerForNextEra(function()
+		self:restock()
+	end)
+end
+
+function DealShopManager.initStock(self: DealShopManager)
+	if #self.stockDeals == 0 then
+		return
+	end
+
+	self.eraManager = EraManager.new(dealShopData.RESTOCK_SEC :: number)
+	self:restock()
+end
+
+-- dev tool: restock now with a random roll instead of waiting for the next era
+function DealShopManager.devRestock(self: DealShopManager)
+	if not self.eraManager then
+		warn("DealShopManager: no deal has stock, nothing to restock")
+		return
+	end
+
+	self:restock(Random.new():NextInteger(1, 1000000))
+end
+
 function DealShopManager.isDealGiftable(self: DealShopManager, deal: DealShopCatalog.Deal): boolean
 	return deal.giftable ~= false and not deal.oneTimeOnly
 end
@@ -393,17 +515,26 @@ function DealShopManager.tryBuyDeal(self: DealShopManager, player: Player, dealK
 		return
 	end
 
+	local remainingStock = self:getRemainingStock(deal, playerData)
+	if remainingStock ~= nil and remainingStock <= 0 then
+		gameController:sendSystemMessageToPlayer(player, "That deal is out of stock")
+		self:notifyDealPurchaseResult(player, dealKey, tierIndex, false)
+		return
+	end
+
 	if playerAttributesManager:get(player, PlayerAttributeKeys.COINS) < cost then
 		gameController:sendSystemMessageToPlayer(player, "You do not have enough coins")
 		self:notifyDealPurchaseResult(player, dealKey, tierIndex, false)
 		return
 	end
 
-	-- no yields between the check above and this commit, so check-and-commit is atomic
+	-- no yields between the checks above and this commit, so check-and-commit is atomic
 	playerAttributesManager:subtractWholeNumber(player, PlayerAttributeKeys.COINS, cost)
+	self:addStockPurchase(playerData, deal, 1)
 
 	if not self:grantTier(player, deal, entry.tier, "buyCoins") then
 		playerAttributesManager:addWholeNumber(player, PlayerAttributeKeys.COINS, cost)
+		self:addStockPurchase(playerData, deal, -1)
 		self:notifyDealPurchaseResult(player, dealKey, tierIndex, false)
 		return
 	end
@@ -418,6 +549,7 @@ function DealShopManager.tryBuyDeal(self: DealShopManager, player: Player, dealK
 
 	gameController:sendSystemMessageToPlayer(player, string.format("%s purchased!", deal.title))
 	self:recordPurchase(playerData, deal)
+	self:notifyStock(player)
 	self:notifyDealPurchaseResult(player, dealKey, tierIndex, true)
 end
 
@@ -440,6 +572,11 @@ function DealShopManager.tryBeginGift(self: DealShopManager, player: Player, pro
 	local playerData = gameController:getPlayerData(player)
 	if not playerData or not self:isDealAvailable(entry.deal, playerData) then
 		gameController:sendSystemMessageToPlayer(player, "That deal is not available")
+		return
+	end
+	local remainingStock = self:getRemainingStock(entry.deal, playerData)
+	if remainingStock ~= nil and remainingStock <= 0 then
+		gameController:sendSystemMessageToPlayer(player, "That deal is out of stock")
 		return
 	end
 	if recipientUserId == player.UserId then
@@ -493,6 +630,13 @@ function DealShopManager.grantGift(self: DealShopManager, buyer: Player, recipie
 		return false
 	end
 
+	-- a gift uses the buyer's stock
+	local buyerData = gameController:getPlayerData(buyer)
+	if buyerData then
+		self:addStockPurchase(buyerData, entry.deal, 1)
+		self:notifyStock(buyer)
+	end
+
 	RemoteEvents.NotifyGiftReceived:FireClient(recipient, buyer.DisplayName, entry.deal.title)
 	gameController:sendSystemMessageToPlayer(buyer, string.format("Gift sent to %s!", recipient.DisplayName))
 
@@ -517,6 +661,11 @@ function DealShopManager.tryDeliverToPlayer(self: DealShopManager, player: Playe
 	end
 
 	local playerData = gameController:getPlayerData(player)
+	if playerData then
+		-- a receipt for a deal that is out of stock is still granted (the player already paid), and still counts
+		self:addStockPurchase(playerData, entry.deal, 1)
+		self:notifyStock(player)
+	end
 	if playerData and entry.deal.oneTimeOnly then
 		self:recordPurchase(playerData, entry.deal)
 		-- the card for a one-time deal disappears once it is bought
@@ -536,6 +685,7 @@ end
 function DealShopManager.init(self: DealShopManager)
 	self:validateConfig()
 	self:buildClientConfig()
+	self:initStock()
 end
 
 function DealShopManager.new(): DealShopManager
@@ -547,6 +697,10 @@ function DealShopManager.new(): DealShopManager
 	self.pendingGiftsByPlayer = {}
 	self.clientConfig = nil
 	self.featuredConfig = nil
+	self.stockDeals = {}
+	self.stockByDealKey = {}
+	self.eraManager = nil
+	self.currentEra = 0
 
 	return self
 end

@@ -1274,6 +1274,7 @@ export type PlayerData = {
 	equipVanityComponentAtPlacement: (self: PlayerData, vanityPlacement: any, vanityComponentName: any) -> (),
 	getAbilityStatuses: (self: PlayerData) -> (),
 	getBuyStorePurchaseCountsForEra: (self: PlayerData, era: number) -> any,
+	getDealShopPurchaseCountsForEra: (self: PlayerData, era: number) -> any,
 	getCreationTime: (self: PlayerData) -> (),
 	getDailyLogin: (self: PlayerData) -> any,
 	getDefaultContextualFtueState: (self: PlayerData) -> (),
