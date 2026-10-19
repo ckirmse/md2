@@ -2751,16 +2751,20 @@ function GameController.tryChargeUpRidingDragon(self: GameController, player: Pl
 	dragon:notifyShouldChargeUp()
 end
 
-function GameController.tryDeliverCarriedEggBeforeDismount(self: GameController, player: Player, dragon: Types.ShadowDragon): boolean
+-- moves the egg the dragon carries into the backpack. An egg whose break timer is still running can only be stored inside
+-- the player's own plot, otherwise the player gets refusalMessage; an egg that already reached the plot (no timer left,
+-- the same test the client uses) can be stored anywhere. True when the dragon carries no egg or the egg was stored
+local function storeCarriedEgg(self: GameController, player: Player, dragon: Types.ShadowDragon, refusalMessage: string): boolean
 	local eggItemId = dragon:getObj():GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) :: number?
 	local egg = eggItemId and itemManager:getItemById(eggItemId)
 	if not egg then
 		return true
 	end
 
+	local isTimerStopped = egg:getObj():GetAttribute(Attributes.CARRY_EXPIRES_TIME) == nil
 	local isInOwnPlot = plotsManager:isPositionInMainPlotXZByUserId(dragon:getObj():GetPivot().Position, player.UserId)
-	if not isInOwnPlot then
-		self:sendSystemMessageToPlayer(player, "You can't dismount while carrying an egg")
+	if not isTimerStopped and not isInOwnPlot then
+		self:sendSystemMessageToPlayer(player, refusalMessage)
 		return false
 	end
 
@@ -2772,6 +2776,19 @@ function GameController.tryDeliverCarriedEggBeforeDismount(self: GameController,
 	egg:putInBackpack()
 
 	return true
+end
+
+function GameController.tryDeliverCarriedEggBeforeDismount(self: GameController, player: Player, dragon: Types.ShadowDragon): boolean
+	return storeCarriedEgg(self, player, dragon, "You can't dismount while carrying an egg")
+end
+
+function GameController.tryStoreCarriedEgg(self: GameController, player: Player): ()
+	local dragon = rideMixin:tryGetRidingDragonForPlayer(player)
+	if not dragon then
+		return
+	end
+
+	storeCarriedEgg(self, player, dragon, "Bring the egg to your plot first")
 end
 
 function GameController.tryStowRidingDragon(self: GameController, player: Player): boolean
@@ -3748,6 +3765,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryRebirth", "tryRebirth")
 	self:addRemoteEventHandler("TryUpgradePlotLuck", "tryUpgradePlotLuck")
 	self:addRemoteEventHandler("TryDropEggFromBasket", "tryDropEggFromBasket")
+	self:addRemoteEventHandler("TryStoreCarriedEgg", "tryStoreCarriedEgg")
 	self:addRemoteEventHandler("TryPickupScatteredEgg", "tryPickupScatteredEgg")
 	self:addRemoteEventHandler("TryGetEggWorldCounts", "tryGetEggWorldCounts")
 	self:addRemoteEventHandler("TryClaimPlaytimeReward", "tryClaimPlaytimeReward")

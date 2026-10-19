@@ -595,6 +595,7 @@ export type ScreenGuiManager = {
 	notifyIsInPlot: (self: ScreenGuiManager, isInPlot: boolean) -> (),
 	notifyTradingDisabled: (self: ScreenGuiManager) -> (),
 	processDropEggButtonActivated: (self: ScreenGuiManager) -> (),
+	processStoreEggButtonActivated: (self: ScreenGuiManager) -> (),
 	processFoodActivateButtonActivated: (self: ScreenGuiManager) -> (),
 	processPutAwayButtonActivated: (self: ScreenGuiManager) -> (),
 	processRadarActivateButtonActivated: (self: ScreenGuiManager) -> (),

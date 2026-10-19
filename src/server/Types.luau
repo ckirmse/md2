@@ -1027,6 +1027,7 @@ export type GameController = {
 	tryShootFireballAtCrop: (self: GameController, player: Player, cropItemId: any) -> (),
 	trySpinWheel: (self: GameController, player: Player) -> (),
 	tryStartProfileSession: (self: GameController, userId: number, options: any) -> any,
+	tryStoreCarriedEgg: (self: GameController, player: Player) -> (),
 	tryStowRidingDragon: (self: GameController, player: Player) -> boolean,
 	trySubmitCode: (self: GameController, player: Player, rawCode: any) -> (),
 	trySummonDragonToEat: (self: GameController, player: Player, cropItemId: any) -> (),

@@ -685,8 +685,14 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 
 	local isCarryingUnsafeEgg = clientRideController:isRiding() and clientRideController:isCarryingUnsafeEgg()
 
-	local DropEggButton = ScreenGui:WaitForChild("DropEggButton")
-	DropEggButton.Visible = isCarryingUnsafeEgg
+	local DropEggFrame = ScreenGui:WaitForChild("DropEggFrame")
+	DropEggFrame.Visible = isCarryingUnsafeEgg
+
+	-- a carried egg whose break timer has stopped is in the owner's plot, where it can be stored in the backpack
+	local StoreEggFrame: any = ScreenGui:FindFirstChild("StoreEggFrame")
+	if StoreEggFrame then
+		StoreEggFrame.Visible = clientRideController:isCarryingEgg() and not isCarryingUnsafeEgg
+	end
 
 	local CarryBreakBar = ScreenGui:WaitForChild("CarryBreakBar")
 	CarryBreakBar.Visible = isCarryingUnsafeEgg
@@ -920,6 +926,14 @@ function ScreenGuiManager.processDropEggButtonActivated(self: ScreenGuiManager)
 	RemoteEvents.TryDropEggFromBasket:FireServer()
 end
 
+function ScreenGuiManager.processStoreEggButtonActivated(self: ScreenGuiManager)
+	if not clientRideController:isCarryingEgg() then
+		return
+	end
+
+	RemoteEvents.TryStoreCarriedEgg:FireServer()
+end
+
 function ScreenGuiManager.showTradeButton(self: ScreenGuiManager, reason: string?)
 	if reason then
 		self.tradeButtonHideReasonMap[reason] = nil
@@ -1045,11 +1059,25 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 		self:processPutAwayButtonActivated()
 	end)
 
-	local DropEggButton = ScreenGui:WaitForChild("DropEggButton")
-	local dropEggButtonText: any = utils.findFirstDescendant(DropEggButton, "TextButton")
+	local DropEggFrame = ScreenGui:WaitForChild("DropEggFrame")
+	local DropEggButton: any = DropEggFrame:WaitForChild("DropEggButton")
+	local dropEggButtonText: any = if DropEggButton:IsA("GuiButton")
+		then DropEggButton
+		else utils.findFirstDescendant(DropEggButton, "TextButton")
 	dropEggButtonText.Activated:Connect(function()
 		self:processDropEggButtonActivated()
 	end)
+
+	local StoreEggFrame: any = ScreenGui:FindFirstChild("StoreEggFrame")
+	local StoreEggButton: any = if StoreEggFrame then StoreEggFrame:FindFirstChild("StoreEggButton") else nil
+	if StoreEggButton then
+		StoreEggFrame.Visible = false
+		StoreEggButton.Activated:Connect(function()
+			self:processStoreEggButtonActivated()
+		end)
+	else
+		warn("ScreenGuiManager: no StoreEggFrame > StoreEggButton in the HUD ScreenGui; storing a carried egg is disabled")
+	end
 
 	local RadarActivateFrame = ScreenGui:WaitForChild("RadarActivateFrame")
 	local radarActivateButton: any = utils.findFirstDescendant(RadarActivateFrame, "RadarActivateButton")
