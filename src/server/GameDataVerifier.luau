@@ -244,6 +244,14 @@ function GameDataVerifier.verifyRebirthLevels(self: GameDataVerifier)
 
 	local level = 1
 	while rebirthData.levels[level] do
+		local levelData = rebirthData.levels[level]
+		if levelData.requiredRarity == nil or Enums.getName(Enums.Rarity, levelData.requiredRarity) == nil then
+			warn("GameDataVerifier: Rebirth level needs a requiredRarity (use Enums.Rarity)", level, levelData.requiredRarity)
+		end
+		if levelData.bypassCoinCost ~= nil and (type(levelData.bypassCoinCost) ~= "number" or levelData.bypassCoinCost <= 0) then
+			warn("GameDataVerifier: Rebirth level bypassCoinCost must be a number > 0 or absent", level, levelData.bypassCoinCost)
+		end
+
 		local eggSlots = rebirthData.levels[level].eggSlots
 		if type(eggSlots) ~= "number" or eggSlots ~= math.floor(eggSlots) or eggSlots < previousEggSlots then
 			warn("GameDataVerifier: Rebirth level needs an integer eggSlots not below the previous level's", level, eggSlots, previousEggSlots)

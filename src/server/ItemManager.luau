@@ -131,7 +131,7 @@ function ItemManager.getRidableDragonsForPlayer(self: ItemManager, player: Playe
 	return retval
 end
 
-function ItemManager.hasDragonWithName(self: ItemManager, player: Player, itemName: string): boolean
+function ItemManager.hasDragonWithRarity(self: ItemManager, player: Player, rarity: number): boolean
 	for _, item in self.items do
 		if item:getType() ~= "shadowDragon" then
 			continue
@@ -139,7 +139,7 @@ function ItemManager.hasDragonWithName(self: ItemManager, player: Player, itemNa
 		if item:getUserId() ~= player.UserId then
 			continue
 		end
-		if item:getItemName() == itemName then
+		if item:getItemData().rarity == rarity then
 			return true
 		end
 	end

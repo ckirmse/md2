@@ -1036,8 +1036,13 @@ function PlayerData.updateRebirthDisplay(self: PlayerData)
 	)
 	playerAttributesManager:set(
 		self.player,
-		PlayerAttributeKeys.REBIRTH_NEXT_REQUIRED_PET_NAME,
-		nextData and nextData.requiredPetName or nil
+		PlayerAttributeKeys.REBIRTH_NEXT_REQUIRED_RARITY,
+		nextData and nextData.requiredRarity or nil
+	)
+	playerAttributesManager:set(
+		self.player,
+		PlayerAttributeKeys.REBIRTH_NEXT_BYPASS_COST,
+		nextData and nextData.bypassCoinCost or nil
 	)
 end
 

@@ -485,19 +485,18 @@ function DevTools.dumpRebirth(self: DevTools, player: Player)
 		return
 	end
 
-	local hasPet = itemManager:hasDragonWithName(player, nextLevelData.requiredPetName)
-	local petData = objectDataStore:getObjectDataByName(nextLevelData.requiredPetName)
-	local petDisplayName = (petData and petData.displayName) or nextLevelData.requiredPetName
+	local requiredRarity = nextLevelData.requiredRarity
+	local hasRarity = requiredRarity ~= nil and itemManager:hasDragonWithRarity(player, requiredRarity)
 
 	print(string.format(
-		"rebirth for %s: level %d, coins %d, cost to rebirth: %d, required pet: %s (%s), found pet: %s, egg slots %d",
+		"rebirth for %s: level %d, coins %d, cost to rebirth: %d, required rarity: %s, found: %s, bypass coin cost: %s, egg slots %d",
 		player.Name,
 		level,
 		coins,
 		nextLevelData.cost,
-		petDisplayName,
-		nextLevelData.requiredPetName,
-		tostring(hasPet),
+		tostring(requiredRarity and enums.getPublicName(enums.Rarity, requiredRarity)),
+		tostring(hasRarity),
+		tostring(nextLevelData.bypassCoinCost),
 		eggSlotManager:getEggSlotCount(player)
 	))
 end

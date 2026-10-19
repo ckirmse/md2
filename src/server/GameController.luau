@@ -3604,8 +3604,18 @@ function GameController.tryRebirth(self: GameController, player: Player): ()
 		return
 	end
 
-	if not itemManager:hasDragonWithName(player, nextLevelData.requiredPetName) then
-		self:sendSystemMessageToPlayer(player, "You need to find a dragon to rebirth")
+	local requiredRarity = nextLevelData.requiredRarity
+	if requiredRarity == nil then
+		warn("Rebirth level has no requiredRarity", level + 1)
+		self:sendSystemMessageToPlayer(player, "Rebirth is not available yet")
+		return
+	end
+
+	if not itemManager:hasDragonWithRarity(player, requiredRarity) then
+		self:sendSystemMessageToPlayer(
+			player,
+			string.format("You need a %s dragon to rebirth", enums.getPublicName(enums.Rarity, requiredRarity))
+		)
 		return
 	end
 
@@ -3617,6 +3627,35 @@ function GameController.tryRebirth(self: GameController, player: Player): ()
 	-- no yields between the checks above and this commit, so check-and-commit is atomic
 	playerAttributesManager:set(player, PlayerAttributeKeys.COINS, 0)
 	playerData:setPlotLuckLevel(1)
+	playerData:setRebirthLevel(level + 1)
+
+	self:sendSystemMessageToPlayer(player, string.format("Rebirthed! You are now Rebirth %d", level + 1))
+end
+
+-- placeholder for the Robux bypass (no dev product yet): a coin price skips both requirements and, unlike a normal
+-- rebirth, keeps the player's remaining coins and plot luck
+function GameController.tryRebirthBypass(self: GameController, player: Player): ()
+	local playerData = self:getPlayerData(player)
+	local level = playerData:getRebirthLevel()
+	local nextLevelData = self:getRebirthLevelData(level + 1)
+
+	if not nextLevelData then
+		self:sendSystemMessageToPlayer(player, "You cannot rebirth anymore yet")
+		return
+	end
+
+	local bypassCoinCost = nextLevelData.bypassCoinCost
+	if type(bypassCoinCost) ~= "number" or bypassCoinCost <= 0 then
+		self:sendSystemMessageToPlayer(player, "Skipping the rebirth requirements is not available yet")
+		return
+	end
+
+	if playerAttributesManager:get(player, PlayerAttributeKeys.COINS) < bypassCoinCost then
+		self:sendSystemMessageToPlayer(player, string.format("You need %d coins to skip the rebirth requirements", bypassCoinCost))
+		return
+	end
+
+	playerAttributesManager:subtractWholeNumber(player, PlayerAttributeKeys.COINS, bypassCoinCost)
 	playerData:setRebirthLevel(level + 1)
 
 	self:sendSystemMessageToPlayer(player, string.format("Rebirthed! You are now Rebirth %d", level + 1))
@@ -3763,6 +3802,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryClaimWelcomeBackGift", "tryClaimWelcomeBackGift")
 	self:addRemoteEventHandler("TryClaimLuckBillboard", "tryClaimLuckBillboard")
 	self:addRemoteEventHandler("TryRebirth", "tryRebirth")
+	self:addRemoteEventHandler("TryRebirthBypass", "tryRebirthBypass")
 	self:addRemoteEventHandler("TryUpgradePlotLuck", "tryUpgradePlotLuck")
 	self:addRemoteEventHandler("TryDropEggFromBasket", "tryDropEggFromBasket")
 	self:addRemoteEventHandler("TryStoreCarriedEgg", "tryStoreCarriedEgg")

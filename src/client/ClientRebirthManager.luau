@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
@@ -40,6 +41,9 @@ type ClientRebirthManagerFields = {
 	petRequired: any,
 	rebirthButton: any,
 	rebirthButtonEnabledColor: Color3,
+	bypassButton: any?,
+	bypassButtonText: any?,
+	bypassButtonEnabledColor: Color3?,
 	refreshConnect: RBXScriptConnection?,
 	timeSinceRefresh: number,
 }
@@ -66,12 +70,12 @@ function ClientRebirthManager.doesWantBlur(self: ClientRebirthManager): boolean
 	return false
 end
 
-local function hasOwnedDragonWithName(itemName: string): boolean
+local function hasOwnedDragonWithRarity(rarity: number): boolean
 	for _, shadow in collectionService:GetTagged(Tags.SHADOW_DRAGON) :: { any } do
 		if shadow:GetAttribute(Attributes.USER_ID) ~= player.UserId then
 			continue
 		end
-		if shadow:GetAttribute(Attributes.ITEM_NAME) == itemName then
+		if shadow:GetAttribute(Attributes.RARITY) == rarity then
 			return true
 		end
 	end
@@ -85,6 +89,9 @@ function ClientRebirthManager.refresh(self: ClientRebirthManager)
 		self.rewardsFrame.Visible = false
 		self.requirementsFrame.Visible = false
 		self.rebirthButton.Visible = false
+		if self.bypassButton then
+			self.bypassButton.Visible = false
+		end
 		self.maxedOutFrame.Visible = true
 		return
 	end
@@ -99,7 +106,8 @@ function ClientRebirthManager.refresh(self: ClientRebirthManager)
 	local currentLuckMult = (clientPlayerAttributesManager:get(PlayerAttributeKeys.REBIRTH_CURRENT_LUCK_MULT) :: number?) or 1
 	local nextIncomeMult = (clientPlayerAttributesManager:get(PlayerAttributeKeys.REBIRTH_NEXT_INCOME_MULT) :: number?) or currentIncomeMult
 	local nextLuckMult = (clientPlayerAttributesManager:get(PlayerAttributeKeys.REBIRTH_NEXT_LUCK_MULT) :: number?) or currentLuckMult
-	local requiredPetName = clientPlayerAttributesManager:get(PlayerAttributeKeys.REBIRTH_NEXT_REQUIRED_PET_NAME) :: string?
+	local requiredRarity = clientPlayerAttributesManager:get(PlayerAttributeKeys.REBIRTH_NEXT_REQUIRED_RARITY) :: number?
+	local bypassCost = clientPlayerAttributesManager:get(PlayerAttributeKeys.REBIRTH_NEXT_BYPASS_COST) :: number?
 
 	self.incomeText.Text = string.format("Income: %gx > %gx", currentIncomeMult, nextIncomeMult)
 	self.luckText.Text = string.format("Luck: %gx > %gx", currentLuckMult, nextLuckMult)
@@ -112,13 +120,31 @@ function ClientRebirthManager.refresh(self: ClientRebirthManager)
 		utils.formatLargeInteger(math.floor(nextCost))
 	)
 
-	local hasPet = requiredPetName ~= nil and hasOwnedDragonWithName(requiredPetName :: string)
-	self.petRequired.Text = if hasPet then requiredPetName else "?"
+	local hasRequiredDragon = requiredRarity ~= nil and hasOwnedDragonWithRarity(requiredRarity :: number)
+	self.petRequired.Text = if requiredRarity then `{enums.getPublicName(enums.Rarity, requiredRarity)} Dragon` else "?"
 
-	local canAfford = coins >= nextCost and hasPet
+	local canAfford = coins >= nextCost and hasRequiredDragon
 	self.rebirthButton.Active = canAfford
 	self.rebirthButton.AutoButtonColor = canAfford
 	self.rebirthButton.BackgroundColor3 = if canAfford then self.rebirthButtonEnabledColor else Color3.fromRGB(128, 128, 128)
+
+	local bypassButton = self.bypassButton
+	if bypassButton then
+		bypassButton.Visible = bypassCost ~= nil
+		if bypassCost then
+			local canBypass = coins >= bypassCost
+			bypassButton.Active = canBypass
+			bypassButton.AutoButtonColor = canBypass
+			bypassButton.BackgroundColor3 = if canBypass
+				then self.bypassButtonEnabledColor :: Color3
+				else Color3.fromRGB(128, 128, 128)
+
+			local bypassText: any = self.bypassButtonText
+			if bypassText then
+				bypassText.Text = `Skip requirements ({utils.formatLargeInteger(math.floor(bypassCost))})`
+			end
+		end
+	end
 end
 
 function ClientRebirthManager.beginRebirth(self: ClientRebirthManager)
@@ -179,6 +205,19 @@ function ClientRebirthManager.init(self: ClientRebirthManager)
 		RemoteEvents.TryRebirth:FireServer()
 		self:cleanupRebirth()
 	end)
+
+	local bypassButton: any = utils.findFirstDescendant(dialogFit, "BypassRebirthButton")
+	if bypassButton then
+		self.bypassButton = bypassButton
+		self.bypassButtonText = if bypassButton:IsA("TextButton") then bypassButton else utils.findFirstDescendant(bypassButton, "TextLabel")
+		self.bypassButtonEnabledColor = bypassButton.BackgroundColor3
+		bypassButton.Activated:Connect(function()
+			RemoteEvents.TryRebirthBypass:FireServer()
+			self:cleanupRebirth()
+		end)
+	else
+		warn("ClientRebirthManager: no BypassRebirthButton in the Rebirth dialog; skipping the requirements is disabled")
+	end
 
 	local exitButton: any = utils.findFirstDescendant(dialogFit, "ExitButton")
 	exitButton.Activated:Connect(function()

@@ -55,7 +55,7 @@ synced by Rojo.
 | Studio location | Contains | Consumed by |
 |---|---|---|
 | `ServerScriptService.GameData.Objects` | One ModuleScript per item/object definition (`name`, `type`, `mixins`, `templatePath`, `boardSpacing`, …) | `ObjectDataStore:initDataTypes()` |
-| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `FeaturedDeals`, `Playtime`, `DailyLogin`, `SpinWheel`, `Rebirth` (per level: `cost`, `requiredPetName`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
+| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `FeaturedDeals`, `Playtime`, `DailyLogin`, `SpinWheel`, `Rebirth` (per level: `cost`, `requiredRarity`, `bypassCoinCost`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
 | `ServerScriptService.GameData.LootTables` | One ModuleScript per loot table | `LootTableManager:init()` |
 | `ServerScriptService.GameData.Vanity` | `MainPlotInner`, `MainPlotOuter`, `Fence`, `ExpansionInner`, … | `PlotsManager:initVanityData()` |
 | `ReplicatedStorage.RemoteEvents` | Every RemoteEvent instance | server + client (see below) |
