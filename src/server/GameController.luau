@@ -18,6 +18,7 @@ local Critter = require("./Critter")
 local Crop = require("./Crop")
 local Crystal = require("./Crystal")
 local dailyLoginManager = require("./DailyLoginManager")
+local dayNightManager = require("./DayNightManager")
 local customerTools = require("./CustomerTools")
 local dealShopManager = require("./DealShopManager")
 local devTools = require("./DevTools")
@@ -1600,6 +1601,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		plotCFrame = plotsManager:getPlotCFrameForUserId(player.UserId),
 		buyStoreData = buyStoreManager:getBuyStoreDataForPlayer(player),
 		clientWeatherDatas = weatherManager:getClientWeatherDatas(),
+		dayNight = dayNightManager:getClientConfig(),
 		devToolSettings = devToolSettings,
 		options = playerData:getOptions(),
 		abilityStatuses = playerData:getAbilityStatuses(),
@@ -4040,6 +4042,7 @@ function GameController.init(self: GameController): ()
 	tradeManager:init()
 	mutationStoreManager:init()
 	vanityStoreManager:init()
+	dayNightManager:init()
 	dealShopManager:init()
 	spinWheelManager:init()
 	islandManager:init()

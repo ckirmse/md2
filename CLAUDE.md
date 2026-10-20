@@ -55,7 +55,7 @@ synced by Rojo.
 | Studio location | Contains | Consumed by |
 |---|---|---|
 | `ServerScriptService.GameData.Objects` | One ModuleScript per item/object definition (`name`, `type`, `mixins`, `templatePath`, `boardSpacing`, …) | `ObjectDataStore:initDataTypes()` |
-| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `FeaturedDeals`, `Playtime`, `DailyLogin`, `SpinWheel`, `Rebirth` (per level: `cost`, `requiredRarity`, `bypassCoinCost`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
+| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `FeaturedDeals`, `Playtime`, `DailyLogin`, `DayNight`, `SpinWheel`, `Rebirth` (per level: `cost`, `requiredRarity`, `bypassCoinCost`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
 | `ServerScriptService.GameData.LootTables` | One ModuleScript per loot table | `LootTableManager:init()` |
 | `ServerScriptService.GameData.Vanity` | `MainPlotInner`, `MainPlotOuter`, `Fence`, `ExpansionInner`, … | `PlotsManager:initVanityData()` |
 | `ReplicatedStorage.RemoteEvents` | Every RemoteEvent instance | server + client (see below) |
@@ -454,6 +454,26 @@ Eggs incubate only in **egg slots** on the player's plot; dragons roam the open 
   the world or starts or stops being ridden.
 - **Studio prerequisites:** RemoteEvents `TryPlaceEgg`, `TryRemoveEgg`, `NotifyEggSlotsChanged`; the template and
   markers above; `eggSlots` and `dragonLimit` on every `Control/Rebirth` level.
+
+## Day and Night
+
+Day and night alternate on the server clock: a day of `dayDurationSec`, then a night of `nightDurationSec`, repeating. The phase is a pure function
+of `workspace:GetServerTimeNow()` (`shared/DayNightMath.luau`), so the server and every client agree with no state or remote, and every
+server shares the same phase. Files: `shared/DayNightMath.luau`, `server/DayNightManager.luau`, `client/ClientDayNightManager.luau`.
+
+- **Config** is the Studio-only `GameData.Control.DayNight`: `isEnabled` (master switch: false keeps it day with the day look and no egg lights, for testing), `dayDurationSec` and `nightDurationSec` (each > 0, separate timers), `fadeSec` (>= 0, 0 = instant), `day` and `night` looks
+  (`clockTime` 0 to 24, `brightness`, `outdoorAmbient` Color3) and `eggLight` (`brightness`, `range`, `color`). `DayNightManager:init` errors (stops
+  the server) on a bad table; it travels in `initData.dayNight`.
+- **Client:** a 0.25 s `ClientTicker` computes the phase; at each flip it tweens `Lighting` (ClockTime, Brightness, OutdoorAmbient) over `fadeSec`
+  (the first call after join is instant). ClockTime tweens the short numeric way, so pick day/night values that look right going that way.
+  Eggs in the world (`Tags.DRAGON_EGG` under workspace) get a `NightUnderlight` PointLight at night; none in a backpack.
+- **HUD timer:** HUD ScreenGui `ScreenGui` > `DayNightFrame` (hidden when the cycle is disabled) with `TimerLabel` (time left in the current
+  phase, `m:ss`), optional `PhaseLabel` ("Day" / "Night") and optional `DayIcon` / `NightIcon` (one is visible at a time). A missing frame only warns.
+- **Server:** `dayNightManager:isNight()` is the gameplay check (the Starlight and Starlit rules will use it).
+- **Dev tools:** `setDayNightPhase("day"|"night")` and `resetDayNight` (client section "Day / Night") shift a dev-only offset kept in the
+  workspace attribute `Attributes.DAY_NIGHT_OFFSET_SEC`, which both sides read.
+- **Not built yet:** Starlight keeping the sky dark, and weather lighting: `WeatherManager` still tweens `Lighting` on the server for Heat, which
+  conflicts with the client's fade until the weather rework moves it.
 
 ## Playtime Rewards
 

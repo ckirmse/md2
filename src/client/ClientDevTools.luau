@@ -741,6 +741,17 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("dumpRarityTable")
 			end
 
+			Iris.SeparatorText({ "Day / Night" })
+			if Iris.Button({ "Force Day" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("setDayNightPhase", "day")
+			end
+			if Iris.Button({ "Force Night" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("setDayNightPhase", "night")
+			end
+			if Iris.Button({ "Reset Day / Night" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("resetDayNight")
+			end
+
 			Iris.SeparatorText({ "Deal Shop" })
 			if Iris.Button({ "Restock Deal Shop" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("restockDealShop")

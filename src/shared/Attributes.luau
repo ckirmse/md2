@@ -66,6 +66,9 @@ module = {
 	CARRY_TOTAL_SEC = "CarryTotalSec",
 	FREE_FOR_PICKUP = "FreeForPickup",
 
+	-- on workspace: dev-only shift of the day/night clock, in seconds
+	DAY_NIGHT_OFFSET_SEC = "DayNightOffsetSec",
+
 	-- sellable items need this so client knows what it is
 	SELL_NAME = "SellName",
 	COUNT = "Count",

@@ -23,6 +23,7 @@ local plotsManager = require("./PlotsManager")
 local rideMixin = require("./RideMixin")
 local scatterZoneManager = require("./ScatterZoneManager")
 local spinWheelManager = require("./SpinWheelManager")
+local dayNightManager = require("./DayNightManager")
 local eggSlotManager = require("./EggSlotManager")
 local starterOfferManager = require("./StarterOfferManager")
 local storageManager = require("./StorageManager")
@@ -329,6 +330,19 @@ function DevTools.dumpRarityTable(self: DevTools, player: Player)
 			"scale cap", RarityMath.getModelScale(row, 1, row.levelCap)
 		)
 	end
+end
+
+function DevTools.setDayNightPhase(self: DevTools, player: Player, phaseName: any)
+	if phaseName ~= "day" and phaseName ~= "night" then
+		warn("setDayNightPhase needs \"day\" or \"night\"", phaseName)
+		return
+	end
+
+	dayNightManager:devSetPhase(phaseName == "night")
+end
+
+function DevTools.resetDayNight(self: DevTools, player: Player)
+	dayNightManager:devReset()
 end
 
 function DevTools.restockDealShop(self: DevTools, player: Player)
