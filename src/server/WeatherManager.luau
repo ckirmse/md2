@@ -27,7 +27,7 @@ local ERA_DURATION_SEC = 5 * 60
 
 type RunningWeather = {
 	endTimer: Timer.Timer,
-	effectTime: Timer.Timer,
+	-- effectTime: Timer.Timer, -- as of 2026-october-20 the crop effect is switched off, see applyEffectToItems
 }
 
 type WeatherManagerFields = {
@@ -56,11 +56,12 @@ function WeatherManager.beginWeatherName(self: WeatherManager, weatherName: stri
 				self:sendWeatherAllPlayers()
 			end
 		),
-		effectTime = Timer.new(weatherData.effect.sec,
-			function()
-				self:applyEffectToItems(weatherName)
-			end
-		),
+		-- as of 2026-october-20 the crop effect is switched off, see applyEffectToItems
+		-- effectTime = Timer.new(weatherData.effect.sec,
+		-- 	function()
+		-- 		self:applyEffectToItems(weatherName)
+		-- 	end
+		-- ),
 	}
 	self.activeWeathers[weatherName] = runningData
 
@@ -77,7 +78,7 @@ function WeatherManager.endWeatherName(self: WeatherManager, weatherName: string
 
 	local runningData = self.activeWeathers[weatherName]
 	runningData.endTimer:cancel()
-	runningData.effectTime:cancel()
+	-- runningData.effectTime:cancel()
 
 	self.activeWeathers[weatherName] = nil
 
@@ -208,38 +209,39 @@ function WeatherManager.deactivateWeatherInWorld(self: WeatherManager, weatherNa
 
 end
 
-function WeatherManager.applyEffectToItems(self: WeatherManager, weatherName: string)
-	local weatherData = weatherDataStore:getWeatherDataByName(weatherName) :: any
-
-	--print("should apply effect for", weatherName)
-
-	-- pick random crop and apply effect
-	local crops = itemManager:getCropsOnGround()
-
-	local items = {}
-	utils.arrayAppend(items, crops)
-
-	if #items == 0 then
-		return
-	end
-
-	local modification = weatherData.effect.apply.modification
-
-	local random = Random.new()
-	for i = 1, weatherData.effect.apply.count do
-		local index = random:NextInteger(1, #items)
-
-		local item = items[index]
-		if item:doesHaveModification(modification) then
-			--print("skipping weather modification, item already has it", modification, item)
-			continue
-		end
-
-		--print("applying", modification, "to", item)
-		item:addModification(modification)
-	end
-
-end
+-- as of 2026-october-20 weather no longer gives crops modifications (weather will affect dragons and eggs instead)
+-- function WeatherManager.applyEffectToItems(self: WeatherManager, weatherName: string)
+-- 	local weatherData = weatherDataStore:getWeatherDataByName(weatherName) :: any
+--
+-- 	--print("should apply effect for", weatherName)
+--
+-- 	-- pick random crop and apply effect
+-- 	local crops = itemManager:getCropsOnGround()
+--
+-- 	local items = {}
+-- 	utils.arrayAppend(items, crops)
+--
+-- 	if #items == 0 then
+-- 		return
+-- 	end
+--
+-- 	local modification = weatherData.effect.apply.modification
+--
+-- 	local random = Random.new()
+-- 	for i = 1, weatherData.effect.apply.count do
+-- 		local index = random:NextInteger(1, #items)
+--
+-- 		local item = items[index]
+-- 		if item:doesHaveModification(modification) then
+-- 			--print("skipping weather modification, item already has it", modification, item)
+-- 			continue
+-- 		end
+--
+-- 		--print("applying", modification, "to", item)
+-- 		item:addModification(modification)
+-- 	end
+--
+-- end
 
 function WeatherManager.addRandomWeather(self: WeatherManager)
 	local random = Random.new(self.currentEra)
