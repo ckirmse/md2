@@ -291,7 +291,7 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			{ size = self.state.windowSize, position = self.state.windowPosition, isOpened = showDevWindow }
 		)
 		do
-			Iris.SeparatorText({ "Debug" })
+			Iris.CollapsingHeader({ "Debug" })
 			local debugUseBillboardsCheckbox = Iris.Checkbox(
 				{ "Use Billboards" },
 				{ isChecked = self.state.debugUseBillboardsState }
@@ -353,7 +353,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			if Iris.Button({ "Dump Server Trading State" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpServerTradingState")
 			end
-			Iris.SeparatorText({ "Dragons" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Dragons" })
 			if Iris.Button({ "Dump Dragon Income" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpDragonIncome")
 			end
@@ -364,7 +366,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("removeAllEggs")
 			end
 
-			Iris.SeparatorText({ "Radar" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Radar" })
 			local radarItemId = Iris.State(0)
 			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = radarItemId })
 			Iris.SameLine()
@@ -373,7 +377,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
-			Iris.SeparatorText({ "Scatter Zones" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Scatter Zones" })
 			if Iris.Button({ "Dump Scatter Zones" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpScatterZones")
 			end
@@ -389,7 +395,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
-			Iris.SeparatorText({ "Hatching" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Hatching" })
 			if Iris.Button({ "Dump Egg Loot Weights" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpEggLootWeights")
 			end
@@ -412,7 +420,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
-			Iris.SeparatorText({ "Dragon Leveling" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Dragon Leveling" })
 			local dragonLevelItemId = Iris.State(0)
 			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = dragonLevelItemId })
 			Iris.SameLine()
@@ -428,7 +438,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
-			Iris.SeparatorText({ "Plot Luck" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Plot Luck" })
 			if Iris.Button({ "Dump Plot Luck" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpPlotLuck")
 			end
@@ -446,7 +458,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("tryUpgradePlotLuck", true)
 			end
 
-			Iris.SeparatorText({ "Rebirth" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Rebirth" })
 			if Iris.Button({ "Dump Rebirth" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpRebirth")
 			end
@@ -454,7 +468,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("rebirth")
 			end
 
-			Iris.SeparatorText({ "Coins" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Coins" })
 			if Iris.Button({ "Reset Coins" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("resetCoins")
 			end
@@ -473,7 +489,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
-			Iris.SeparatorText({ "Primary Element Affinity" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Primary Element Affinity" })
 			if Iris.Button({ "Reset Affinity Levels and XP" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("resetPrimaryElementProgress")
 			end
@@ -489,7 +507,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
-			Iris.SeparatorText({ "State" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "State" })
 
 			Iris.SameLine()
 			local saveOnExitState = Iris.State(true)
@@ -563,7 +583,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				end
 			end
 
-			Iris.SeparatorText({ "Item Drops" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Item Drops" })
 			if Iris.Button({ "Add Gem Pile" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("addGemPile")
 			end
@@ -728,7 +750,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				end
 			end
 
-			Iris.SeparatorText({ "Daily Rewards" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Daily Rewards" })
 			if Iris.Button({ "Advance Daily Reward Day" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("advanceDailyLoginDay")
 			end
@@ -736,12 +760,16 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("resetDailyLogin")
 			end
 
-			Iris.SeparatorText({ "Rarities" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Rarities" })
 			if Iris.Button({ "Dump Rarity Table" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpRarityTable")
 			end
 
-			Iris.SeparatorText({ "Day / Night" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Day / Night" })
 			if Iris.Button({ "Force Day" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("setDayNightPhase", "day")
 			end
@@ -752,17 +780,23 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("resetDayNight")
 			end
 
-			Iris.SeparatorText({ "Deal Shop" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Deal Shop" })
 			if Iris.Button({ "Restock Deal Shop" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("restockDealShop")
 			end
 
-			Iris.SeparatorText({ "Featured Deals" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Featured Deals" })
 			if Iris.Button({ "Dump Featured Deals" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpFeaturedDeals")
 			end
 
-			Iris.SeparatorText({ "Spin Wheel" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Spin Wheel" })
 			if Iris.Button({ "Give Free Spin" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("giveFreeSpin")
 			end
@@ -776,7 +810,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("resetSpinWheel")
 			end
 
-			Iris.SeparatorText({ "Playtime Rewards" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Playtime Rewards" })
 			local playtimeSecondsState = Iris.State(300)
 			Iris.InputNum({ [Iris.Args.InputNum.Text] = "Seconds", [Iris.Args.InputNum.Format] = "%i" }, { number = playtimeSecondsState })
 			if Iris.Button({ "Fast Forward Playtime" }).clicked() then
@@ -786,7 +822,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("resetPlaytimeRewards")
 			end
 
-			Iris.SeparatorText({ "Index" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Index" })
 			if Iris.Button({ "Dump Index State" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpIndexState")
 			end
@@ -967,7 +1005,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("dumpIndexMutationChanceBuff")
 			end
 
-			Iris.SeparatorText({ "Stores" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Stores" })
 			if Iris.Button({ "Restock Random" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("restockBuyStoreRandom")
 			end
@@ -984,7 +1024,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("resetPromptGroupTime")
 			end
 
-			Iris.SeparatorText({ "Nodes" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Nodes" })
 			if Iris.Button({ "Refill Nodes" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("refillNodes")
 			end
@@ -1021,7 +1063,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				helperItemId = ridingObj:GetAttribute(Attributes.ITEM_ID)
 			end
 
-			Iris.SeparatorText({ "Client Helpers" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Client Helpers" })
 			if helperItemId then
 				if Iris.Button({ "Destroy Item" }).clicked() then
 					RemoteEvents.TryDevTool:FireServer("destroyItem", helperItemId)
@@ -1148,7 +1192,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			local weatherDataFolder: any = splendidDataFolder:WaitForChild("Weather")
 			local clientWeatherDatas = clientWeatherManager:getClientWeatherDatas()
 
-			Iris.SeparatorText({ "Weather Control" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Weather Control" })
 
 			Iris.SameLine()
 			for _, inst in weatherDataFolder:GetChildren() do
@@ -1173,7 +1219,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
-			Iris.SeparatorText({ "Element Unlocks" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Element Unlocks" })
 
 			Iris.SameLine()
 			for _, primaryElement in enums.getAllValues(enums.PrimaryElements) do
@@ -1206,7 +1254,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
-			Iris.SeparatorText({ "FTUE" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "FTUE" })
 
 			Iris.SameLine()
 			if Iris.Button({ "Restart" }).clicked() then
@@ -1217,7 +1267,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
-			Iris.SeparatorText({ "Contextual FTUE" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Contextual FTUE" })
 
 			local triggerContextualFtueState = Iris.State("")
 			Iris.Combo({ "" }, { index = triggerContextualFtueState })
@@ -1242,7 +1294,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
-			Iris.SeparatorText({ "First Session Offer" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "First Session Offer" })
 
 			Iris.SameLine()
 			if Iris.Button({ "Restart" }).clicked() then
@@ -1256,7 +1310,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 			Iris.End()
 
-			Iris.SeparatorText({ "Vanity" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Vanity" })
 			local vanityDataFolder: any = splendidDataFolder:WaitForChild("Vanity")
 
 			local playerVanityState = Iris.State(enums.PlayerVanityState.LOCKED)
@@ -1418,7 +1474,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				clientNewBlueprintManager:notifyNewBlueprint("nothing, this is a test", enums.Rarity.RARE)
 			end
 
-			Iris.SeparatorText({ "Item Screenshot" })
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Item Screenshot" })
 
 			local screenshotViewportCheckbox = Iris.Checkbox(
 				{ "Enable Viewport" },
@@ -1490,6 +1548,7 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			if Iris.Button({ "Take Screenshot" }).clicked() then
 				showDevWindow:set(false)
 			end
+			Iris.End()
 		end
 
 		Iris.End()
