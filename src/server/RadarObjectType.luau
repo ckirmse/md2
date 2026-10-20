@@ -44,8 +44,6 @@ function RadarObjectType.new(): RadarObjectType
 			type = "enum",
 			name = "Rarity",
 		},
-		-- max search distance, in studs, from the activating player
-		range = "nonnegativeNumber",
 		-- how long the client-side directional guidance stays up after a successful search
 		guidanceDurationSec = "nonnegativeNumber",
 

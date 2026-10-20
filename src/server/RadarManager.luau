@@ -20,7 +20,6 @@ type GuidanceState = {
 	eggItemId: number,
 	radarItemId: number,
 	targetRarity: number,
-	range: number,
 	expiresAt: number,
 }
 
@@ -32,8 +31,7 @@ type RadarManagerFields = {
 export type RadarManager = typeof(setmetatable({} :: RadarManagerFields, RadarManager))
 
 -- source-agnostic: finds the nearest unowned, not-currently-carried dragon egg matching rarity
--- and range -- works the same whether the egg came from a ScatterZone or was dropped
-function RadarManager.findNearestAvailableEgg(self: RadarManager, position: Vector3, rarity: number, maxRange: number): Types.DragonEgg?
+function RadarManager.findNearestAvailableEgg(self: RadarManager, position: Vector3, rarity: number): Types.DragonEgg?
 	local closestEgg: Types.DragonEgg?
 	local closestDistance = math.huge
 
@@ -51,10 +49,6 @@ function RadarManager.findNearestAvailableEgg(self: RadarManager, position: Vect
 		end
 
 		local distance = (egg:getObj():GetPivot().Position - position).Magnitude
-		if distance > maxRange then
-			continue
-		end
-
 		if distance < closestDistance then
 			closestDistance = distance
 			closestEgg = egg
@@ -86,7 +80,7 @@ function RadarManager.clearGuidance(self: RadarManager, player: Player, targetRa
 	end
 end
 
-function RadarManager.beginGuidance(self: RadarManager, player: Player, egg: Types.DragonEgg, targetRarity: number, range: number, guidanceDurationSec: number, radarItemId: number)
+function RadarManager.beginGuidance(self: RadarManager, player: Player, egg: Types.DragonEgg, targetRarity: number, guidanceDurationSec: number, radarItemId: number)
 	local expiresAt = workspace:GetServerTimeNow() + guidanceDurationSec
 
 	local byRarity = self.guidanceByPlayer[player]
@@ -99,7 +93,6 @@ function RadarManager.beginGuidance(self: RadarManager, player: Player, egg: Typ
 		eggItemId = egg:getItemId(),
 		radarItemId = radarItemId,
 		targetRarity = targetRarity,
-		range = range,
 		expiresAt = expiresAt,
 	}
 
@@ -127,7 +120,7 @@ function RadarManager.tickGuidance(self: RadarManager, player: Player, guidance:
 		return
 	end
 
-	-- someone else took it, or it broke -- redirect to another matching-rarity egg
+	-- someone else took it -- redirect to another matching-rarity egg
 	local character = player.Character
 	local humanoidRootPart = character and (character :: any):FindFirstChild("HumanoidRootPart")
 	if not humanoidRootPart then
@@ -135,13 +128,13 @@ function RadarManager.tickGuidance(self: RadarManager, player: Player, guidance:
 	end
 
 	local position = (humanoidRootPart :: BasePart).Position
-	local newEgg = self:findNearestAvailableEgg(position, guidance.targetRarity, guidance.range)
+	local newEgg = self:findNearestAvailableEgg(position, guidance.targetRarity)
 
 	if not newEgg then
 		self:clearGuidance(player, guidance.targetRarity)
 		gameController:sendSystemMessageToPlayer(
 			player,
-			string.format("Your %s egg was taken and no others are in range", enums.getPublicName(enums.Rarity, guidance.targetRarity))
+			string.format("Your %s egg is gone and no others are on the map", enums.getPublicName(enums.Rarity, guidance.targetRarity))
 		)
 		return
 	end
@@ -152,7 +145,7 @@ function RadarManager.tickGuidance(self: RadarManager, player: Player, guidance:
 
 	gameController:sendSystemMessageToPlayer(
 		player,
-		string.format("Your target egg was taken -- redirecting to another %s egg", enums.getPublicName(enums.Rarity, guidance.targetRarity))
+		string.format("Your target egg is gone -- redirecting to another %s egg", enums.getPublicName(enums.Rarity, guidance.targetRarity))
 	)
 end
 

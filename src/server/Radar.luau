@@ -83,17 +83,17 @@ function Radar.notifyToolActivated(self: Radar)
 
 	local position = (humanoidRootPart :: BasePart).Position
 
-	local egg = radarManager:findNearestAvailableEgg(position, itemData.targetRarity, itemData.range)
+	local egg = radarManager:findNearestAvailableEgg(position, itemData.targetRarity)
 
 	if not egg then
 		gameController:sendSystemMessageToPlayer(
 			player,
-			string.format("No %s eggs are within range", enums.getPublicName(enums.Rarity, itemData.targetRarity))
+			string.format("No %s eggs are on the map", enums.getPublicName(enums.Rarity, itemData.targetRarity))
 		)
 		return
 	end
 
-	radarManager:beginGuidance(player, egg, itemData.targetRarity, itemData.range, itemData.guidanceDurationSec, self:getItemId())
+	radarManager:beginGuidance(player, egg, itemData.targetRarity, itemData.guidanceDurationSec, self:getItemId())
 end
 
 function Radar.getSaveData(self: Radar, itemIdMap: any): any
