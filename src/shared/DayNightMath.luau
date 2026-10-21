@@ -10,6 +10,11 @@ export type LightLook = {
 	outdoorAmbient: Color3,
 }
 
+export type WeatherLighting = {
+	brightness: number?,
+	outdoorAmbient: Color3?,
+}
+
 export type EggLight = {
 	brightness: number,
 	range: number,

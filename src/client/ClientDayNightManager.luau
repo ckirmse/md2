@@ -29,6 +29,9 @@ type ClientDayNightManagerFields = {
 	dayIcon: any?,
 	nightIcon: any?,
 	shownRemainingSec: number?,
+	nightLockEndTime: number?,
+	weatherLighting: DayNightMath.WeatherLighting?,
+	isLookDirty: boolean,
 }
 
 export type ClientDayNightManager = typeof(setmetatable({} :: ClientDayNightManagerFields, ClientDayNightManager))
@@ -162,18 +165,53 @@ function ClientDayNightManager.update(self: ClientDayNightManager)
 		return
 	end
 
+	local now = workspace:GetServerTimeNow()
 	local offsetSec = (workspace:GetAttribute(Attributes.DAY_NIGHT_OFFSET_SEC) :: number?) or 0
-	local state = DayNightMath.getState(config, workspace:GetServerTimeNow(), offsetSec)
+	local state = DayNightMath.getState(config, now, offsetSec)
 	local isNight = state.isNight
+	local remainingSec = state.remainingSec
 
-	if isNight ~= self.isNight then
+	local nightLockEndTime = self.nightLockEndTime
+	if nightLockEndTime and now < nightLockEndTime then
+		isNight = true
+		remainingSec = nightLockEndTime - now
+	end
+
+	if isNight ~= self.isNight or self.isLookDirty then
 		local isFirst = self.isNight == nil
 		self.isNight = isNight
-		self:applyLook(if isNight then config.night else config.day, isFirst)
+		self.isLookDirty = false
+		self:applyLook(self:getEffectiveLook(isNight), isFirst)
 	end
 
 	self:syncEggLights()
-	self:updateHud(state.remainingSec)
+	self:updateHud(remainingSec)
+end
+
+function ClientDayNightManager.getEffectiveLook(self: ClientDayNightManager, isNight: boolean): DayNightMath.LightLook
+	local config = self.config :: DayNightMath.DayNightConfig
+	local base = if isNight then config.night else config.day
+	local weatherLighting = self.weatherLighting
+	if not weatherLighting then
+		return base
+	end
+
+	return {
+		clockTime = base.clockTime,
+		brightness = weatherLighting.brightness or base.brightness,
+		outdoorAmbient = weatherLighting.outdoorAmbient or base.outdoorAmbient,
+	}
+end
+
+function ClientDayNightManager.setWeatherLighting(self: ClientDayNightManager, lighting: DayNightMath.WeatherLighting?)
+	self.weatherLighting = lighting
+	self.isLookDirty = true
+	self:update()
+end
+
+function ClientDayNightManager.setNightLock(self: ClientDayNightManager, endTime: number?)
+	self.nightLockEndTime = endTime
+	self:update()
 end
 
 -- the config from the server: in the init data
@@ -212,6 +250,9 @@ function ClientDayNightManager.new(): ClientDayNightManager
 	self.dayIcon = nil
 	self.nightIcon = nil
 	self.shownRemainingSec = nil
+	self.nightLockEndTime = nil
+	self.weatherLighting = nil
+	self.isLookDirty = false
 
 	return self
 end

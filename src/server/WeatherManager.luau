@@ -15,6 +15,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- the RemoteEvents children only exist in Studio, so they are untyped here
 local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
+local weatherControl = require("@game/ServerScriptService/GameData/Control/Weather")
+
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local PlotHelpers = require("@game/ReplicatedStorage/Shared/PlotHelpers")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
@@ -37,6 +39,10 @@ type WeatherManagerFields = {
 }
 
 export type WeatherManager = typeof(setmetatable({} :: WeatherManagerFields, WeatherManager))
+
+function WeatherManager.isLegacyActive(self: WeatherManager): boolean
+	return weatherControl.useLegacyWeather == true
+end
 
 function WeatherManager.beginWeatherName(self: WeatherManager, weatherName: string, duration: number)
 	if self.activeWeathers[weatherName] then
@@ -308,7 +314,9 @@ function WeatherManager.new(): WeatherManager
 		activeWeathers = {},
 	} :: WeatherManagerFields, WeatherManager)
 
-	self:updateWeather()
+	if weatherControl.useLegacyWeather == true then
+		self:updateWeather()
+	end
 
 	return self
 end

@@ -10,6 +10,7 @@ local DayNightMath = require("@game/ReplicatedStorage/Shared/DayNightMath")
 
 type DayNightManagerFields = {
 	config: DayNightMath.DayNightConfig,
+	isNightLocked: boolean,
 }
 
 export type DayNightManager = typeof(setmetatable({} :: DayNightManagerFields, DayNightManager))
@@ -19,7 +20,15 @@ local function getOffsetSec(): number
 end
 
 function DayNightManager.isNight(self: DayNightManager): boolean
+	if self.isNightLocked then
+		return true
+	end
+
 	return DayNightMath.isNight(self.config, workspace:GetServerTimeNow(), getOffsetSec())
+end
+
+function DayNightManager.setNightLocked(self: DayNightManager, isLocked: boolean)
+	self.isNightLocked = isLocked
 end
 
 function DayNightManager.getClientConfig(self: DayNightManager): DayNightMath.DayNightConfig
@@ -47,6 +56,7 @@ end
 
 function DayNightManager.new(): DayNightManager
 	local self = setmetatable({} :: DayNightManagerFields, DayNightManager)
+	self.isNightLocked = false
 	return self
 end
 

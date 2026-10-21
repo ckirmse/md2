@@ -69,6 +69,7 @@ local Validate = require("./Validate")
 local mutationStoreManager = require("./MutationStoreManager")
 local vanityStoreManager = require("./VanityStoreManager")
 local verticalMixin = require("./VerticalMixin")
+local weatherEventManager = require("./WeatherEventManager")
 local weatherManager = require("./WeatherManager")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -1602,6 +1603,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		buyStoreData = buyStoreManager:getBuyStoreDataForPlayer(player),
 		clientWeatherDatas = weatherManager:getClientWeatherDatas(),
 		dayNight = dayNightManager:getClientConfig(),
+		weather = weatherEventManager:getClientData(),
 		devToolSettings = devToolSettings,
 		options = playerData:getOptions(),
 		abilityStatuses = playerData:getAbilityStatuses(),
@@ -4043,6 +4045,7 @@ function GameController.init(self: GameController): ()
 	mutationStoreManager:init()
 	vanityStoreManager:init()
 	dayNightManager:init()
+	weatherEventManager:init()
 	dealShopManager:init()
 	spinWheelManager:init()
 	islandManager:init()
@@ -4141,6 +4144,7 @@ local function initClasses(gameController: GameController): ()
 	mutationStoreManager.initClass(deps)
 	vanityStoreManager.initClass(deps)
 	dealShopManager.initClass(deps)
+	weatherEventManager.initClass(deps)
 	rewardGranter.initClass(deps)
 	playtimeRewardManager.initClass(deps)
 	dailyLoginManager.initClass(deps)

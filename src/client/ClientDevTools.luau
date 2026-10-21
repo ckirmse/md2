@@ -28,6 +28,7 @@ local clientPlayerManager = require("./ClientPlayerManager")
 local clientPlayerAttributesManager = require("./ClientPlayerAttributesManager")
 local clientRideController = require("./ClientRideController")
 local clientShadowManager = require("./ClientShadowManager")
+local clientWeatherEventManager = require("./ClientWeatherEventManager")
 local clientWeatherManager = require("./ClientWeatherManager")
 local clientNetopsTools = require("./ClientNetopsTools")
 
@@ -1194,7 +1195,21 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 
 			Iris.End()
 
-			Iris.CollapsingHeader({ "Weather Control" })
+			Iris.CollapsingHeader({ "Weather" })
+			Iris.Text({ "--- Weather Events ---" })
+			if not clientWeatherEventManager:isEnabled() then
+				Iris.Text({ "Off: Control/Weather.useLegacyWeather is true" })
+			end
+			for weather, event in clientWeatherEventManager:getEvents() do
+				if Iris.Button({ "Start " .. event.displayName }).clicked() then
+					RemoteEvents.TryDevTool:FireServer("startWeatherEvent", weather)
+				end
+			end
+			if Iris.Button({ "End Weather" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("endWeatherEvent")
+			end
+
+			Iris.Text({ "--- Weather Control ---" })
 
 			Iris.SameLine()
 			for _, inst in weatherDataFolder:GetChildren() do

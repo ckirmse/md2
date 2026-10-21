@@ -57,6 +57,7 @@ local clientEggSlotsManager = require("./ClientEggSlotsManager")
 local clientTradePlayerList = require("./ClientTradePlayerList")
 local clientTradeRequestedOverlay = require("./ClientTradeRequestedOverlay")
 local clientTradingManager = require("./ClientTradingManager")
+local clientWeatherEventManager = require("./ClientWeatherEventManager")
 local clientWeatherManager = require("./ClientWeatherManager")
 local clientWelcomeBackManager = require("./ClientWelcomeBackManager")
 local clientXpDisplayManager = require("./ClientXpDisplayManager")
@@ -143,8 +144,11 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 		end
 		clientBuyStore:setBuyStoreData(buyStoreData)
 
-		local clientWeatherDatas = initData.clientWeatherDatas
-		clientWeatherManager:setClientWeatherDatas(clientWeatherDatas)
+		clientWeatherEventManager:setData(initData.weather)
+		if not clientWeatherEventManager:isEnabled() then
+			local clientWeatherDatas = initData.clientWeatherDatas
+			clientWeatherManager:setClientWeatherDatas(clientWeatherDatas)
+		end
 
 		local devToolSettings = initData.devToolSettings
 		if devToolSettings then
@@ -239,7 +243,11 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 
 	RemoteEvents.NotifyWeatherUpdate.OnClientEvent:Connect(function(clientWeatherDatas)
 		--print("weather update", clientWeatherDatas)
-		clientWeatherManager:setClientWeatherDatas(clientWeatherDatas)
+		if type(clientWeatherDatas) == "table" and clientWeatherDatas.isWeatherEvents then
+			clientWeatherEventManager:setActive(clientWeatherDatas.active)
+		else
+			clientWeatherManager:setClientWeatherDatas(clientWeatherDatas)
+		end
 	end)
 
 	RemoteEvents.NotifyEggWorldCounts.OnClientEvent:Connect(function(eggWorldCountDatas, nextRefreshTime)

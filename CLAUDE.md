@@ -55,7 +55,7 @@ synced by Rojo.
 | Studio location | Contains | Consumed by |
 |---|---|---|
 | `ServerScriptService.GameData.Objects` | One ModuleScript per item/object definition (`name`, `type`, `mixins`, `templatePath`, `boardSpacing`, …) | `ObjectDataStore:initDataTypes()` |
-| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `FeaturedDeals`, `Playtime`, `DailyLogin`, `DayNight`, `SpinWheel`, `Rebirth` (per level: `cost`, `requiredRarity`, `bypassCoinCost`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
+| `ServerScriptService.GameData.Control.*` | Balance/tuning tables — `Progression`, `Capacity`, `Luck`, `Mutations`, `Modifications`, `AbilityValues`, `CrystalTime`, `EatingTime`, `OfflineHarvesting`, `Nodes`, `Codes`, `Start`, `StarterOffer`, `FirstSessionOffer`, `IndexChainRewards`, `VanityAreas`, `DealShop`, `FeaturedDeals`, `Playtime`, `DailyLogin`, `DayNight`, `Weather`, `SpinWheel`, `Rebirth` (per level: `cost`, `requiredRarity`, `bypassCoinCost`, `incomeMult`, `luckMult`, `eggSlots`, `dragonLimit`), `Hatching` | `require("@game/ServerScriptService/GameData/Control/X")`, ~53 call sites |
 | `ServerScriptService.GameData.LootTables` | One ModuleScript per loot table | `LootTableManager:init()` |
 | `ServerScriptService.GameData.Vanity` | `MainPlotInner`, `MainPlotOuter`, `Fence`, `ExpansionInner`, … | `PlotsManager:initVanityData()` |
 | `ReplicatedStorage.RemoteEvents` | Every RemoteEvent instance | server + client (see below) |
@@ -474,6 +474,33 @@ server shares the same phase. Files: `shared/DayNightMath.luau`, `server/DayNigh
   workspace attribute `Attributes.DAY_NIGHT_OFFSET_SEC`, which both sides read.
 - **Not built yet:** Starlight keeping the sky dark, and weather lighting: `WeatherManager` still tweens `Lighting` on the server for Heat, which
   conflicts with the client's fade until the weather rework moves it.
+
+## Weather
+
+Two weather systems exist; `Control/Weather.useLegacyWeather` picks one (read at startup, so changing it needs a restart).
+
+- **Legacy (`useLegacyWeather = true`):** `WeatherManager`, `WeatherDataStore` (a Lua table of Rain/Bloom/Wind/Heat), `ClientWeatherManager`. Several
+  events can run at once, rolled each 5-minute era; the effect on crops is switched off (commented out). Kept so the change can be reverted.
+- **v1.0 system (`useLegacyWeather = false`):** `shared/WeatherMath.luau` (pure: config validation and the era roll), `server/WeatherEventManager.luau`,
+  `client/ClientWeatherEventManager.luau`. **One weather at a time.** At each era boundary (`rollIntervalSec`) the events are rolled in list order, seeded by
+  the era, and the first success wins (`startChance` percent). An event with a start condition (`DAY`, `NIGHT`) that is not met at the boundary starts at the
+  next day/night flip inside the era, or is skipped. Its length is a random value between `durationMin` and `durationMax`. A server that boots mid-era joins
+  the weather in progress with the same end time.
+- **Config** is the Studio-only `GameData.Control.Weather`: `useLegacyWeather`, `rollIntervalSec` and `weatherEvents`, an array of `weather` (`Enums.Weather`),
+  `displayName`, `description`, `iconAssetId` (a string, empty for none), `startChance`, `durationMin`, `durationMax`, `startCondition`
+  (`Enums.WeatherStartCondition`), `trait` (`Enums.Trait`), `traitChance`, and optional `templatePath` (under `ReplicatedStorage.Weather`, with `Main` and
+  `MergePlot` folders like the legacy templates), `lighting = { brightness?, outdoorAmbient? }`, `lockNight`, `startMessage`, `strikeSpreadSec`.
+  `WeatherEventManager:init` errors (stops the server) on a bad table; the events and the running weather travel in `initData.weather` (nil in legacy mode)
+  and `NotifyWeatherUpdate` carries `{ isWeatherEvents = true, active = { weather, startTime, endTime } }`.
+- **Lighting and night lock:** the client never sets lighting itself. The running weather's `lighting` is laid over the day/night look by
+  `ClientDayNightManager:setWeatherLighting`, and `lockNight` (Starlight) holds the sky at night until the weather ends (`setNightLock` on the client,
+  `DayNightManager:setNightLocked` on the server, so `isNight()` is true meanwhile).
+- **HUD:** HUD ScreenGui `ScreenGui` > `WeatherFrame` (hidden when no weather) > `TemplateWeather` (kept hidden and cloned as `ActiveWeather`) with
+  `Icon` (ImageLabel), optional `Timer` (TextLabel, `m:ss`) and optional `Tooltip` (TextLabel, hover or tap). A missing piece only warns.
+- **Dev tools:** `startWeatherEvent(weather)` (ignores the roll and start condition) and `endWeatherEvent` (client section "Weather", above the legacy "Weather Control" checkboxes). The old
+  `activateWeather` / `deactivateWeather` only work in legacy mode.
+- **Not built yet:** traits (the roll at event start, storage on dragons and eggs, hatch inheritance), the Thunderstorm and Shooting Star cinematics
+  (imported package `WeatherEvents/`), Cosmic eggs, temporary luck.
 
 ## Playtime Rewards
 

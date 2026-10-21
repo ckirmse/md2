@@ -29,6 +29,7 @@ local starterOfferManager = require("./StarterOfferManager")
 local storageManager = require("./StorageManager")
 local tradeManager = require("./TradeManager")
 local Validate = require("./Validate")
+local weatherEventManager = require("./WeatherEventManager")
 local weatherManager = require("./WeatherManager")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -1161,12 +1162,35 @@ function DevTools.setUseBillboards(self: DevTools, player: Player, doUseBillboar
 	itemManager:setUseBillboards(doUseBillboards)
 end
 
+function DevTools.startWeatherEvent(self: DevTools, player: Player, weather: any)
+	if not enums.validateValue(enums.Weather, weather) then
+		warn("startWeatherEvent needs an Enums.Weather value", weather)
+		return
+	end
+
+	weatherEventManager:devStart(weather)
+end
+
+function DevTools.endWeatherEvent(self: DevTools, player: Player)
+	weatherEventManager:devEnd()
+end
+
 function DevTools.activateWeather(self: DevTools, player: Player, weatherName: any)
+	if not weatherManager:isLegacyActive() then
+		warn("legacy weather is switched off (Control/Weather.useLegacyWeather); use startWeatherEvent")
+		return
+	end
+
 	weatherManager:beginWeatherName(weatherName, 60)
 	weatherManager:sendWeatherAllPlayers()
 end
 
 function DevTools.deactivateWeather(self: DevTools, player: Player, weatherName: any)
+	if not weatherManager:isLegacyActive() then
+		warn("legacy weather is switched off (Control/Weather.useLegacyWeather); use endWeatherEvent")
+		return
+	end
+
 	weatherManager:endWeatherName(weatherName)
 	weatherManager:sendWeatherAllPlayers()
 end

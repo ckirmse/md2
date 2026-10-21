@@ -111,6 +111,51 @@ module = {
 			MYTHIC = "Mythic",
 		},
 	},
+	Weather = {
+		HEAT = 1,
+		BLOOM = 2,
+		RAIN = 3,
+		WIND = 4,
+		THUNDERSTORM = 5,
+		STARLIGHT = 6,
+
+		PublicNames = {
+			HEAT = "Heat",
+			BLOOM = "Bloom",
+			RAIN = "Rain",
+			WIND = "Wind",
+			THUNDERSTORM = "Thunderstorm",
+			STARLIGHT = "Starlight",
+		},
+	},
+	WeatherStartCondition = {
+		ANY = 1,
+		DAY = 2,
+		NIGHT = 3,
+
+		PublicNames = {
+			ANY = "Any time",
+			DAY = "Day only",
+			NIGHT = "Night only",
+		},
+	},
+	Trait = {
+		SCORCHED = 1,
+		BLOSSOMED = 2,
+		SOAKED = 3,
+		WINDSWEPT = 4,
+		CHARGED = 5,
+		STARLIT = 6,
+
+		PublicNames = {
+			SCORCHED = "Scorched",
+			BLOSSOMED = "Blossomed",
+			SOAKED = "Soaked",
+			WINDSWEPT = "Windswept",
+			CHARGED = "Charged",
+			STARLIT = "Starlit",
+		},
+	},
 	ShopCategory = {
 		DRAGONS = 1,
 		PLANTS = 2,
