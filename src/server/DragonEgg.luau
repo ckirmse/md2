@@ -349,6 +349,7 @@ function DragonEgg.finishHatching(self: DragonEgg)
 
 	local hatchedDragon = dragonItem :: Types.ShadowDragon
 	hatchedDragon:setMutation(mutation)
+	hatchedDragon:setTraits(self.traits)
 	hatchedDragon:setSizePercentile(self.sizePercentile)
 
 	itemManager:destroyItem(self)

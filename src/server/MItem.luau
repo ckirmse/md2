@@ -52,6 +52,17 @@ function MItem.getDataDumpString(self: MItem): string
 	local text = super.getDataDumpString(self)
 	text = text .. "\nMutation: " .. tostring(enums.getName(enums.Mutations, self.mutation))
 
+	text = text .. "\nTraits: "
+	if #self.traits > 0 then
+		local names = {}
+		for _, trait in self.traits do
+			table.insert(names, tostring(enums.getName(enums.Trait, trait)))
+		end
+		text = text .. table.concat(names, ", ")
+	else
+		text = text .. "(none)"
+	end
+
 	text = text .. "\nModifications: "
 	if #self.modifications > 0 then
 		for i, modification in self.modifications do
@@ -98,8 +109,73 @@ function MItem.hasIdenticalModifications(self: MItem, item: any): boolean
 	return true
 end
 
+function MItem.hasIdenticalTraits(self: MItem, item: any): boolean
+	if #self.traits ~= #item.traits then
+		return false
+	end
+
+	for _, trait in self.traits do
+		if not utils.doesArrayContain(item.traits, trait) then
+			return false
+		end
+	end
+
+	return true
+end
+
 function MItem.isMItemIdentical(self: MItem, item: any): boolean
-	return self:hasIdenticalMutation(item) and self:hasIdenticalModifications(item)
+	return self:hasIdenticalMutation(item) and self:hasIdenticalModifications(item) and self:hasIdenticalTraits(item)
+end
+
+function MItem.getTraits(self: MItem): { number }
+	return utils.shallowCopy(self.traits)
+end
+
+function MItem.hasTrait(self: MItem, trait: number): boolean
+	return utils.doesArrayContain(self.traits, trait)
+end
+
+function MItem.processTraitsChanged(self: MItem)
+	if #self.traits == 0 then
+		self:getObj():SetAttribute(Attributes.TRAITS, nil)
+	else
+		self:getObj():SetAttribute(Attributes.TRAITS, game:GetService("HttpService"):JSONEncode(self.traits))
+	end
+
+	self:notifyVisibleNameChanged()
+end
+
+-- returns true when the trait was new
+function MItem.addTrait(self: MItem, trait: number): boolean
+	if not enums.isValidValue(enums.Trait, trait) then
+		warn("invalid trait, ignoring", trait, self)
+		return false
+	end
+
+	if self:hasTrait(trait) then
+		return false
+	end
+
+	table.insert(self.traits, trait)
+
+	self:processTraitsChanged()
+
+	self:updateDataDump()
+
+	return true
+end
+
+function MItem.setTraits(self: MItem, traits: { number })
+	self.traits = {}
+	for _, trait in traits do
+		if enums.isValidValue(enums.Trait, trait) and not utils.doesArrayContain(self.traits, trait) then
+			table.insert(self.traits, trait)
+		end
+	end
+
+	self:processTraitsChanged()
+
+	self:updateDataDump()
 end
 
 function MItem.getModifications(self: MItem): { number }
@@ -215,7 +291,16 @@ end
 function MItem.getVisibleNameSuffix(self: MItem): string
 	local mutModText = utils.getMutModText(self.mutation, self.modifications)
 
-	return mutModText .. super.getVisibleNameSuffix(self)
+	local traitText = ""
+	if #self.traits > 0 then
+		local names = {}
+		for _, trait in self.traits do
+			table.insert(names, assert(enums.getPublicName(enums.Trait, trait)))
+		end
+		traitText = " {" .. table.concat(names, ", ") .. "}"
+	end
+
+	return mutModText .. traitText .. super.getVisibleNameSuffix(self)
 end
 
 -- itemIdMap is a map of itemId -> savedItemId, in case we want to save a reference to an item
@@ -224,6 +309,7 @@ function MItem.getSaveData(self: MItem, itemIdMap: any): any
 
 	retval.mutation = self.mutation
 	retval.modifications = utils.shallowCopy(self.modifications)
+	retval.traits = utils.shallowCopy(self.traits)
 
 	return retval
 end
@@ -233,9 +319,16 @@ function MItem.loadSaveData(self: MItem, itemSaveData: any, itemIdMap: any)
 
 	self.mutation = itemSaveData.mutation or enums.Mutations.NORMAL
 	self.modifications = utils.shallowCopy(itemSaveData.modifications or {})
+	self.traits = {}
+	for _, trait in itemSaveData.traits or {} do
+		if enums.isValidValue(enums.Trait, trait) and not utils.doesArrayContain(self.traits, trait) then
+			table.insert(self.traits, trait)
+		end
+	end
 
 	self:processMutationChanged()
 	self:processModificationsChanged()
+	self:processTraitsChanged()
 end
 
 function MItem.destroy(self: MItem)
@@ -248,6 +341,7 @@ function MItem.notifyNewCopy(self: MItem, sourceItem: any, count: number)
 	self.mutation = sourceItem.mutation
 	-- this gets a copy
 	self.modifications = sourceItem:getModifications()
+	self.traits = sourceItem:getTraits()
 end
 
 function MItem.notifyNewClone(self: MItem)
@@ -260,6 +354,7 @@ function MItem.notifyNewClone(self: MItem)
 	self:processMutationChanged()
 
 	self:processModificationsChanged()
+	self:processTraitsChanged()
 
 	self:getObj():SetAttribute(Attributes.MUTATION, self.mutation)
 	if itemData.mutationSurfaceAppearanceName then
@@ -275,6 +370,7 @@ function MItem.new(itemId: number, itemName: string, userId: number): MItem
 
 	self.mutation = enums.Mutations.NORMAL
 	self.modifications = {}
+	self.traits = {}
 
 	self:processModificationsChanged()
 

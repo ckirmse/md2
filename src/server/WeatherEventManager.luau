@@ -4,6 +4,7 @@
 local WeatherEventManager = {}
 WeatherEventManager.__index = WeatherEventManager
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 -- the RemoteEvents children only exist in Studio, so they are untyped here
@@ -12,6 +13,7 @@ local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 local weatherControl = require("@game/ServerScriptService/GameData/Control/Weather")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local Enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PlotHelpers = require("@game/ReplicatedStorage/Shared/PlotHelpers")
 local WeatherMath = require("@game/ReplicatedStorage/Shared/WeatherMath")
 
@@ -21,6 +23,7 @@ local plotsManager = require("./PlotsManager")
 local Timer = require("./Timer")
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 
 local Level = workspace:WaitForChild("Level")
 local ClonedWeatherElements = Level:WaitForChild("ClonedWeatherElements")
@@ -204,6 +207,62 @@ function WeatherEventManager.endActive(self: WeatherEventManager)
 	self:broadcast()
 end
 
+local function isInWorld(item: Types.MItem): boolean
+	return item:getObj().Parent == workspace
+end
+
+-- every dragon and egg in the world rolls once; owners get one message for what they gained
+function WeatherEventManager.rollTraits(self: WeatherEventManager, event: WeatherMath.WeatherEvent)
+	local chance = event.traitChance / 100
+	if chance <= 0 then
+		return
+	end
+
+	local random = Random.new()
+	local gainedByUserId: { [number]: number } = {}
+
+	local function roll(item: Types.MItem)
+		if not isInWorld(item) or item:hasTrait(event.trait) or random:NextNumber() >= chance then
+			return
+		end
+		if item:addTrait(event.trait) then
+			local userId = item:getUserId()
+			gainedByUserId[userId] = (gainedByUserId[userId] or 0) + 1
+		end
+	end
+
+	for _, dragon in itemManager:getAllDragons() do
+		roll(dragon)
+	end
+	for _, egg in itemManager:getAllDragonEggs() do
+		roll(egg)
+	end
+
+	local traitName = assert(Enums.getPublicName(Enums.Trait, event.trait))
+	for userId, count in gainedByUserId do
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			gameController:sendSystemMessageToPlayer(
+				player,
+				string.format("%d of your dragons and eggs became %s", count, traitName)
+			)
+		end
+	end
+end
+
+-- a wild egg that appears while a weather runs rolls like the ones already in the world
+function WeatherEventManager.notifyEggSpawned(self: WeatherEventManager, egg: Types.DragonEgg)
+	local active = self.active
+	if not active then
+		return
+	end
+
+	local event = active.event
+	if event.traitChance > 0 and Random.new():NextNumber() < event.traitChance / 100 then
+		egg:addTrait(event.trait)
+	end
+end
+
 function WeatherEventManager.startEvent(self: WeatherEventManager, weather: number, startTime: number, endTime: number)
 	local event = self.eventsByWeather[weather]
 	if not event then
@@ -234,6 +293,7 @@ function WeatherEventManager.startEvent(self: WeatherEventManager, weather: numb
 	if event.startMessage then
 		gameController:sendSystemMessageToAllPlayers(event.startMessage)
 	end
+	self:rollTraits(event)
 end
 
 function WeatherEventManager.planCurrentEra(self: WeatherEventManager)
@@ -340,6 +400,7 @@ end
 
 function WeatherEventManager.initClass(deps: any)
 	gameController = deps.gameController
+	itemManager = deps.itemManager
 end
 
 local singleton = WeatherEventManager.new()

@@ -45,7 +45,6 @@ local ROTATION_SPEED = 1.5
 local INTERPOLATE_MATCH_CAMERA_SEC = 3
 
 local LOW_STAMINA_SEC = 8
-local LOW_STAMINA_BLINK_TRANSPARENCY = 0.5
 
 local blinkRate = {
 	{
@@ -111,7 +110,6 @@ type ClientRideControllerFields = {
 	riseSpeed: any,
 	runConnect: any,
 	shadow: any,
-	staminaHighlight: any,
 	sweatInst: any,
 	targetBase: any,
 	targetConnections: { [any]: any },
@@ -122,12 +120,7 @@ type ClientRideControllerFields = {
 export type ClientRideController = typeof(setmetatable({} :: ClientRideControllerFields, ClientRideController))
 
 function ClientRideController.updateStaminaHighlight(self: ClientRideController, deltaTime: any)
-	if not self.staminaHighlight then
-		return
-	end
-
 	if not self.isBlinking then
-		self.staminaHighlight.FillTransparency = 1
 		screenGuiManager:setStaminaDisplayBlinkState(false)
 		return
 	end
@@ -146,12 +139,6 @@ function ClientRideController.updateStaminaHighlight(self: ClientRideController,
 			self.currentBlinkDurationSec = self.nextBlinkDurationSec
 			self.blinkState = not self.blinkState
 		end
-	end
-
-	if self.blinkState then
-		self.staminaHighlight.FillTransparency = LOW_STAMINA_BLINK_TRANSPARENCY
-	else
-		self.staminaHighlight.FillTransparency = 1
 	end
 
 	screenGuiManager:setStaminaDisplayBlinkState(self.blinkState)
@@ -1017,15 +1004,15 @@ function ClientRideController.beginRiding(self: ClientRideController, shadow: an
 
 	self:beginListenInputs()
 
-	local highlight = Instance.new("Highlight")
-	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
-	highlight.FillColor = utils.getLowStaminaColor()
-	highlight.FillTransparency = 1
-	highlight.OutlineTransparency = 1
-
-	highlight.Parent = caster
-
-	self.staminaHighlight = highlight
+	-- as of 2026-october-21 the low-stamina Highlight on the caster is no longer created (stamina is disabled, and a second
+	-- Highlight on the model hid the weather trait glow); the old code was:
+	-- local highlight = Instance.new("Highlight")
+	-- highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+	-- highlight.FillColor = utils.getLowStaminaColor()
+	-- highlight.FillTransparency = 1
+	-- highlight.OutlineTransparency = 1
+	-- highlight.Parent = caster
+	-- self.staminaHighlight = highlight
 
 	self.audioMountDragon:Play()
 	self.audioRideDragon.Looping = true
@@ -1193,11 +1180,6 @@ function ClientRideController.cleanupRiding(self: ClientRideController, skipLaun
 	if self.casterDestroyConnect then
 		self.casterDestroyConnect:Disconnect()
 		self.casterDestroyConnect = nil
-	end
-
-	if self.staminaHighlight then
-		self.staminaHighlight:Destroy()
-		self.staminaHighlight = nil
 	end
 
 	self:cleanupListenInputs()
@@ -1489,8 +1471,6 @@ function ClientRideController.new(): ClientRideController
 	self.linearVelocityConstraint = nil
 
 	self.runConnect = nil
-
-	self.staminaHighlight = nil
 
 	self.event = Instance.new("BindableEvent")
 

@@ -7,6 +7,7 @@ local ScatterZone = {}
 ScatterZone.__index = setmetatable(ScatterZone, super)
 
 local Types = require("./Types")
+local weatherEventManager = require("./WeatherEventManager")
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
@@ -128,6 +129,7 @@ function ScatterZone.trySpawnOneEgg(self: ScatterZone): boolean
 	item:getObj():PivotTo(CFrame.new(groundPosition))
 	item:setPreventSettling()
 	item:getObj().Parent = workspace
+	weatherEventManager:notifyEggSpawned(item :: Types.DragonEgg)
 	item:getObj():SetAttribute(Attributes.SOURCE_POSITION, groundPosition)
 	item:getObj():SetAttribute(Attributes.SOURCE_SCATTER_ZONE_ID, self:getObjectId())
 

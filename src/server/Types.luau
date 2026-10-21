@@ -197,28 +197,36 @@ export type NumberItem = Item & {
 export type MItemFields = NumberItemFields & {
 	mutation: number,
 	modifications: { number },
+	traits: { number },
 }
 
 -- inherited and overridden members come from NumberItem; only members new to MItem are listed here
 export type MItem = NumberItem & {
 	modifications: { number },
 	mutation: number,
+	traits: { number },
 
 	addModification: (self: MItem, modification: number) -> (),
+	addTrait: (self: MItem, trait: number) -> boolean,
 	calculateModificationMultiplier: (self: MItem) -> number,
 	doesHaveModification: (self: MItem, modification: number) -> boolean,
 	getEncodedModifications: (self: MItem) -> string,
 	getModificationCount: (self: MItem) -> number,
 	getModifications: (self: MItem) -> { number },
 	getMutation: (self: MItem) -> number,
+	getTraits: (self: MItem) -> { number },
 	hasIdenticalModifications: (self: MItem, item: any) -> boolean,
 	hasIdenticalMutation: (self: MItem, item: any) -> boolean,
+	hasIdenticalTraits: (self: MItem, item: any) -> boolean,
+	hasTrait: (self: MItem, trait: number) -> boolean,
 	isMItemIdentical: (self: MItem, item: any) -> boolean,
 	notifyModificationsChanged: (self: MItem) -> (),
 	processModificationsChanged: (self: MItem) -> (),
 	processMutationChanged: (self: MItem) -> (),
+	processTraitsChanged: (self: MItem) -> (),
 	setModifications: (self: MItem, modifications: { number }) -> (),
 	setMutation: (self: MItem, mutation: number) -> (),
+	setTraits: (self: MItem, traits: { number }) -> (),
 	toggleModification: (self: MItem, modification: number) -> (),
 }
 

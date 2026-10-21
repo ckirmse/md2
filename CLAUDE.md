@@ -472,8 +472,7 @@ server shares the same phase. Files: `shared/DayNightMath.luau`, `server/DayNigh
 - **Server:** `dayNightManager:isNight()` is the gameplay check (the Starlight and Starlit rules will use it).
 - **Dev tools:** `setDayNightPhase("day"|"night")` and `resetDayNight` (client section "Day / Night") shift a dev-only offset kept in the
   workspace attribute `Attributes.DAY_NIGHT_OFFSET_SEC`, which both sides read.
-- **Not built yet:** Starlight keeping the sky dark, and weather lighting: `WeatherManager` still tweens `Lighting` on the server for Heat, which
-  conflicts with the client's fade until the weather rework moves it.
+- Weather lighting and the Starlight night lock are described under "Weather".
 
 ## Weather
 
@@ -499,8 +498,12 @@ Two weather systems exist; `Control/Weather.useLegacyWeather` picks one (read at
   `Icon` (ImageLabel), optional `Timer` (TextLabel, `m:ss`) and optional `Tooltip` (TextLabel, hover or tap). A missing piece only warns.
 - **Dev tools:** `startWeatherEvent(weather)` (ignores the roll and start condition) and `endWeatherEvent` (client section "Weather", above the legacy "Weather Control" checkboxes). The old
   `activateWeather` / `deactivateWeather` only work in legacy mode.
-- **Not built yet:** traits (the roll at event start, storage on dragons and eggs, hatch inheritance), the Thunderstorm and Shooting Star cinematics
-  (imported package `WeatherEvents/`), Cosmic eggs, temporary luck.
+- **Traits:** each event gives its `trait` (`Enums.Trait`) to dragons and eggs. `MItem.traits` (a list, saved as `traits`, replicated as the JSON attribute
+  `Attributes.TRAITS`) is part of stack identity, shows in the visible name as `{Charged}` and is copied by clones. At event start every dragon and egg in the
+  world (placed, ridden, slotted, wild; not backpacks) rolls once at `traitChance`; each owner gets one message with the count. A wild egg that spawns while the
+  weather runs rolls too (`WeatherEventManager:notifyEggSpawned`, called by `ScatterZone`); a hatched dragon inherits the egg's traits. Nothing reads the traits
+  yet (the speed multiplier waits for the map). `ClientTraitGlowManager` puts a plain colour `Highlight` on traited dragons and eggs until there is trait art.
+- **Not built yet:** the Thunderstorm and Shooting Star cinematics (imported package `WeatherEvents/`), Cosmic eggs, temporary luck.
 
 ## Playtime Rewards
 

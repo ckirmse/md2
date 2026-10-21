@@ -85,6 +85,7 @@ module = {
 	GROW_COMPLETE_TIME = "GrowCompleteTime",
 	MODIFICATIONS = "Modifications",
 	MUTATION = "Mutation",
+	TRAITS = "Traits",
 
 	PRIMARY_ELEMENT = "PrimaryElement",
 	EGG_BASE_LUCK = "EggBaseLuck",
