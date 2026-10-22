@@ -108,6 +108,11 @@ function WeatherEventManager.isEnabled(self: WeatherEventManager): boolean
 	return self.config ~= nil
 end
 
+function WeatherEventManager.isWeatherActive(self: WeatherEventManager, weather: number): boolean
+	local active = self.active
+	return active ~= nil and active.event.weather == weather
+end
+
 function WeatherEventManager.getActivePayload(self: WeatherEventManager): ActivePayload?
 	local active = self.active
 	if not active then

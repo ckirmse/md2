@@ -523,7 +523,11 @@ Two weather systems exist; `Control/Weather.useLegacyWeather` picks one (read at
   `WeatherStrike.TRAIT_DELAY_SEC` later (`ScatterZone:spawnEggAt` with `isTracked = false`). It is not counted by the zone and the global egg refresh leaves it alone,
   so it stays until someone picks it up (it still rolls Starlit like any wild egg). `WeatherEventManager` gets `scatterZoneManager` through `initClass`
   (`ScatterZone` requires `WeatherEventManager`). Dev tool `dropCosmicEgg` (client section "Weather").
-- **Not built yet:** the Cosmic radar, the Cosmic night bonus on speed, the skybox swap and temporary luck.
+- **Cosmic radar:** the egg object sets `isCosmic = true`; a radar object sets `targetsCosmic = true` (its `targetRarity` still sets the item's colour). Radars for a
+  rarity skip Cosmic eggs; the Cosmic radar finds only them, and refuses outside Starlight ("only works during Starlight", not consumed). Radar guidance is keyed
+  by a **radar kind** (`shared/RadarKind.luau`: the rarity, or `RadarKind.COSMIC` = 0) on the server, in `NotifyRadarTarget` and on the client; a held radar tool
+  carries `Attributes.RADAR_COSMIC`. Guidance runs to its duration even if Starlight ends.
+- **Not built yet:** the Cosmic night bonus on speed, the skybox swap and temporary luck.
 
 ## Playtime Rewards
 

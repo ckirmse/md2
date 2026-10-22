@@ -20,6 +20,7 @@ module = {
 	EQUIP = "Equip",
 	RARITY = "Rarity",
 	ITEM_TYPE = "ItemType",
+	RADAR_COSMIC = "RadarCosmic",
 
 	DISPLAY_NAME = "DisplayName",
 	NAME_PLATE_EXTRA_TEXT = "NameplateExtraText",

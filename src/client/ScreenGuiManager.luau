@@ -14,6 +14,7 @@ local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 local ParticleEffects = ReplicatedStorage:WaitForChild("GameAssets"):WaitForChild("ParticleEffects")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local RadarKind = require("@game/ReplicatedStorage/Shared/RadarKind")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
@@ -774,12 +775,13 @@ function ScreenGuiManager.run(self: ScreenGuiManager, deltaTime: number)
 	local isHoldingRadar = isToolEquipped and (tool :: any):GetAttribute(Attributes.ITEM_TYPE) == "radar"
 
 	local heldRadarRarity: number? = nil
+	local heldRadarKind: number? = nil
 	if isHoldingRadar then
 		heldRadarRarity = (tool :: any):GetAttribute(Attributes.RARITY)
+		heldRadarKind = RadarKind.get(heldRadarRarity :: number, (tool :: any):GetAttribute(Attributes.RADAR_COSMIC) == true)
 	end
 
-	local isHeldRadarActive = heldRadarRarity ~= nil
-		and clientRadarManager:hasActiveGuidanceForRarity(heldRadarRarity :: number)
+	local isHeldRadarActive = heldRadarKind ~= nil and clientRadarManager:hasActiveGuidanceForKind(heldRadarKind :: number)
 
 	RadarActivateFrame.Visible = isHoldingRadar and not isHeldRadarActive
 	if isHoldingRadar and not isHeldRadarActive then

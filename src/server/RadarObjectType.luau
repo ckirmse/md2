@@ -44,6 +44,10 @@ function RadarObjectType.new(): RadarObjectType
 			type = "enum",
 			name = "Rarity",
 		},
+		targetsCosmic = {
+			type = "boolean",
+			optional = true,
+		},
 		-- how long the client-side directional guidance stays up after a successful search
 		guidanceDurationSec = "nonnegativeNumber",
 

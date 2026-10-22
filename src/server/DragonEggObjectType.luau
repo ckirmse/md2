@@ -103,6 +103,11 @@ function DragonEggObjectType.new(): DragonEggObjectType
 			optional = true,
 		},
 
+		isCosmic = {
+			type = "boolean",
+			optional = true,
+		},
+
 		eggBaseLuck = {
 			type = "nonnegativeNumber",
 			optional = true,

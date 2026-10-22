@@ -11,8 +11,10 @@ local collectionService = game:GetService("CollectionService")
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local radarManager = require("./RadarManager")
+local weatherEventManager = require("./WeatherEventManager")
 
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
+local RadarKind = require("@game/ReplicatedStorage/Shared/RadarKind")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 
 
@@ -72,28 +74,29 @@ function Radar.notifyToolActivated(self: Radar)
 	end
 
 	local itemData = self:getItemData()
+	local targetsCosmic = itemData.targetsCosmic == true
+	local label = radarManager:getKindLabel(itemData.targetRarity, targetsCosmic)
 
-	if radarManager:hasActiveGuidance(player, itemData.targetRarity) then
-		gameController:sendSystemMessageToPlayer(
-			player,
-			string.format("Your %s radar is already active", enums.getPublicName(enums.Rarity, itemData.targetRarity))
-		)
+	if targetsCosmic and not weatherEventManager:isWeatherActive(enums.Weather.STARLIGHT) then
+		gameController:sendSystemMessageToPlayer(player, "The Cosmic radar only works during Starlight")
+		return
+	end
+
+	if radarManager:hasActiveGuidance(player, RadarKind.get(itemData.targetRarity, targetsCosmic)) then
+		gameController:sendSystemMessageToPlayer(player, string.format("Your %s radar is already active", label))
 		return
 	end
 
 	local position = (humanoidRootPart :: BasePart).Position
 
-	local egg = radarManager:findNearestAvailableEgg(position, itemData.targetRarity)
+	local egg = radarManager:findNearestAvailableEgg(position, itemData.targetRarity, targetsCosmic)
 
 	if not egg then
-		gameController:sendSystemMessageToPlayer(
-			player,
-			string.format("No %s eggs are on the map", enums.getPublicName(enums.Rarity, itemData.targetRarity))
-		)
+		gameController:sendSystemMessageToPlayer(player, string.format("No %s eggs are on the map", label))
 		return
 	end
 
-	radarManager:beginGuidance(player, egg, itemData.targetRarity, itemData.guidanceDurationSec, self:getItemId())
+	radarManager:beginGuidance(player, egg, itemData, self:getItemId())
 end
 
 function Radar.getSaveData(self: Radar, itemIdMap: any): any

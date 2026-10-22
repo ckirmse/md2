@@ -509,6 +509,9 @@ function Item.putInBackpack(self: Item): Tool?
 	tool:SetAttribute(Attributes.INDEX, self.obj:GetAttribute(Attributes.INDEX))
 	tool:SetAttribute(Attributes.ITEM_TYPE, self:getItemData().filterType or self:getItemData().type)
 	tool:SetAttribute(Attributes.RARITY, self:getItemData().rarity)
+	if self:getItemData().targetsCosmic then
+		tool:SetAttribute(Attributes.RADAR_COSMIC, true)
+	end
 
 	tool.Activated:Connect(function()
 		--print("activated a tool")

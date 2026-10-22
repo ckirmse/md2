@@ -15,6 +15,7 @@ local Arrow3D: any = UX:WaitForChild("Arrow3D")
 local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local RadarKind = require("@game/ReplicatedStorage/Shared/RadarKind")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local player = playersService.LocalPlayer :: Player
@@ -50,7 +51,7 @@ type ClientRadarManagerFields = {
 	billboard: BillboardGui?,
 	distanceLabel: TextLabel?,
 	timeLabel: TextLabel?,
-	targetsByRarity: { [number]: TargetState },
+	targetsByKind: { [number]: TargetState },
 }
 
 export type ClientRadarManager = typeof(setmetatable({} :: ClientRadarManagerFields, ClientRadarManager))
@@ -73,8 +74,8 @@ local function applyLabelStroke(label: TextLabel)
 	label.TextStrokeTransparency = 0
 end
 
-function ClientRadarManager.hasActiveGuidanceForRarity(self: ClientRadarManager, rarity: number): boolean
-	return self.targetsByRarity[rarity] ~= nil
+function ClientRadarManager.hasActiveGuidanceForKind(self: ClientRadarManager, kind: number): boolean
+	return self.targetsByKind[kind] ~= nil
 end
 
 function ClientRadarManager.ensureArrow(self: ClientRadarManager)
@@ -170,7 +171,8 @@ function ClientRadarManager.update(self: ClientRadarManager)
 	end
 
 	local heldRarity = (tool :: any):GetAttribute(Attributes.RARITY) :: number?
-	local target = heldRarity and self.targetsByRarity[heldRarity]
+	local heldKind = heldRarity and RadarKind.get(heldRarity, (tool :: any):GetAttribute(Attributes.RADAR_COSMIC) == true)
+	local target = heldKind and self.targetsByKind[heldKind]
 	if not target then
 		self:hideIndicators()
 		return
@@ -241,16 +243,16 @@ end
 
 function ClientRadarManager.notifyRadarTarget(
 	self: ClientRadarManager,
-	targetRarity: number,
+	targetKind: number,
 	position: Vector3?,
 	expiresAt: number?
 )
 	if not position then
-		self.targetsByRarity[targetRarity] = nil
+		self.targetsByKind[targetKind] = nil
 		return
 	end
 
-	self.targetsByRarity[targetRarity] = {
+	self.targetsByKind[targetKind] = {
 		position = position,
 		expiresAt = expiresAt,
 	}
@@ -262,8 +264,8 @@ function ClientRadarManager.init(self: ClientRadarManager)
 	end)
 
 	RemoteEvents.NotifyRadarTarget.OnClientEvent:Connect(
-		function(targetRarity: number, position: Vector3?, expiresAt: number?)
-			self:notifyRadarTarget(targetRarity, position, expiresAt)
+		function(targetKind: number, position: Vector3?, expiresAt: number?)
+			self:notifyRadarTarget(targetKind, position, expiresAt)
 		end
 	)
 end
@@ -275,7 +277,7 @@ function ClientRadarManager.new(): ClientRadarManager
 	self.billboard = nil
 	self.distanceLabel = nil
 	self.timeLabel = nil
-	self.targetsByRarity = {}
+	self.targetsByKind = {}
 
 	return self
 end
