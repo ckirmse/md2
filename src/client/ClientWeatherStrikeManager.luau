@@ -14,6 +14,7 @@ local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local WeatherStrike = require("@game/ReplicatedStorage/Shared/WeatherStrike")
 
 local clientShadowManager = require("./ClientShadowManager")
+local clientStarlightEffects = require("./ClientStarlightEffects")
 local clientThunderstormEffects = require("./ClientThunderstormEffects")
 
 type StrikeHandler = {
@@ -22,6 +23,7 @@ type StrikeHandler = {
 
 local HANDLERS: { [number]: StrikeHandler } = {
 	[Enums.Weather.THUNDERSTORM] = clientThunderstormEffects :: any,
+	[Enums.Weather.STARLIGHT] = clientStarlightEffects :: any,
 }
 
 type ClientWeatherStrikeManagerFields = {

@@ -23,6 +23,8 @@ export type LoopHandle = {
 local SOUND_DEFS: { [string]: SoundDef } = {
 	Thunderstorm = { assetId = "rbxassetid://132152136", volume = 0.3 },
 	LightningStrikes = { assetId = "rbxassetid://140089926923698" },
+	ShootingStars = { assetId = "rbxassetid://1841595283" },
+	StarDescends = { assetId = "rbxassetid://120822746678209" },
 }
 
 type ClientWeatherSoundsFields = {
@@ -67,8 +69,7 @@ local function buildPlayer(name: string): AudioPlayer
 	return audioPlayer
 end
 
--- plays a one-shot from a part, attachment or model
-function ClientWeatherSounds.playAt(self: ClientWeatherSounds, name: string, host: Instance)
+function ClientWeatherSounds.playFrom(self: ClientWeatherSounds, name: string, host: Instance, isLooping: boolean)
 	if not clientOptionsManager:getOption(PlayerOptionKeys.MAIN_SOUND_EFFECTS_ENABLED) then
 		return
 	end
@@ -79,6 +80,7 @@ function ClientWeatherSounds.playAt(self: ClientWeatherSounds, name: string, hos
 	self:getMasterOutput()
 
 	local audioPlayer = buildPlayer(name)
+	audioPlayer.Looping = isLooping
 	local emitter = Instance.new("AudioEmitter")
 	emitter.Parent = host
 
@@ -88,11 +90,21 @@ function ClientWeatherSounds.playAt(self: ClientWeatherSounds, name: string, hos
 	wire.Parent = audioPlayer
 
 	audioPlayer.Parent = host
-	audioPlayer.Ended:Once(function()
-		emitter:Destroy()
-		audioPlayer:Destroy()
-	end)
+	if not isLooping then
+		audioPlayer.Ended:Once(function()
+			emitter:Destroy()
+			audioPlayer:Destroy()
+		end)
+	end
 	audioPlayer:Play()
+end
+
+function ClientWeatherSounds.playAt(self: ClientWeatherSounds, name: string, host: Instance)
+	self:playFrom(name, host, false)
+end
+
+function ClientWeatherSounds.startLoopAt(self: ClientWeatherSounds, name: string, host: Instance)
+	self:playFrom(name, host, true)
 end
 
 -- a non-spatial loop until stopped; nil when background music is off

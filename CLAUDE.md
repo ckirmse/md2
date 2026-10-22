@@ -503,7 +503,7 @@ Two weather systems exist; `Control/Weather.useLegacyWeather` picks one (read at
   world (placed, ridden, slotted, wild; not backpacks) rolls once at `traitChance`; each owner gets one message with the count. A wild egg that spawns while the
   weather runs rolls too (`WeatherEventManager:notifyEggSpawned`, called by `ScatterZone`); a hatched dragon inherits the egg's traits. Nothing reads the traits
   yet (the speed multiplier waits for the map). `ClientTraitGlowManager` puts a plain colour `Highlight` on traited dragons and eggs until there is trait art.
-- **Strike events (Thunderstorm now, Starlight later):** an event with `strikeSpreadSec` (shorter than `durationMin`; only valid for those two weathers) does
+- **Strike events (Thunderstorm and Starlight):** an event with `strikeSpreadSec` (shorter than `durationMin`; only valid for those two weathers) does
   not grant its trait at once. Each winner of the start roll is struck at a random moment in the first `strikeSpreadSec` seconds: the server
   (`WeatherEventManager:strike`) tags the replicated object `Tags.WEATHER_STRIKE_TARGET` and stamps `Attributes.WEATHER_STRUCK_AT` / `WEATHER_STRUCK_WEATHER`
   (cleared after `WeatherStrike.CLEAR_SEC`), and grants the trait `WeatherStrike.TRAIT_DELAY_SEC[weather]` later (when the bolt hits) with the message
@@ -513,7 +513,10 @@ Two weather systems exist; `Control/Weather.useLegacyWeather` picks one (read at
   ported from the imported package; the art is Studio-only under `ReplicatedStorage.GameAssets` (`Weather/Thunderstorm/...`, `ParticleEffects/ThunderstormLightning`
   and `ThunderstormSparks`; a missing piece only warns and the trait still lands). `ClientWeatherSounds` plays the sounds (loops follow the background-music
   option, one-shots the main sound-effects option). Dev tool `strikeMyDragon` (client section "Weather").
-- **Not built yet:** the Starlight (Shooting Star) cinematic, Cosmic eggs, temporary luck.
+  `ClientStarlightEffects` is the Starlight twin: beams, particles and a music loop while it runs, and a falling star (`ShootingStar`, aligned by the attachment in
+  its `Ball` part) that drops from `STAR_START_HEIGHT` above the target over the trait delay, then a `StarImpact` burst. Its art is all under
+  `GameAssets/Weather/ShootingStars` (the Thunderstorm lightning and sparks sit in the project's `GameAssets/ParticleEffects` instead).
+- **Not built yet:** Cosmic eggs falling during Starlight, the Cosmic radar, the skybox swap and temporary luck.
 
 ## Playtime Rewards
 

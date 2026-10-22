@@ -12,6 +12,7 @@ local Enums = require("@game/ReplicatedStorage/Shared/Enums")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local ClientDayNightManager = require("./ClientDayNightManager")
+local clientStarlightEffects = require("./ClientStarlightEffects")
 local clientThunderstormEffects = require("./ClientThunderstormEffects")
 local ClientTicker = require("./ClientTicker")
 
@@ -52,6 +53,7 @@ export type ClientWeatherEventManager = typeof(setmetatable({} :: ClientWeatherE
 -- weathers with ambient effects of their own; onStart / onEnd run when that weather starts and ends
 local EFFECT_HANDLERS: { [number]: { onStart: (self: any, startTime: number, endTime: number) -> (), onEnd: (self: any) -> () } } = {
 	[Enums.Weather.THUNDERSTORM] = clientThunderstormEffects :: any,
+	[Enums.Weather.STARLIGHT] = clientStarlightEffects :: any,
 }
 
 local TICK_INTERVAL_SEC = 0.25
