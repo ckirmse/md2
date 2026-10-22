@@ -54,8 +54,10 @@ end
 function DragonEgg.computeLuckMultiplier(eggBaseLuck: number?, userId: number): number
 	local plotLuckMultiplier = gameController:getPlotLuckMultiplierForUserId(userId)
 	local rebirthLuckMultiplier = gameController:getRebirthLuckMultiplierForUserId(userId)
+	-- placeholder until luck faeries and boosts exist (spec: Effective luck = Egg x Plot x Temporary)
+	local temporaryLuckMultiplier = 1
 
-	return (eggBaseLuck or 1) * plotLuckMultiplier * rebirthLuckMultiplier
+	return (eggBaseLuck or 1) * plotLuckMultiplier * rebirthLuckMultiplier * temporaryLuckMultiplier
 end
 
 function DragonEgg.refreshLuckDisplay(self: DragonEgg)

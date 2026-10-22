@@ -527,7 +527,9 @@ Two weather systems exist; `Control/Weather.useLegacyWeather` picks one (read at
   rarity skip Cosmic eggs; the Cosmic radar finds only them, and refuses outside Starlight ("only works during Starlight", not consumed). Radar guidance is keyed
   by a **radar kind** (`shared/RadarKind.luau`: the rarity, or `RadarKind.COSMIC` = 0) on the server, in `NotifyRadarTarget` and on the client; a held radar tool
   carries `Attributes.RADAR_COSMIC`. Guidance runs to its duration even if Starlight ends.
-- **Not built yet:** the Cosmic night bonus on speed, the skybox swap and temporary luck.
+- **Temporary luck (placeholder):** `DragonEgg.computeLuckMultiplier` multiplies by a named local `temporaryLuckMultiplier`, fixed at 1 until luck faeries and boosts exist
+  (not a launch feature); the spec's hatch luck is Egg x Plot x Temporary, and this project still multiplies the Rebirth luck as well.
+- **Not built yet:** the Cosmic night bonus on speed, the skybox swap, and the temporary luck sources (luck faeries, boosts).
 
 ## Playtime Rewards
 
