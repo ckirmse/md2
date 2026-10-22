@@ -12,6 +12,7 @@ local Enums = require("@game/ReplicatedStorage/Shared/Enums")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local ClientDayNightManager = require("./ClientDayNightManager")
+local clientThunderstormEffects = require("./ClientThunderstormEffects")
 local ClientTicker = require("./ClientTicker")
 
 local player = game:GetService("Players").LocalPlayer :: Player
@@ -42,10 +43,16 @@ type ClientWeatherEventManagerFields = {
 	timerLabel: any?,
 	toolTip: any?,
 	isRainEnabled: boolean,
+	effectsWeather: number?,
 	shownRemainingSec: number?,
 }
 
 export type ClientWeatherEventManager = typeof(setmetatable({} :: ClientWeatherEventManagerFields, ClientWeatherEventManager))
+
+-- weathers with ambient effects of their own; onStart / onEnd run when that weather starts and ends
+local EFFECT_HANDLERS: { [number]: { onStart: (self: any, startTime: number, endTime: number) -> (), onEnd: (self: any) -> () } } = {
+	[Enums.Weather.THUNDERSTORM] = clientThunderstormEffects :: any,
+}
 
 local TICK_INTERVAL_SEC = 0.25
 local ICON_NAME = "ActiveWeather"
@@ -189,6 +196,24 @@ function ClientWeatherEventManager.setRain(self: ClientWeatherEventManager, isRa
 	end
 end
 
+function ClientWeatherEventManager.setEffects(self: ClientWeatherEventManager, active: ActiveWeather?)
+	local weather = if active then active.weather else nil
+	if weather == self.effectsWeather then
+		return
+	end
+
+	local previous = self.effectsWeather and EFFECT_HANDLERS[self.effectsWeather]
+	if previous then
+		previous:onEnd()
+	end
+
+	self.effectsWeather = weather
+	local handler = weather and EFFECT_HANDLERS[weather]
+	if handler and active then
+		handler:onStart(active.startTime, active.endTime)
+	end
+end
+
 function ClientWeatherEventManager.apply(self: ClientWeatherEventManager)
 	if not self.isOn then
 		return
@@ -200,6 +225,7 @@ function ClientWeatherEventManager.apply(self: ClientWeatherEventManager)
 	ClientDayNightManager:setWeatherLighting(if event then event.lighting else nil)
 	ClientDayNightManager:setNightLock(if event and event.lockNight and active then active.endTime else nil)
 	self:setRain(event ~= nil and event.weather == Enums.Weather.RAIN)
+	self:setEffects(active)
 
 	if event then
 		self:showIcon(event)
@@ -278,6 +304,7 @@ function ClientWeatherEventManager.new(): ClientWeatherEventManager
 	self.timerLabel = nil
 	self.toolTip = nil
 	self.isRainEnabled = false
+	self.effectsWeather = nil
 	self.shownRemainingSec = nil
 
 	return self

@@ -86,6 +86,8 @@ module = {
 	MODIFICATIONS = "Modifications",
 	MUTATION = "Mutation",
 	TRAITS = "Traits",
+	WEATHER_STRUCK_AT = "WeatherStruckAt",
+	WEATHER_STRUCK_WEATHER = "WeatherStruckWeather",
 
 	PRIMARY_ELEMENT = "PrimaryElement",
 	EGG_BASE_LUCK = "EggBaseLuck",

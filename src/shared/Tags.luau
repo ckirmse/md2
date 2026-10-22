@@ -22,6 +22,8 @@ module = {
 
 	SLOTTED_EGG = "SlottedEgg",
 
+	WEATHER_STRIKE_TARGET = "WeatherStrikeTarget",
+
 	GEM = "Gem",
 
 	CRYSTAL = "Crystal",

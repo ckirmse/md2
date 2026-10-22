@@ -3,6 +3,7 @@
 -- Pure weather math: config validation and the era roll (seeded by the era, at most one event per era).
 local DayNightMath = require("./DayNightMath")
 local Enums = require("./Enums")
+local WeatherStrike = require("./WeatherStrike")
 
 local WeatherMath = {}
 
@@ -87,6 +88,14 @@ local function validateEvent(event: any, label: string): string?
 	end
 	if event.strikeSpreadSec ~= nil and (type(event.strikeSpreadSec) ~= "number" or event.strikeSpreadSec < 0) then
 		return label .. ".strikeSpreadSec must be a number >= 0"
+	end
+	if event.strikeSpreadSec ~= nil then
+		if WeatherStrike.TRAIT_DELAY_SEC[event.weather] == nil then
+			return label .. ".strikeSpreadSec is only supported for Thunderstorm and Starlight"
+		end
+		if event.strikeSpreadSec >= event.durationMin then
+			return label .. ".strikeSpreadSec must be shorter than durationMin"
+		end
 	end
 
 	local lighting = event.lighting

@@ -503,7 +503,17 @@ Two weather systems exist; `Control/Weather.useLegacyWeather` picks one (read at
   world (placed, ridden, slotted, wild; not backpacks) rolls once at `traitChance`; each owner gets one message with the count. A wild egg that spawns while the
   weather runs rolls too (`WeatherEventManager:notifyEggSpawned`, called by `ScatterZone`); a hatched dragon inherits the egg's traits. Nothing reads the traits
   yet (the speed multiplier waits for the map). `ClientTraitGlowManager` puts a plain colour `Highlight` on traited dragons and eggs until there is trait art.
-- **Not built yet:** the Thunderstorm and Shooting Star cinematics (imported package `WeatherEvents/`), Cosmic eggs, temporary luck.
+- **Strike events (Thunderstorm now, Starlight later):** an event with `strikeSpreadSec` (shorter than `durationMin`; only valid for those two weathers) does
+  not grant its trait at once. Each winner of the start roll is struck at a random moment in the first `strikeSpreadSec` seconds: the server
+  (`WeatherEventManager:strike`) tags the replicated object `Tags.WEATHER_STRIKE_TARGET` and stamps `Attributes.WEATHER_STRUCK_AT` / `WEATHER_STRUCK_WEATHER`
+  (cleared after `WeatherStrike.CLEAR_SEC`), and grants the trait `WeatherStrike.TRAIT_DELAY_SEC[weather]` later (when the bolt hits) with the message
+  "Your <name> became <Trait>"; a target that left the world still gets the trait if the item exists. `ClientWeatherStrikeManager` plays the weather's
+  cinematic over the dragon's ghost model or the egg (stamps older than 2 s are ignored). Wild eggs spawned during the weather get the trait instantly.
+  `ClientThunderstormEffects` holds the Thunderstorm ambient effects (beams, particles, two spinning cloud rings, music loop) and the cloud-and-bolt strike,
+  ported from the imported package; the art is Studio-only under `ReplicatedStorage.GameAssets` (`Weather/Thunderstorm/...`, `ParticleEffects/ThunderstormLightning`
+  and `ThunderstormSparks`; a missing piece only warns and the trait still lands). `ClientWeatherSounds` plays the sounds (loops follow the background-music
+  option, one-shots the main sound-effects option). Dev tool `strikeMyDragon` (client section "Weather").
+- **Not built yet:** the Starlight (Shooting Star) cinematic, Cosmic eggs, temporary luck.
 
 ## Playtime Rewards
 

@@ -4,6 +4,7 @@
 local WeatherEventManager = {}
 WeatherEventManager.__index = WeatherEventManager
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -15,7 +16,9 @@ local weatherControl = require("@game/ServerScriptService/GameData/Control/Weath
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local Enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PlotHelpers = require("@game/ReplicatedStorage/Shared/PlotHelpers")
+local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local WeatherMath = require("@game/ReplicatedStorage/Shared/WeatherMath")
+local WeatherStrike = require("@game/ReplicatedStorage/Shared/WeatherStrike")
 
 local dayNightManager = require("./DayNightManager")
 local EraManager = require("./EraManager")
@@ -211,7 +214,50 @@ local function isInWorld(item: Types.MItem): boolean
 	return item:getObj().Parent == workspace
 end
 
--- every dragon and egg in the world rolls once; owners get one message for what they gained
+local function sendTraitMessage(item: Types.MItem, text: string)
+	local player = Players:GetPlayerByUserId(item:getUserId())
+	if player then
+		gameController:sendSystemMessageToPlayer(player, text)
+	end
+end
+
+-- marks the item's replicated object for the clients' cinematic; the trait lands when the visual hits
+function WeatherEventManager.strike(self: WeatherEventManager, item: Types.MItem, event: WeatherMath.WeatherEvent)
+	local itemId = item:getItemId()
+	if not itemManager:getItemById(itemId) then
+		return
+	end
+
+	local obj = item:getObj()
+	local struckAt = workspace:GetServerTimeNow()
+	if isInWorld(item) then
+		obj:SetAttribute(Attributes.WEATHER_STRUCK_WEATHER, event.weather)
+		CollectionService:AddTag(obj, Tags.WEATHER_STRIKE_TARGET)
+		obj:SetAttribute(Attributes.WEATHER_STRUCK_AT, struckAt)
+		task.delay(WeatherStrike.CLEAR_SEC, function()
+			if obj.Parent and obj:GetAttribute(Attributes.WEATHER_STRUCK_AT) == struckAt then
+				obj:SetAttribute(Attributes.WEATHER_STRUCK_AT, nil)
+				obj:SetAttribute(Attributes.WEATHER_STRUCK_WEATHER, nil)
+				CollectionService:RemoveTag(obj, Tags.WEATHER_STRIKE_TARGET)
+			end
+		end)
+	end
+
+	task.delay(WeatherStrike.TRAIT_DELAY_SEC[event.weather], function()
+		if not itemManager:getItemById(itemId) then
+			return
+		end
+		if item:addTrait(event.trait) then
+			sendTraitMessage(
+				item,
+				string.format("Your %s became %s", item:getItemName(), assert(Enums.getPublicName(Enums.Trait, event.trait)))
+			)
+		end
+	end)
+end
+
+-- every dragon and egg in the world rolls once; a quiet event gives the trait now (owners get one message for what they
+-- gained), a strike event (strikeSpreadSec set) schedules each winner's strike at a random moment in that window
 function WeatherEventManager.rollTraits(self: WeatherEventManager, event: WeatherMath.WeatherEvent)
 	local chance = event.traitChance / 100
 	if chance <= 0 then
@@ -220,12 +266,21 @@ function WeatherEventManager.rollTraits(self: WeatherEventManager, event: Weathe
 
 	local random = Random.new()
 	local gainedByUserId: { [number]: number } = {}
+	local activeAtRoll = self.active
 
 	local function roll(item: Types.MItem)
 		if not isInWorld(item) or item:hasTrait(event.trait) or random:NextNumber() >= chance then
 			return
 		end
-		if item:addTrait(event.trait) then
+
+		local spreadSec = event.strikeSpreadSec
+		if spreadSec then
+			task.delay(random:NextNumber() * spreadSec, function()
+				if self.active == activeAtRoll then
+					self:strike(item, event)
+				end
+			end)
+		elseif item:addTrait(event.trait) then
 			local userId = item:getUserId()
 			gainedByUserId[userId] = (gainedByUserId[userId] or 0) + 1
 		end
@@ -248,6 +303,38 @@ function WeatherEventManager.rollTraits(self: WeatherEventManager, event: Weathe
 			)
 		end
 	end
+end
+
+-- dev only: strikes one of the player's dragons or eggs in the world now, with the running strike weather
+function WeatherEventManager.devStrikeOwn(self: WeatherEventManager, player: Player)
+	local active = self.active
+	if not active or not active.event.strikeSpreadSec then
+		warn("devStrikeOwn needs a running weather with strikeSpreadSec set")
+		return
+	end
+
+	local candidates: { Types.MItem } = {}
+	for _, dragon in itemManager:getDragonsOnGroundForUserId(player.UserId) do
+		table.insert(candidates, dragon)
+	end
+	for _, egg in itemManager:getAllDragonEggs() do
+		if egg:getUserId() == player.UserId and isInWorld(egg) then
+			table.insert(candidates, egg)
+		end
+	end
+
+	local untraited: { Types.MItem } = {}
+	for _, item in candidates do
+		if not item:hasTrait(active.event.trait) then
+			table.insert(untraited, item)
+		end
+	end
+	if #untraited == 0 then
+		warn("devStrikeOwn: no dragon or egg of yours in the world lacks the trait")
+		return
+	end
+
+	self:strike(untraited[math.random(#untraited)], active.event)
 end
 
 -- a wild egg that appears while a weather runs rolls like the ones already in the world

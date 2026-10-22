@@ -1208,6 +1208,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			if Iris.Button({ "End Weather" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("endWeatherEvent")
 			end
+			if Iris.Button({ "Strike One Of My Dragons/Eggs" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("strikeMyDragon")
+			end
 
 			Iris.Text({ "--- Weather Control ---" })
 
