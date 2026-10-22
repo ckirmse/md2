@@ -4096,6 +4096,7 @@ local function initClasses(gameController: GameController): ()
 		gameController = gameController,
 		itemManager = itemManager,
 		islandManager = islandManager,
+		scatterZoneManager = scatterZoneManager,
 		mutationStoreManager = mutationStoreManager,
 		vanityStoreManager = vanityStoreManager,
 	}

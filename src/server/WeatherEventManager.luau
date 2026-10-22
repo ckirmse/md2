@@ -14,6 +14,7 @@ local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 local weatherControl = require("@game/ServerScriptService/GameData/Control/Weather")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local Enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PlotHelpers = require("@game/ReplicatedStorage/Shared/PlotHelpers")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
@@ -22,16 +23,19 @@ local WeatherStrike = require("@game/ReplicatedStorage/Shared/WeatherStrike")
 
 local dayNightManager = require("./DayNightManager")
 local EraManager = require("./EraManager")
+local objectDataStore = require("./ObjectDataStore")
 local plotsManager = require("./PlotsManager")
 local Timer = require("./Timer")
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local scatterZoneManager: Types.ScatterZoneManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 
 local Level = workspace:WaitForChild("Level")
 local ClonedWeatherElements = Level:WaitForChild("ClonedWeatherElements")
 
 local FADE_SEC = 1
+local DEFAULT_COSMIC_EGG_ANNOUNCEMENT = "A Cosmic egg is falling from the sky!"
 
 type ActiveWeather = {
 	event: WeatherMath.WeatherEvent,
@@ -54,6 +58,8 @@ type WeatherEventManagerFields = {
 	startTimer: Timer.Timer?,
 	endTimer: Timer.Timer?,
 	holder: Folder?,
+	cosmicEggItemId: number?,
+	isCosmicEggPending: boolean,
 }
 
 export type WeatherEventManager = typeof(setmetatable({} :: WeatherEventManagerFields, WeatherEventManager))
@@ -221,6 +227,20 @@ local function sendTraitMessage(item: Types.MItem, text: string)
 	end
 end
 
+local function markStruck(obj: Instance, weather: number)
+	local struckAt = workspace:GetServerTimeNow()
+	obj:SetAttribute(Attributes.WEATHER_STRUCK_WEATHER, weather)
+	CollectionService:AddTag(obj, Tags.WEATHER_STRIKE_TARGET)
+	obj:SetAttribute(Attributes.WEATHER_STRUCK_AT, struckAt)
+	task.delay(WeatherStrike.CLEAR_SEC, function()
+		if obj.Parent and obj:GetAttribute(Attributes.WEATHER_STRUCK_AT) == struckAt then
+			obj:SetAttribute(Attributes.WEATHER_STRUCK_AT, nil)
+			obj:SetAttribute(Attributes.WEATHER_STRUCK_WEATHER, nil)
+			CollectionService:RemoveTag(obj, Tags.WEATHER_STRIKE_TARGET)
+		end
+	end)
+end
+
 -- marks the item's replicated object for the clients' cinematic; the trait lands when the visual hits
 function WeatherEventManager.strike(self: WeatherEventManager, item: Types.MItem, event: WeatherMath.WeatherEvent)
 	local itemId = item:getItemId()
@@ -228,19 +248,8 @@ function WeatherEventManager.strike(self: WeatherEventManager, item: Types.MItem
 		return
 	end
 
-	local obj = item:getObj()
-	local struckAt = workspace:GetServerTimeNow()
 	if isInWorld(item) then
-		obj:SetAttribute(Attributes.WEATHER_STRUCK_WEATHER, event.weather)
-		CollectionService:AddTag(obj, Tags.WEATHER_STRIKE_TARGET)
-		obj:SetAttribute(Attributes.WEATHER_STRUCK_AT, struckAt)
-		task.delay(WeatherStrike.CLEAR_SEC, function()
-			if obj.Parent and obj:GetAttribute(Attributes.WEATHER_STRUCK_AT) == struckAt then
-				obj:SetAttribute(Attributes.WEATHER_STRUCK_AT, nil)
-				obj:SetAttribute(Attributes.WEATHER_STRUCK_WEATHER, nil)
-				CollectionService:RemoveTag(obj, Tags.WEATHER_STRIKE_TARGET)
-			end
-		end)
+		markStruck(item:getObj(), event.weather)
 	end
 
 	task.delay(WeatherStrike.TRAIT_DELAY_SEC[event.weather], function()
@@ -337,6 +346,84 @@ function WeatherEventManager.devStrikeOwn(self: WeatherEventManager, player: Pla
 	self:strike(untraited[math.random(#untraited)], active.event)
 end
 
+function WeatherEventManager.hasUncollectedCosmicEgg(self: WeatherEventManager): boolean
+	if self.isCosmicEggPending then
+		return true
+	end
+
+	local item = itemManager:getItemById(self.cosmicEggItemId)
+	return item ~= nil
+		and item:getUserId() == Constants.UNOWNED_USER_ID
+		and item:getObj():GetAttribute(Attributes.CARRY_EXPIRES_TIME) == nil
+end
+
+function WeatherEventManager.dropCosmicEgg(self: WeatherEventManager, event: WeatherMath.WeatherEvent)
+	local cosmicEgg = event.cosmicEgg
+	if not cosmicEgg then
+		return
+	end
+
+	local zoneId, position = scatterZoneManager:pickCosmicEggSite()
+	if not zoneId or not position then
+		warn("WeatherEventManager: no scatter zone to drop the Cosmic egg in")
+		return
+	end
+
+	self.isCosmicEggPending = true
+	gameController:sendSystemMessageToAllPlayers(cosmicEgg.announcement or DEFAULT_COSMIC_EGG_ANNOUNCEMENT)
+
+	local marker = Instance.new("Part")
+	marker.Name = "CosmicEggMarker"
+	marker.Anchored = true
+	marker.CanCollide = false
+	marker.CanQuery = false
+	marker.CanTouch = false
+	marker.Transparency = 1
+	marker.Size = Vector3.one
+	marker.Position = position
+	marker.Parent = workspace
+	markStruck(marker, event.weather)
+	task.delay(WeatherStrike.CLEAR_SEC, function()
+		marker:Destroy()
+	end)
+
+	task.delay(WeatherStrike.TRAIT_DELAY_SEC[event.weather], function()
+		self.isCosmicEggPending = false
+		self.cosmicEggItemId = scatterZoneManager:spawnCosmicEggAt(zoneId, position, cosmicEgg.eggName)
+	end)
+end
+
+function WeatherEventManager.beginCosmicEggRolls(self: WeatherEventManager, event: WeatherMath.WeatherEvent)
+	local cosmicEgg = event.cosmicEgg
+	if not cosmicEgg then
+		return
+	end
+
+	local activeAtStart = self.active
+	local random = Random.new()
+	task.spawn(function()
+		while true do
+			task.wait(cosmicEgg.rollIntervalSec)
+			if self.active ~= activeAtStart then
+				return
+			end
+			if random:NextNumber() < cosmicEgg.chance / 100 and not self:hasUncollectedCosmicEgg() then
+				self:dropCosmicEgg(event)
+			end
+		end
+	end)
+end
+
+function WeatherEventManager.devDropCosmicEgg(self: WeatherEventManager)
+	local active = self.active
+	if not active or not active.event.cosmicEgg then
+		warn("devDropCosmicEgg needs a running weather with cosmicEgg set")
+		return
+	end
+
+	self:dropCosmicEgg(active.event)
+end
+
 -- a wild egg that appears while a weather runs rolls like the ones already in the world
 function WeatherEventManager.notifyEggSpawned(self: WeatherEventManager, egg: Types.DragonEgg)
 	local active = self.active
@@ -381,6 +468,7 @@ function WeatherEventManager.startEvent(self: WeatherEventManager, weather: numb
 		gameController:sendSystemMessageToAllPlayers(event.startMessage)
 	end
 	self:rollTraits(event)
+	self:beginCosmicEggRolls(event)
 end
 
 function WeatherEventManager.planCurrentEra(self: WeatherEventManager)
@@ -453,6 +541,19 @@ function WeatherEventManager.init(self: WeatherEventManager)
 	end
 
 	local config = weatherControl :: WeatherMath.WeatherConfig
+	for _, event in config.weatherEvents do
+		local cosmicEgg = event.cosmicEgg
+		if cosmicEgg then
+			local eggData = objectDataStore:getObjectDataByName(cosmicEgg.eggName)
+			if not eggData then
+				error("WeatherEventManager: no object named '" .. cosmicEgg.eggName .. "' (its `name` field must match, and check the earlier ObjectDataStore warnings)")
+			end
+			if eggData.type ~= "dragonEgg" then
+				error("WeatherEventManager: cosmicEgg.eggName '" .. cosmicEgg.eggName .. "' has type '" .. tostring(eggData.type) .. "', not 'dragonEgg'")
+			end
+		end
+	end
+
 	self.config = config
 	for _, event in config.weatherEvents do
 		self.eventsByWeather[event.weather] = event
@@ -481,6 +582,8 @@ function WeatherEventManager.new(): WeatherEventManager
 	self.startTimer = nil
 	self.endTimer = nil
 	self.holder = nil
+	self.cosmicEggItemId = nil
+	self.isCosmicEggPending = false
 
 	return self
 end
@@ -488,6 +591,7 @@ end
 function WeatherEventManager.initClass(deps: any)
 	gameController = deps.gameController
 	itemManager = deps.itemManager
+	scatterZoneManager = deps.scatterZoneManager
 end
 
 local singleton = WeatherEventManager.new()

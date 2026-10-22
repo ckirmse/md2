@@ -666,6 +666,7 @@ export type ScatterZone = BaseObject & {
 	getRandomPositionInBounds: (self: ScatterZone) -> Vector3,
 	getSpawnedEggItemIds: (self: ScatterZone) -> { number },
 	notifyEggTaken: (self: ScatterZone, itemId: number) -> (),
+	spawnEggAt: (self: ScatterZone, eggItemName: string, surfacePosition: Vector3, isTracked: boolean) -> number?,
 	topUp: (self: ScatterZone) -> boolean,
 	trySpawnOneEgg: (self: ScatterZone) -> boolean,
 }
@@ -1226,6 +1227,20 @@ export type IslandManager = {
 	tryCreateIsland: (self: IslandManager, lootTableName: string, random: Random, locationMap: any, mapPositionFunc: any) -> Model?,
 	tryMineNode: (self: IslandManager, player: Player, objectId: number) -> (),
 	updateIslands: (self: IslandManager) -> (),
+}
+
+export type ScatterZoneManager = {
+	beginGlobalRefreshLoop: (self: ScatterZoneManager) -> (),
+	createZoneFromMarker: (self: ScatterZoneManager, marker: Instance) -> (),
+	getAllZones: (self: ScatterZoneManager) -> { ScatterZone },
+	getEggWorldCounts: (self: ScatterZoneManager) -> { any },
+	getNextRefreshTime: (self: ScatterZoneManager) -> number,
+	getZoneByObjectId: (self: ScatterZoneManager, objectId: number) -> ScatterZone?,
+	init: (self: ScatterZoneManager) -> (),
+	pickCosmicEggSite: (self: ScatterZoneManager) -> (number?, Vector3?),
+	refreshAllZones: (self: ScatterZoneManager) -> (),
+	spawnCosmicEggAt: (self: ScatterZoneManager, zoneId: number, position: Vector3, eggName: string) -> number?,
+	stampNextRefreshTime: (self: ScatterZoneManager) -> (),
 }
 
 export type MutationStoreManager = {

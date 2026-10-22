@@ -112,20 +112,14 @@ function ScatterZone.findSpawnPosition(self: ScatterZone): Vector3
 	return bestPosition
 end
 
-function ScatterZone.trySpawnOneEgg(self: ScatterZone): boolean
-	local eggItemName = pickWeightedEggName(self)
-	if not eggItemName then
-		warn("scatter zone has no loot table entries for its loot table", self:getLootTableName(), self:getObjectName())
-		return false
-	end
-
+function ScatterZone.spawnEggAt(self: ScatterZone, eggItemName: string, surfacePosition: Vector3, isTracked: boolean): number?
 	local item = itemManager:createItem(eggItemName, Constants.UNOWNED_USER_ID)
 	if not item then
 		warn("scatter zone failed to create egg item", eggItemName, self:getObjectName())
-		return false
+		return nil
 	end
 
-	local groundPosition = self:findSpawnPosition() + Vector3.new(0, item:getPart().Size.Y / 2, 0)
+	local groundPosition = surfacePosition + Vector3.new(0, item:getPart().Size.Y / 2, 0)
 	item:getObj():PivotTo(CFrame.new(groundPosition))
 	item:setPreventSettling()
 	item:getObj().Parent = workspace
@@ -133,9 +127,21 @@ function ScatterZone.trySpawnOneEgg(self: ScatterZone): boolean
 	item:getObj():SetAttribute(Attributes.SOURCE_POSITION, groundPosition)
 	item:getObj():SetAttribute(Attributes.SOURCE_SCATTER_ZONE_ID, self:getObjectId())
 
-	self.spawnedEggItemIds[item:getItemId()] = true
+	if isTracked then
+		self.spawnedEggItemIds[item:getItemId()] = true
+	end
 
-	return true
+	return item:getItemId()
+end
+
+function ScatterZone.trySpawnOneEgg(self: ScatterZone): boolean
+	local eggItemName = pickWeightedEggName(self)
+	if not eggItemName then
+		warn("scatter zone has no loot table entries for its loot table", self:getLootTableName(), self:getObjectName())
+		return false
+	end
+
+	return self:spawnEggAt(eggItemName, self:findSpawnPosition(), true) ~= nil
 end
 
 function ScatterZone.topUp(self: ScatterZone): boolean

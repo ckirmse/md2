@@ -9,6 +9,13 @@ local WeatherMath = {}
 
 export type WeatherLighting = DayNightMath.WeatherLighting
 
+export type CosmicEgg = {
+	eggName: string,
+	rollIntervalSec: number,
+	chance: number,
+	announcement: string?,
+}
+
 export type WeatherEvent = {
 	weather: number,
 	displayName: string,
@@ -25,6 +32,7 @@ export type WeatherEvent = {
 	lockNight: boolean?,
 	startMessage: string?,
 	strikeSpreadSec: number?,
+	cosmicEgg: CosmicEgg?,
 }
 
 export type WeatherConfig = {
@@ -95,6 +103,28 @@ local function validateEvent(event: any, label: string): string?
 		end
 		if event.strikeSpreadSec >= event.durationMin then
 			return label .. ".strikeSpreadSec must be shorter than durationMin"
+		end
+	end
+
+	local cosmicEgg = event.cosmicEgg
+	if cosmicEgg ~= nil then
+		if event.weather ~= Enums.Weather.STARLIGHT then
+			return label .. ".cosmicEgg is only supported for Starlight"
+		end
+		if type(cosmicEgg) ~= "table" then
+			return label .. ".cosmicEgg must be a table"
+		end
+		if type(cosmicEgg.eggName) ~= "string" or cosmicEgg.eggName == "" then
+			return label .. ".cosmicEgg.eggName must be a non-empty string"
+		end
+		if type(cosmicEgg.rollIntervalSec) ~= "number" or cosmicEgg.rollIntervalSec <= 0 then
+			return label .. ".cosmicEgg.rollIntervalSec must be a number > 0"
+		end
+		if not isPercent(cosmicEgg.chance) then
+			return label .. ".cosmicEgg.chance must be a number from 0 to 100"
+		end
+		if cosmicEgg.announcement ~= nil and type(cosmicEgg.announcement) ~= "string" then
+			return label .. ".cosmicEgg.announcement must be a string"
 		end
 	end
 

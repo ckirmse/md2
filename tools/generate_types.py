@@ -38,6 +38,7 @@ SERVER_SINGLETONS = [
     "FtueManager",
     "ContextualFtueManager",
     "IslandManager",
+    "ScatterZoneManager",
     "MutationStoreManager",
     "VanityStoreManager",
     "FirstSessionOfferManager",

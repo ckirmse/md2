@@ -73,6 +73,37 @@ function ScatterZoneManager.getAllZones(self: ScatterZoneManager): { Types.Scatt
 	return zones
 end
 
+function ScatterZoneManager.pickCosmicEggSite(self: ScatterZoneManager): (number?, Vector3?)
+	local zones = self:getAllZones()
+	local totalArea = 0
+	local areas: { number } = {}
+	for index, zone in zones do
+		local size = (zone:getObj() :: BasePart).Size
+		areas[index] = size.X * size.Z
+		totalArea += areas[index]
+	end
+	if totalArea <= 0 then
+		return nil, nil
+	end
+
+	local roll = math.random() * totalArea
+	for index, zone in zones do
+		roll -= areas[index]
+		if roll <= 0 or index == #zones then
+			return zone:getObjectId(), zone:findSpawnPosition()
+		end
+	end
+	return nil, nil
+end
+
+function ScatterZoneManager.spawnCosmicEggAt(self: ScatterZoneManager, zoneId: number, position: Vector3, eggName: string): number?
+	local zone = self.zoneMap[zoneId]
+	if not zone then
+		return nil
+	end
+	return zone:spawnEggAt(eggName, position, false)
+end
+
 function ScatterZoneManager.refreshAllZones(self: ScatterZoneManager)
 	for _, zone in self.zoneMap do
 		for _, itemId in zone:getSpawnedEggItemIds() do

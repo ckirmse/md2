@@ -1179,6 +1179,10 @@ function DevTools.strikeMyDragon(self: DevTools, player: Player)
 	weatherEventManager:devStrikeOwn(player)
 end
 
+function DevTools.dropCosmicEgg(self: DevTools, player: Player)
+	weatherEventManager:devDropCosmicEgg()
+end
+
 function DevTools.activateWeather(self: DevTools, player: Player, weatherName: any)
 	if not weatherManager:isLegacyActive() then
 		warn("legacy weather is switched off (Control/Weather.useLegacyWeather); use startWeatherEvent")

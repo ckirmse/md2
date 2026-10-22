@@ -488,7 +488,7 @@ Two weather systems exist; `Control/Weather.useLegacyWeather` picks one (read at
 - **Config** is the Studio-only `GameData.Control.Weather`: `useLegacyWeather`, `rollIntervalSec` and `weatherEvents`, an array of `weather` (`Enums.Weather`),
   `displayName`, `description`, `iconAssetId` (a string, empty for none), `startChance`, `durationMin`, `durationMax`, `startCondition`
   (`Enums.WeatherStartCondition`), `trait` (`Enums.Trait`), `traitChance`, and optional `templatePath` (under `ReplicatedStorage.Weather`, with `Main` and
-  `MergePlot` folders like the legacy templates), `lighting = { brightness?, outdoorAmbient? }`, `lockNight`, `startMessage`, `strikeSpreadSec`.
+  `MergePlot` folders like the legacy templates), `lighting = { brightness?, outdoorAmbient? }`, `lockNight`, `startMessage`, `strikeSpreadSec`, `cosmicEgg`.
   `WeatherEventManager:init` errors (stops the server) on a bad table; the events and the running weather travel in `initData.weather` (nil in legacy mode)
   and `NotifyWeatherUpdate` carries `{ isWeatherEvents = true, active = { weather, startTime, endTime } }`.
 - **Lighting and night lock:** the client never sets lighting itself. The running weather's `lighting` is laid over the day/night look by
@@ -516,7 +516,14 @@ Two weather systems exist; `Control/Weather.useLegacyWeather` picks one (read at
   `ClientStarlightEffects` is the Starlight twin: beams, particles and a music loop while it runs, and a falling star (`ShootingStar`, aligned by the attachment in
   its `Ball` part) that drops from `STAR_START_HEIGHT` above the target over the trait delay, then a `StarImpact` burst. Its art is all under
   `GameAssets/Weather/ShootingStars` (the Thunderstorm lightning and sparks sit in the project's `GameAssets/ParticleEffects` instead).
-- **Not built yet:** Cosmic eggs falling during Starlight, the Cosmic radar, the skybox swap and temporary luck.
+- **Cosmic eggs (Starlight only):** `cosmicEgg = { eggName, rollIntervalSec, chance, announcement? }` on the Starlight event (`eggName` is a dragon egg object, its
+  luck and size range are authored on that object). While Starlight runs, every `rollIntervalSec` one roll at `chance` percent, skipped while a Cosmic egg
+  from an earlier drop is still unclaimed. A drop picks a random scatter zone (weighted by area) and a point in it (`ScatterZoneManager:pickCosmicEggSite`), tells
+  every player, and puts an invisible marker part there tagged like a struck dragon, so the clients play the falling star with no new remote; the egg appears
+  `WeatherStrike.TRAIT_DELAY_SEC` later (`ScatterZone:spawnEggAt` with `isTracked = false`). It is not counted by the zone and the global egg refresh leaves it alone,
+  so it stays until someone picks it up (it still rolls Starlit like any wild egg). `WeatherEventManager` gets `scatterZoneManager` through `initClass`
+  (`ScatterZone` requires `WeatherEventManager`). Dev tool `dropCosmicEgg` (client section "Weather").
+- **Not built yet:** the Cosmic radar, the Cosmic night bonus on speed, the skybox swap and temporary luck.
 
 ## Playtime Rewards
 
