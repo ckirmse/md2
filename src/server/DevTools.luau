@@ -371,6 +371,14 @@ function DevTools.getGems(self: DevTools, player: Player, amount: any)
 
 end
 
+function DevTools.dumpCoins(self: DevTools, player: Player)
+	print("Coins for", player, playerAttributesManager:get(player, PlayerAttributeKeys.COINS))
+end
+
+function DevTools.dumpDiamonds(self: DevTools, player: Player)
+	print("Diamonds for", player, CurrencyGranter.getDiamonds(player))
+end
+
 function DevTools.dumpGems(self: DevTools, player: Player)
 	print("Gems in wallet for", player)
 	for _, primaryElement in enums.getAllValues(enums.PrimaryElements) do

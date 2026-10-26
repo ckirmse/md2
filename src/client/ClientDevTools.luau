@@ -494,25 +494,40 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 
 			Iris.End()
 
-			Iris.CollapsingHeader({ "Coins" })
+			Iris.CollapsingHeader({ "Currency" })
+			local currencyAmount = Iris.State(50)
+			Iris.InputNum(
+				{ [Iris.Args.InputNum.Text] = "Amount", [Iris.Args.InputNum.Format] = "%i" },
+				{ number = currencyAmount }
+			)
+
+			Iris.SameLine()
+			if Iris.Button({ "Get Coins" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("getCoins", currencyAmount:get())
+			end
 			if Iris.Button({ "Reset Coins" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("resetCoins")
 			end
-
-			local numCoins = Iris.State(50)
-			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = numCoins })
-			Iris.SameLine()
-			if Iris.Button({ "Get Coins" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("getCoins", numCoins:get())
+			if Iris.Button({ "Dump Coins" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpCoins")
 			end
+			Iris.End()
+
+			Iris.SameLine()
 			if Iris.Button({ "Get Diamonds" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("getDiamonds", numCoins:get())
+				RemoteEvents.TryDevTool:FireServer("getDiamonds", currencyAmount:get())
 			end
 			if Iris.Button({ "Spend Diamonds" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("spendDiamonds", numCoins:get())
+				RemoteEvents.TryDevTool:FireServer("spendDiamonds", currencyAmount:get())
 			end
+			if Iris.Button({ "Dump Diamonds" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpDiamonds")
+			end
+			Iris.End()
+
+			Iris.SameLine()
 			if Iris.Button({ "Get Gems" }).clicked() then
-				RemoteEvents.TryDevTool:FireServer("getGems", numCoins:get())
+				RemoteEvents.TryDevTool:FireServer("getGems", currencyAmount:get())
 			end
 			if Iris.Button({ "Dump Gems" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpGems")
