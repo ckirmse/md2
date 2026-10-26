@@ -649,6 +649,41 @@ package, keeping its module split and flow; only the seams to the host differ.
 - **Sound:** the 4 s spin loops `rbxassetid://1846470940` (a constant in `ClientSpinWheelManager`), honouring the main sound-effects option.
   Item pictures come from `ItemIcons` by object name, or the segment's `iconAssetId` for a `LOOT_TABLE` prize.
 
+## Index (IndexV2)
+
+The Index is a collection book with four categories (`Enums.IndexCategory`: DRAGON, EGG, MUTATION, TRAIT). The reworked **IndexV2** is the live
+one; the original Index (`IndexManager`, `ClientIndexManager`, `IndexFrame`) is kept but off unless `Control/IndexRewards.useLegacyIndex = true`
+(read at join; off means its handlers return, its remotes are not fired and its HUD button stays hidden). Files: `server/IndexV2Manager.luau`,
+`shared/IndexRewardMath.luau` (pure milestone math, used by the server and the client so both agree on what is claimable),
+`client/ClientIndexV2Data.luau` (data path), `client/ClientIndexV2Manager.luau` (the dialog).
+
+- **Discovery** goes through `IndexV2Manager` (`notifyItemDiscoveredIfNew`, `notifyMutationDiscoveredIfNew`, `notifyTraitDiscoveredIfNew`), the single entry
+  point called by `Item`, `RideMixin`, `MItem`, `PlayerData` and `DevTools`. It records the discovery once and tells the old manager only when the old
+  Index is on. The two managers reference each other through `initClass` (`indexManager`, `indexV2Manager`); `Types.IndexV2Manager` is a small
+  hand-written interface because `generate_types.py` cannot emit its milestone signatures. `PlayerData.loadSaveData` loads the Index state BEFORE the
+  items, otherwise every loaded item looks newly discovered (and the entry prize pays on every boot).
+- **Rewards:** ROW rewards (Dragon and Egg: every entry of a rarity discovered) and category TIER rewards (claimed in order), each with an income-percent,
+  crate or stat/mutation reward. Studio-only `GameData.Control.IndexRewards`: `rowRewards[category][rarity]`, `categoryTiers[category] = { { requiredPercent,
+  displayText, reward }, ... }` (add tiers at the end only: the position is saved in claims), `entryRewards`, `useLegacyIndex`, `singleTierBar`. A reward
+  may carry `icon = "rbxassetid://..."` inside its `reward` table. The server rebuilds and validates every claim (`TryClaimIndexV2Tier`).
+- **Per-entry coin prize:** `entryRewards = { isEnabled = false|true, coins = { [category] = number | { [rarity] = number } } }`, off unless
+  `isEnabled == true`; Dragon and Egg take a rarity table, Mutation and Trait a flat number. It pays once per new entry and warns when an enabled prize
+  pays nothing for an entry.
+- **Tier bar:** `singleTierBar = false` shows every tier button on `BottomBar > Milestones` and `ProgressBar`. `true` shows ONE button for the first
+  unclaimed tier on `MilestonesSingle` and `ProgressBarLong` (bar = collected / that tier's threshold, label `25/27`; all claimed shows the last tier
+  collected) and hides the other two; `BottomBar > ProgressLabel` moves to `UDim2.new(0.215, 0, 1, 0)` (else `0, 0, 1, 0`). Missing duplicates warn and fall
+  back to every tier.
+- **Reward icons:** the client sets `reward.icon` on `PercentLabel > RewardIcon` of the Collect and Locked buttons only; a missing icon keeps the
+  authored picture.
+- **Data to the client:** `initData.indexV2` at join (data sent before `NotifyInit` is lost), later `NotifyIndexV2Data`; remotes `TryClaimIndexV2Tier`,
+  `NotifyIndexV2Data`, `NotifyIndexV2Discovery`, `NotifyIndexV2TierResult`. `ScreenGuiManager.hideAllOtherGuis` disables unlisted ScreenGuis, so the
+  dialog enables its own `PetIndex` gui when opened. HUD: `IndexV2Frame` > `Index` / `IndexAlert`.
+- **Sort order of tiles in a rarity row:** primary element's `sortIndex` (`shared/Elements.luau`, Nature 1, Water 2, Fire 3; no element counts as 1),
+  then display name.
+- **Dev tools** (client section "Index V2"): `discoverIndexV2Items`, `dumpIndexV2`, `claimNextIndexV2Tier`, `sendIndexV2Data`.
+- **Known gaps:** row rewards gate on a whole row (the spec says never); 120 dragon entries vs the spec's 126; no Parts category; no Pure/Chimera
+  tiers; prizes are coins only (no Diamonds or Style Tokens yet).
+
 ## Design Notes in the Repo
 
 `ghost_shadow.md` (bandwidth-driven proposal for replicating dragons as invisible shadow parts with

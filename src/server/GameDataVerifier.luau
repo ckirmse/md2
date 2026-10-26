@@ -16,6 +16,7 @@ local dailyLoginData = require("@game/ServerScriptService/GameData/Control/Daily
 local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/EggLootTables")
 local playtimeData = require("@game/ServerScriptService/GameData/Control/Playtime")
 local rarityData = require("@game/ServerScriptService/GameData/Control/Rarities")
+local indexRewardsData = require("@game/ServerScriptService/GameData/Control/IndexRewards")
 local rebirthData = require("@game/ServerScriptService/GameData/Control/Rebirth")
 local spinWheelData = require("@game/ServerScriptService/GameData/Control/SpinWheel")
 
@@ -270,6 +271,111 @@ function GameDataVerifier.verifyRebirthLevels(self: GameDataVerifier)
 	end
 end
 
+local INDEX_REWARD_FIELDS: { [string]: { string } } = {
+	["Income Bonus"] = { "bonusPercent" },
+	["Chamber Pull"] = { "lootTableName" },
+	["Chest Pull"] = { "lootTableName" },
+	["Stat Buff"] = { "attribute", "amount" },
+	["Mutation Chance"] = { "amount" },
+}
+
+local INDEX_REWARD_SIZES: { [string]: boolean } = { small = true, medium = true, large = true }
+
+function GameDataVerifier.verifyIndexRewardEntry(self: GameDataVerifier, label: string, entry: any)
+	if type(entry) ~= "table" or type(entry.displayText) ~= "string" or type(entry.reward) ~= "table" then
+		warn("GameDataVerifier: Index reward needs a displayText and a reward table", label)
+		return
+	end
+
+	if entry.reward.icon ~= nil and type(entry.reward.icon) ~= "string" then
+		warn("GameDataVerifier: Index reward icon must be an asset id string", label)
+	end
+
+	local requiredFields = INDEX_REWARD_FIELDS[entry.reward.rewardType]
+	if not requiredFields then
+		warn("GameDataVerifier: Index reward has an unknown rewardType", label, entry.reward.rewardType)
+		return
+	end
+
+	for _, field in requiredFields do
+		local value = entry.reward[field]
+		local isValid = if field == "lootTableName" or field == "attribute" then type(value) == "string" else type(value) == "number"
+		if not isValid then
+			warn("GameDataVerifier: Index reward is missing or has a bad field", label, entry.reward.rewardType, field)
+		end
+	end
+
+	if entry.reward.size ~= nil and not INDEX_REWARD_SIZES[entry.reward.size] then
+		warn("GameDataVerifier: Index reward has an unknown crate size", label, entry.reward.size)
+	end
+end
+
+function GameDataVerifier.verifyIndexRewards(self: GameDataVerifier)
+	for category, rarityRows in indexRewardsData.rowRewards or {} do
+		local categoryName = Enums.getPublicName(Enums.IndexCategory, category)
+		if category ~= Enums.IndexCategory.DRAGON and category ~= Enums.IndexCategory.EGG then
+			warn("GameDataVerifier: Index rowRewards only apply to the Dragon and Egg categories", category)
+			continue
+		end
+
+		for rarity, entry in rarityRows do
+			if not Enums.isValidValue(Enums.Rarity, rarity) then
+				warn("GameDataVerifier: Index rowRewards has an unknown rarity key", categoryName, rarity)
+				continue
+			end
+			self:verifyIndexRewardEntry(`rowRewards {categoryName} {Enums.getPublicName(Enums.Rarity, rarity)}`, entry)
+		end
+	end
+
+	if indexRewardsData.useLegacyIndex ~= nil and type(indexRewardsData.useLegacyIndex) ~= "boolean" then
+		warn("GameDataVerifier: Index useLegacyIndex must be a boolean")
+	end
+
+	if indexRewardsData.singleTierBar ~= nil and type(indexRewardsData.singleTierBar) ~= "boolean" then
+		warn("GameDataVerifier: Index singleTierBar must be a boolean")
+	end
+
+	local entryRewards = indexRewardsData.entryRewards
+	if entryRewards then
+		if type(entryRewards.isEnabled) ~= "boolean" then
+			warn("GameDataVerifier: Index entryRewards needs a boolean isEnabled")
+		end
+		for category, coins in entryRewards.coins or {} do
+			if not Enums.isValidValue(Enums.IndexCategory, category) then
+				warn("GameDataVerifier: Index entryRewards.coins has an unknown category key", category)
+			elseif type(coins) == "table" then
+				for rarity, amount in coins do
+					if not Enums.isValidValue(Enums.Rarity, rarity) or type(amount) ~= "number" or amount < 0 then
+						warn("GameDataVerifier: Index entryRewards.coins needs a rarity key and a non-negative amount", category, rarity, amount)
+					end
+				end
+			elseif type(coins) ~= "number" or coins < 0 then
+				warn("GameDataVerifier: Index entryRewards.coins needs a non-negative number or a rarity table", category, coins)
+			end
+		end
+	end
+
+	for category, tiers in indexRewardsData.categoryTiers or {} do
+		local categoryName = Enums.getPublicName(Enums.IndexCategory, category)
+		if not Enums.isValidValue(Enums.IndexCategory, category) then
+			warn("GameDataVerifier: Index categoryTiers has an unknown category key", category)
+			continue
+		end
+
+		local previousPercent = 0
+		for tierIndex, tier in tiers do
+			self:verifyIndexRewardEntry(`categoryTiers {categoryName} {tierIndex}`, tier)
+
+			local requiredPercent = tier.requiredPercent
+			if type(requiredPercent) ~= "number" or requiredPercent <= previousPercent or requiredPercent > 100 then
+				warn("GameDataVerifier: Index tier needs a requiredPercent above the previous tier's and at most 100", categoryName, tierIndex, requiredPercent)
+			else
+				previousPercent = requiredPercent
+			end
+		end
+	end
+end
+
 -- each playtime reward needs a known kind, a positive unlockSec and the fields its kind reads
 function GameDataVerifier.verifyPlaytimeRewards(self: GameDataVerifier)
 	local rewards = playtimeData.rewards
@@ -511,6 +617,7 @@ function GameDataVerifier.verifyAll(self: GameDataVerifier)
 	self:verifyRarities()
 	self:verifyEggSizes()
 	self:verifyRebirthLevels()
+	self:verifyIndexRewards()
 	self:verifyPlaytimeRewards()
 	self:verifyDailyLogin()
 	self:verifySpinWheel()

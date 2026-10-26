@@ -47,6 +47,7 @@ local vanityAreasData = require("@game/ServerScriptService/GameData/Control/Vani
 
 local analyticsManager = require("./AnalyticsManager")
 local indexManager = require("./IndexManager")
+local indexV2Manager = require("./IndexV2Manager")
 local playerAttributesManager = require("./PlayerAttributesManager")
 local rideMixin = require("./RideMixin")
 local Timer = require("./Timer")
@@ -114,9 +115,11 @@ type PlayerDataFields = {
 	dailyLogin: any, -- { lastClaimedDay, nextClaimTime }, see DailyLoginMath
 	spinWheel: any, -- { freeSpins, paidSpins, lastGrantDay, lastDiscountDay }, see SpinWheelMath
 	indexDiscoveredMutations: any,
+	indexDiscoveredTraits: any,
 	indexClaimedRewards: any,
 	indexStatBuffs: any,
 	indexMutationChancePercent: number,
+	indexIncomeBonusPercent: number,
 	lastIndexRefreshTime: number,
 	hasBackfilledBlueprintIndex: boolean,
 }
@@ -291,7 +294,7 @@ function PlayerData.notifyItemReceived(self: PlayerData, receivedItem: any)
 	end
 
 	if item:getType() == "blueprint" then
-		indexManager:notifyItemDiscoveredIfNew(self.player, self, item:getItemName())
+		indexV2Manager:notifyItemDiscoveredIfNew(self.player, self, item:getItemName())
 
 		-- we now check to see if it's a new one to fanfare
 		if item:getCount() == 1 then
@@ -1865,6 +1868,57 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 	self.rebirthLevel = (saveData and saveData.rebirthLevel) or 0
 	gameController:notifyEggSlotCountChanged(self.player, gameController:getEggSlotCountForRebirthLevel(self.rebirthLevel))
 
+	-- the Index state loads before the items: loading an item records its discovery, and that must see the saved state
+	local indexDiscoveredItemsSaveData = saveData and saveData.indexDiscoveredItems or nil
+	if indexDiscoveredItemsSaveData then
+		self.indexDiscoveredItems = indexDiscoveredItemsSaveData
+	else
+		self.indexDiscoveredItems = {}
+	end
+
+	local indexClaimedRewardsSaveData = saveData and saveData.indexClaimedRewards or nil
+	if indexClaimedRewardsSaveData then
+		self.indexClaimedRewards = indexClaimedRewardsSaveData
+	else
+		self.indexClaimedRewards = {}
+	end
+
+	local indexStatBuffsSaveData = saveData and saveData.indexStatBuffs or nil
+	if indexStatBuffsSaveData then
+		self.indexStatBuffs = indexStatBuffsSaveData
+	else
+		self.indexStatBuffs = {}
+	end
+
+	self.indexMutationChancePercent = (saveData and saveData.indexMutationChancePercent) or 0
+	self.indexIncomeBonusPercent = (saveData and saveData.indexIncomeBonusPercent) or 0
+
+	local indexDiscoveredMutationsSaveData = saveData and saveData.indexDiscoveredMutations or nil
+	if indexDiscoveredMutationsSaveData then
+		self.indexDiscoveredMutations = {}
+		for mutationStr in indexDiscoveredMutationsSaveData do
+			local mutation = tonumber(mutationStr)
+			if not enums.isValidValue(enums.Mutations, mutation) then
+				print("ignoring mutation that no longer exists", mutation)
+				continue
+			end
+			self.indexDiscoveredMutations[mutation] = true
+		end
+	else
+		self.indexDiscoveredMutations = {}
+	end
+
+	self.indexDiscoveredTraits = {}
+	local indexDiscoveredTraitsSaveData = saveData and saveData.indexDiscoveredTraits or nil
+	if indexDiscoveredTraitsSaveData then
+		for traitStr in indexDiscoveredTraitsSaveData do
+			local trait = tonumber(traitStr)
+			if enums.isValidValue(enums.Trait, trait) then
+				self.indexDiscoveredTraits[trait] = true
+			end
+		end
+	end
+
 	-- vanity needs to cemo before items because vanity islands can hold items
 	local itemsSaveData = saveData and saveData.items or nil
 	if itemsSaveData then
@@ -2006,51 +2060,15 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 		self.spinWheel = self:getDefaultSpinWheel()
 	end
 
-	local indexDiscoveredItemsSaveData = saveData and saveData.indexDiscoveredItems or nil
-	if indexDiscoveredItemsSaveData then
-		self.indexDiscoveredItems = indexDiscoveredItemsSaveData
-	else
-		self.indexDiscoveredItems = {}
-	end
-
-	local indexClaimedRewardsSaveData = saveData and saveData.indexClaimedRewards or nil
-	if indexClaimedRewardsSaveData then
-		self.indexClaimedRewards = indexClaimedRewardsSaveData
-	else
-		self.indexClaimedRewards = {}
-	end
-
-	local indexStatBuffsSaveData = saveData and saveData.indexStatBuffs or nil
-	if indexStatBuffsSaveData then
-		self.indexStatBuffs = indexStatBuffsSaveData
-	else
-		self.indexStatBuffs = {}
-	end
-
-	self.indexMutationChancePercent = (saveData and saveData.indexMutationChancePercent) or 0
-
-	local indexDiscoveredMutationsSaveData = saveData and saveData.indexDiscoveredMutations or nil
-	if indexDiscoveredMutationsSaveData then
-		self.indexDiscoveredMutations = {}
-		for mutationStr in indexDiscoveredMutationsSaveData do
-			local mutation = tonumber(mutationStr)
-			if not enums.isValidValue(enums.Mutations, mutation) then
-				print("ignoring mutation that no longer exists", mutation)
-				continue
-			end
-			self.indexDiscoveredMutations[mutation] = true
-		end
-	else
-		self.indexDiscoveredMutations = {}
-	end
-
 	self:updatePlayerVariables()
 
 	self.hasBackfilledBlueprintIndex = (saveData and saveData.hasBackfilledBlueprintIndex) or false
 	self:backfillBlueprintIndexDiscoveryIfNeeded()
 
-	local indexData = indexManager:getFullIndexDataForPlayer(self.player)
-	RemoteEvents.NotifyIndexData:FireClient(self.player, indexData)
+	if indexManager:isLegacyEnabled() then
+		RemoteEvents.NotifyIndexData:FireClient(self.player, indexManager:getFullIndexDataForPlayer(self.player))
+	end
+	indexV2Manager:sendData(self.player)
 
 	local contextualFtueStateSaveData = saveData and saveData.contextualFtueState or nil
 	if contextualFtueStateSaveData then
@@ -2323,6 +2341,22 @@ function PlayerData.markIndexRewardClaimed(self: PlayerData, tierId: any)
 	self.indexClaimedRewards[tierId] = true
 end
 
+function PlayerData.getIndexClaimedRewards(self: PlayerData): any
+	return self.indexClaimedRewards
+end
+
+function PlayerData.getIndexIncomeBonusPercent(self: PlayerData): number
+	return self.indexIncomeBonusPercent
+end
+
+function PlayerData.getIndexIncomeMultiplier(self: PlayerData): number
+	return 1 + self.indexIncomeBonusPercent / 100
+end
+
+function PlayerData.addIndexIncomeBonusPercent(self: PlayerData, percent: number)
+	self.indexIncomeBonusPercent += percent
+end
+
 function PlayerData.grantIndexStatBuff(self: PlayerData, attributeName: any, amount: any)
 	self.indexStatBuffs[attributeName] = (self.indexStatBuffs[attributeName] or 0) + amount
 	self:updatePlayerVariables()
@@ -2351,7 +2385,7 @@ function PlayerData.backfillBlueprintIndexDiscoveryIfNeeded(self: PlayerData)
 			local isUnlocked = vanityComponentName ~= nil and not self:isVanityComponentLocked(vanityComponentName)
 
 			if isOwned or isUnlocked then
-				indexManager:notifyItemDiscoveredIfNew(self.player, self, itemName)
+				indexV2Manager:notifyItemDiscoveredIfNew(self.player, self, itemName)
 			end
 		end
 	end
@@ -2365,6 +2399,14 @@ end
 
 function PlayerData.markIndexMutationDiscovered(self: PlayerData, mutationTier: any)
 	self.indexDiscoveredMutations[mutationTier] = true
+end
+
+function PlayerData.hasDiscoveredIndexTrait(self: PlayerData, trait: any)
+	return self.indexDiscoveredTraits[trait] == true
+end
+
+function PlayerData.markIndexTraitDiscovered(self: PlayerData, trait: any)
+	self.indexDiscoveredTraits[trait] = true
 end
 
 function PlayerData.getIndexDiscoveredMutations(self: PlayerData)
@@ -2386,14 +2428,17 @@ function PlayerData.resetIndexData(self: PlayerData)
 	self.indexDiscoveredItems = {}
 	self.indexClaimedRewards = {}
 	self.indexDiscoveredMutations = {}
+	self.indexDiscoveredTraits = {}
 	self.indexStatBuffs = {}
 	self.indexMutationChancePercent = 0
+	self.indexIncomeBonusPercent = 0
 end
 
 function PlayerData.resetIndexRewards(self: PlayerData)
 	self.indexClaimedRewards = {}
 	self.indexStatBuffs = {}
 	self.indexMutationChancePercent = 0
+	self.indexIncomeBonusPercent = 0
 	self:updatePlayerVariables()
 end
 
@@ -2468,8 +2513,10 @@ function PlayerData.getSaveData(self: PlayerData): any
 	saveData.indexDiscoveredItems = self.indexDiscoveredItems
 	saveData.indexClaimedRewards = self.indexClaimedRewards
 	saveData.indexDiscoveredMutations = self.indexDiscoveredMutations
+	saveData.indexDiscoveredTraits = self.indexDiscoveredTraits
 	saveData.indexStatBuffs = self.indexStatBuffs
 	saveData.indexMutationChancePercent = self.indexMutationChancePercent
+	saveData.indexIncomeBonusPercent = self.indexIncomeBonusPercent
 	saveData.hasBackfilledBlueprintIndex = self.hasBackfilledBlueprintIndex
 	saveData.vanityState = self.vanityState
 	saveData.vanityComponentStates = self:getNonDefaultVanityComponentStates()
@@ -3496,8 +3543,10 @@ function PlayerData.new(player: Player?): PlayerData
 	self.indexDiscoveredItems = {}
 	self.indexClaimedRewards = {}
 	self.indexDiscoveredMutations = {}
+	self.indexDiscoveredTraits = {}
 	self.indexStatBuffs = {}
 	self.indexMutationChancePercent = 0
+	self.indexIncomeBonusPercent = 0
 	self.hasBackfilledBlueprintIndex = false
 	self.lastIndexRefreshTime = 0
 	self.vanityState = enums.PlayerVanityState.LOCKED

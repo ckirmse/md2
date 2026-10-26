@@ -15,6 +15,8 @@ local utils = require("@game/ReplicatedStorage/Shared/utils")
 local modificationsData = require("@game/ServerScriptService/GameData/Control/Modifications")
 local mutationsData = require("@game/ServerScriptService/GameData/Control/Mutations")
 
+local indexV2Manager = require("./IndexV2Manager")
+
 
 export type MItemFields = Types.MItemFields
 export type MItem = Types.MItem
@@ -145,6 +147,18 @@ function MItem.processTraitsChanged(self: MItem)
 	self:notifyVisibleNameChanged()
 end
 
+function MItem.notifyTraitsDiscovered(self: MItem)
+	local player = self:getPlayer()
+	local playerData = self:getPlayerData()
+	if not player or not playerData then
+		return
+	end
+
+	for _, trait in self.traits do
+		indexV2Manager:notifyTraitDiscoveredIfNew(player, playerData, trait)
+	end
+end
+
 -- returns true when the trait was new
 function MItem.addTrait(self: MItem, trait: number): boolean
 	if not enums.isValidValue(enums.Trait, trait) then
@@ -162,6 +176,8 @@ function MItem.addTrait(self: MItem, trait: number): boolean
 
 	self:updateDataDump()
 
+	self:notifyTraitsDiscovered()
+
 	return true
 end
 
@@ -176,6 +192,8 @@ function MItem.setTraits(self: MItem, traits: { number })
 	self:processTraitsChanged()
 
 	self:updateDataDump()
+
+	self:notifyTraitsDiscovered()
 end
 
 function MItem.getModifications(self: MItem): { number }

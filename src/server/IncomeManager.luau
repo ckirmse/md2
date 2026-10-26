@@ -27,14 +27,19 @@ type IncomeManagerFields = {
 export type IncomeManager = typeof(setmetatable({} :: IncomeManagerFields, IncomeManager))
 
 function IncomeManager.getIncomePerSec(self: IncomeManager, playerData: Types.PlayerData): number
-	return playerData:getTotalDragonIncome() * incomeData.incomeCoeff * rebirthIncomeMult(playerData:getRebirthLevel())
+	return playerData:getTotalDragonIncome()
+		* incomeData.incomeCoeff
+		* rebirthIncomeMult(playerData:getRebirthLevel())
+		* playerData:getIndexIncomeMultiplier()
 end
 
 function IncomeManager.getDragonIncomePerSec(self: IncomeManager, dragon: Types.ShadowDragon): number
 	local player = dragon:getPlayer()
-	local rebirthLevel = if player then gameController:getPlayerData(player):getRebirthLevel() else 0
+	local playerData = if player then gameController:getPlayerData(player) else nil
+	local rebirthLevel = if playerData then playerData:getRebirthLevel() else 0
+	local indexIncomeMult = if playerData then playerData:getIndexIncomeMultiplier() else 1
 
-	return dragon:getIncome() * incomeData.incomeCoeff * rebirthIncomeMult(rebirthLevel)
+	return dragon:getIncome() * incomeData.incomeCoeff * rebirthIncomeMult(rebirthLevel) * indexIncomeMult
 end
 
 function IncomeManager.tickPlayer(self: IncomeManager, player: Player, playerData: Types.PlayerData, elapsedSec: number)

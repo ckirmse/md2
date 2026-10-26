@@ -8,7 +8,7 @@ local collectionService = game:GetService("CollectionService")
 local Types = require("./Types")
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
-local indexManager = require("./IndexManager")
+local indexV2Manager = require("./IndexV2Manager")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- the RemoteEvents children only exist in Studio, so they are untyped here
@@ -85,13 +85,14 @@ function RideMixin.canRideItem(self: RideMixin, player: Player, itemId: number):
 	end
 
 	local playerData = gameController:getPlayerData(player)
-	indexManager:notifyItemDiscoveredIfNew(player, playerData, item:getItemName())
+	indexV2Manager:notifyItemDiscoveredIfNew(player, playerData, item:getItemName())
 
 	if itemManager:isMutationCapableType(item:getType()) then
 		local mutation = item:getMutation()
 		if mutation and mutation ~= enums.Mutations.NORMAL then
-			indexManager:notifyMutationDiscoveredIfNew(player, playerData, mutation)
+			indexV2Manager:notifyMutationDiscoveredIfNew(player, playerData, mutation)
 		end
+		item:notifyTraitsDiscovered()
 	end
 
 	return true

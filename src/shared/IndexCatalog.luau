@@ -32,7 +32,14 @@ IndexCatalog.CategoryAxes = {
 	[IndexCatalog.Category.MUTATIONS] = { element = false, rarity = false, chainKeyHasRarity = false, section = false },
 }
 
-local RARITY_ORDER: { number } = { enums.Rarity.COMMON, enums.Rarity.UNCOMMON, enums.Rarity.RARE, enums.Rarity.EPIC }
+local RARITY_ORDER: { number } = {
+	enums.Rarity.COMMON,
+	enums.Rarity.UNCOMMON,
+	enums.Rarity.RARE,
+	enums.Rarity.EPIC,
+	enums.Rarity.LEGENDARY,
+	enums.Rarity.MYTHIC,
+}
 
 function IndexCatalog.getCategoriesSorted(): { string }
 	local categories: { string } = {}

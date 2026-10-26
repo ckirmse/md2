@@ -32,6 +32,7 @@ local Gem = require("./Gem")
 local Crate = require("./Crate")
 local incomeManager = require("./IncomeManager")
 local indexManager = require("./IndexManager")
+local indexV2Manager = require("./IndexV2Manager")
 local Item = require("./Item")
 local objectDataStore = require("./ObjectDataStore")
 local islandManager = require("./IslandManager")
@@ -1615,6 +1616,8 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		playtimeRewards = playtimeRewardManager:getClientData(player),
 		dailyLogin = dailyLoginManager:getClientData(playerData),
 		spinWheel = spinWheelManager:getClientData(playerData),
+		isLegacyIndexEnabled = indexManager:isLegacyEnabled(),
+		indexV2 = if self:isIndexEnabled() then indexV2Manager:getData(playerData) else nil,
 		ftueProgress = ftueProgress,
 		firstSessionOfferState = playerData:getFirstSessionOfferState(),
 		showLuckBillboard = not playerData.hasClaimedGroupLuck and not ftueProgress.isEnabled,
@@ -3672,7 +3675,7 @@ function GameController.tryClaimWelcomeBackGift(self: GameController, player: Pl
 end
 
 function GameController.tryClaimIndexReward(self: GameController, player: Player, category: any, scope: any, chainKey: any, tierIndex: any): ()
-	if not self:isIndexEnabled() then
+	if not indexManager:isLegacyEnabled() then
 		return
 	end
 
@@ -3699,8 +3702,12 @@ function GameController.tryClaimIndexReward(self: GameController, player: Player
 	)
 end
 
+function GameController.tryClaimIndexV2Tier(self: GameController, player: Player, tierId: any): ()
+	indexV2Manager:tryClaimTier(player, tierId)
+end
+
 function GameController.tryRefreshIndexData(self: GameController, player: Player): ()
-	if not self:isIndexEnabled() then
+	if not indexManager:isLegacyEnabled() then
 		return
 	end
 
@@ -3798,6 +3805,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryUnlockVanityComponent", "tryUnlockVanityComponent")
 	self:addRemoteEventHandler("TryClaimIndexReward", "tryClaimIndexReward")
 	self:addRemoteEventHandler("TryRefreshIndexData", "tryRefreshIndexData")
+	self:addRemoteEventHandler("TryClaimIndexV2Tier", "tryClaimIndexV2Tier")
 	self:addRemoteEventHandler("TryEquipVanityComponent", "tryEquipVanityComponent")
 	self:addRemoteEventHandler("TryUnequipVanityPlacement", "tryUnequipVanityPlacement")
 	self:addRemoteEventHandler("TryBuyVanityArea", "tryBuyVanityArea")
@@ -4095,6 +4103,8 @@ local function initClasses(gameController: GameController): ()
 	local deps = {
 		gameController = gameController,
 		itemManager = itemManager,
+		indexManager = indexManager,
+		indexV2Manager = indexV2Manager,
 		islandManager = islandManager,
 		scatterZoneManager = scatterZoneManager,
 		mutationStoreManager = mutationStoreManager,
@@ -4107,6 +4117,7 @@ local function initClasses(gameController: GameController): ()
 	devTools.initClass(deps)
 	customerTools.initClass(deps)
 	indexManager.initClass(deps)
+	indexV2Manager.initClass(deps)
 	islandManager.initClass(deps)
 	radarManager.initClass(deps)
 	scatterZoneManager.initClass(deps)

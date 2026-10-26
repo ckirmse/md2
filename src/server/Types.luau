@@ -208,6 +208,7 @@ export type MItem = NumberItem & {
 
 	addModification: (self: MItem, modification: number) -> (),
 	addTrait: (self: MItem, trait: number) -> boolean,
+	notifyTraitsDiscovered: (self: MItem) -> (),
 	calculateModificationMultiplier: (self: MItem) -> number,
 	doesHaveModification: (self: MItem, modification: number) -> boolean,
 	getEncodedModifications: (self: MItem) -> string,
@@ -889,6 +890,12 @@ export type UpAndOverItemMover = ItemMover & {
 	beginMoving: (self: UpAndOverItemMover) -> (),
 }
 
+-- only what the old IndexManager needs from IndexV2Manager; the full class cannot be generated because its
+-- milestone signatures use shared types that Types.luau cannot require
+export type IndexV2Manager = {
+	grantReward: (self: IndexV2Manager, player: Player, playerData: PlayerData, rewardEntry: any) -> (),
+}
+
 -- ===== GENERATED SECTION -- everything below is written by tools/generate_types.py; do not edit by hand =====
 
 export type GameController = {
@@ -988,6 +995,7 @@ export type GameController = {
 	tryClaimCrystal: (self: GameController, player: Player, crystalItemId: any) -> (),
 	tryClaimDailyReward: (self: GameController, player: Player, tileIndex: any) -> (),
 	tryClaimIndexReward: (self: GameController, player: Player, category: any, scope: any, chainKey: any, tierIndex: any) -> (),
+	tryClaimIndexV2Tier: (self: GameController, player: Player, tierId: any) -> (),
 	tryClaimLuckBillboard: (self: GameController, player: Player) -> (),
 	tryClaimPlaytimeReward: (self: GameController, player: Player, rewardIndex: any) -> (),
 	tryClaimSpinWheelPrize: (self: GameController, player: Player) -> (),
@@ -1199,6 +1207,32 @@ export type ContextualFtueManager = {
 	tryTrigger: (self: ContextualFtueManager, player: Player?, hintId: string) -> boolean,
 }
 
+export type IndexManager = {
+	buildAbilityChains: (self: IndexManager) -> { any },
+	buildBlueprintChains: (self: IndexManager) -> { any },
+	buildElementRarityChains: (self: IndexManager, itemTypes: { string }) -> { any },
+	buildMutationChains: (self: IndexManager) -> { any },
+	computeCategoryProgressForPlayer: (self: IndexManager, playerData: any, category: string) -> (number, number),
+	getAllMutationTiers: (self: IndexManager) -> { number },
+	getCategoryAndChainKeyForItemName: (self: IndexManager, itemName: string) -> (string?, string?),
+	getCategoryChains: (self: IndexManager, category: string) -> { any },
+	getChainByKey: (self: IndexManager, category: string, chainKey: string?) -> any,
+	getChainProgressForPlayer: (self: IndexManager, playerData: any, category: string, chain: any) -> (number, number),
+	getFullIndexDataForPlayer: (self: IndexManager, player: Player) -> any,
+	getMilestones: (self: IndexManager, playerData: any, category: string, scope: string, chainKey: string?) -> { any },
+	getMilestonesForCategoryForPlayer: (self: IndexManager, playerData: any, category: string) -> any,
+	getOwnedCountsForPlayer: (self: IndexManager, player: Player, playerData: any) -> { [string]: number },
+	getVanityComponentNamesForBlueprintSection: (self: IndexManager, sectionKey: number) -> { string },
+	grantIndexReward: (self: IndexManager, player: Player, playerData: any, tierData: any) -> (),
+	hasAnyClaimableReward: (self: IndexManager, playerData: any) -> boolean,
+	isLegacyEnabled: (self: IndexManager) -> boolean,
+	notifyIfHasClaimableReward: (self: IndexManager, player: Player, playerData: any) -> (),
+	notifyItemDiscovered: (self: IndexManager, player: Player, playerData: any, itemName: string) -> (),
+	notifyMutationDiscovered: (self: IndexManager, player: Player, playerData: any, mutationTier: number) -> (),
+	refreshIndexData: (self: IndexManager, player: Player, playerData: any) -> any,
+	tryClaimReward: (self: IndexManager, player: Player, playerData: any, category: string, scope: string, chainKey: string?, tierIndex: any) -> boolean,
+}
+
 export type IslandManager = {
 	beginFadeOutPendingIslandsBatch: (self: IslandManager, batchSize: number, fadeDurationSec: number) -> (),
 	configureIslandAsCritter: (self: IslandManager, islandData: any, objectName: string, position: Vector3) -> (),
@@ -1279,6 +1313,7 @@ export type FirstSessionOfferManager = {
 
 export type PlayerData = {
 	addCodeRedeemed: (self: PlayerData, code: any) -> (),
+	addIndexIncomeBonusPercent: (self: PlayerData, percent: number) -> (),
 	addPrimaryElementXp: (self: PlayerData, primaryElement: any, xpDiff: any, position: Vector3) -> (),
 	addToStat: (self: PlayerData, statName: any, count: number) -> (),
 	backfillBlueprintIndexDiscoveryIfNeeded: (self: PlayerData) -> (),
@@ -1314,8 +1349,11 @@ export type PlayerData = {
 	getFriendLuckPercent: (self: PlayerData) -> (),
 	getFtueProgress: (self: PlayerData) -> (),
 	getGroupLuckPercent: (self: PlayerData) -> (),
+	getIndexClaimedRewards: (self: PlayerData) -> any,
 	getIndexDiscoveredItems: (self: PlayerData) -> (),
 	getIndexDiscoveredMutations: (self: PlayerData) -> (),
+	getIndexIncomeBonusPercent: (self: PlayerData) -> number,
+	getIndexIncomeMultiplier: (self: PlayerData) -> number,
 	getIndexMutationChancePercent: (self: PlayerData) -> (),
 	getIsFriend: (self: PlayerData, userId: number) -> (),
 	getIsInPlot: (self: PlayerData) -> (),
@@ -1357,6 +1395,7 @@ export type PlayerData = {
 	hasDevToolAccess: (self: PlayerData) -> (),
 	hasDiscoveredIndexItem: (self: PlayerData, itemName: any) -> (),
 	hasDiscoveredIndexMutation: (self: PlayerData, mutationTier: any) -> (),
+	hasDiscoveredIndexTrait: (self: PlayerData, trait: any) -> (),
 	hasProfile: (self: PlayerData) -> (),
 	hasPurchasedDeal: (self: PlayerData, dealKey: string) -> boolean,
 	hasTriggeredContextualFtue: (self: PlayerData, id: any) -> (),
@@ -1383,6 +1422,7 @@ export type PlayerData = {
 	markIndexItemDiscovered: (self: PlayerData, itemName: any) -> (),
 	markIndexMutationDiscovered: (self: PlayerData, mutationTier: any) -> (),
 	markIndexRewardClaimed: (self: PlayerData, tierId: any) -> (),
+	markIndexTraitDiscovered: (self: PlayerData, trait: any) -> (),
 	markInstantOpenCrystalItemId: (self: PlayerData, itemId: any) -> (),
 	mergeVanityComponentStatesWithDefault: (self: PlayerData, vanityComponentStates: any) -> (),
 	notifyItemAddedToWorkspace: (self: PlayerData, item: any) -> (),

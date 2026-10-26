@@ -7,6 +7,7 @@ IndexHelpers.RewardType = {
 	VANITY_PULL = "vanityPull",
 	STAT_BUFF = "statBuff",
 	MUTATION_CHANCE_BUFF = "mutationChanceBuff",
+	INCOME_BONUS = "incomeBonus",
 }
 
 IndexHelpers.RewardCrateSize = {

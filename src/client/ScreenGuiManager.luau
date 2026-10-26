@@ -42,6 +42,7 @@ local Satchel = require("./Satchel")
 local Types = require("./Types")
 local clientDragonEggManager: Types.ClientDragonEggManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local clientFtueManager: Types.ClientFtueManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local clientIndexV2Manager = require("./ClientIndexV2Manager")
 local clientIndexManager = require("./ClientIndexManager")
 local clientRideController: Types.ClientRideController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local clientTradePlayerList: Types.ClientTradePlayerList -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
@@ -74,7 +75,10 @@ type ScreenGuiManagerFields = {
 	ftueMessage: string?,
 	tradeButtonHideReasonMap: { [string]: boolean },
 	indexFrame: any?,
+	indexV2Frame: any?,
 	isIndexFeatureEnabled: boolean,
+	isLegacyIndexEnabled: boolean,
+	isIndexModeKnown: boolean,
 	dragonRosterFrame: any?,
 	rebirthFrame: any?,
 	eggsInWorldFrame: any?,
@@ -1024,12 +1028,27 @@ function ScreenGuiManager.updateIndexFrameVisibility(self: ScreenGuiManager)
 		return
 	end
 
-	(self.indexFrame :: any).Visible = self.isIndexFeatureEnabled and not clientFtueManager:isFtueActive()
+	(self.indexFrame :: any).Visible = self.isIndexFeatureEnabled and self.isLegacyIndexEnabled and not clientFtueManager:isFtueActive()
+end
+
+function ScreenGuiManager.updateIndexV2FrameVisibility(self: ScreenGuiManager)
+	if not self.indexV2Frame then
+		return
+	end
+
+	(self.indexV2Frame :: any).Visible = self.isIndexModeKnown and not self.isLegacyIndexEnabled and not clientFtueManager:isFtueActive()
 end
 
 function ScreenGuiManager.setIndexFeatureEnabled(self: ScreenGuiManager, isEnabled: boolean)
 	self.isIndexFeatureEnabled = isEnabled
 	self:updateIndexFrameVisibility()
+end
+
+function ScreenGuiManager.setLegacyIndexEnabled(self: ScreenGuiManager, isEnabled: boolean)
+	self.isLegacyIndexEnabled = isEnabled
+	self.isIndexModeKnown = true
+	self:updateIndexFrameVisibility()
+	self:updateIndexV2FrameVisibility()
 end
 
 function ScreenGuiManager.updateDragonRosterFrameVisibility(self: ScreenGuiManager)
@@ -1254,6 +1273,31 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 		warn("ScreenGuiManager: DailyRewardsFrame missing from the HUD; no daily rewards buttons")
 	end
 
+	local indexV2Frame: any = ScreenGui:FindFirstChild("IndexV2Frame")
+	if indexV2Frame then
+		self.indexV2Frame = indexV2Frame
+		self:updateIndexV2FrameVisibility()
+
+		clientFtueManager:getIsEnabledEvent():Connect(function()
+			self:updateIndexV2FrameVisibility()
+		end)
+
+		local indexV2Button: any = indexV2Frame:FindFirstChild("Index")
+		local indexV2AlertButton: any = indexV2Frame:FindFirstChild("IndexAlert")
+		if indexV2Button and indexV2AlertButton then
+			clientIndexV2Manager:setHudButtons(indexV2Button, indexV2AlertButton)
+			for _, button in { indexV2Button, indexV2AlertButton } do
+				button.Activated:Connect(function()
+					clientIndexV2Manager:toggle()
+				end)
+			end
+		else
+			warn("ScreenGuiManager: IndexV2Frame needs both an Index and an IndexAlert button")
+		end
+	else
+		warn("ScreenGuiManager: IndexV2Frame missing from the HUD; no Index V2 buttons")
+	end
+
 	local luckySpinFrame: any = ScreenGui:FindFirstChild("LuckySpinFrame")
 	if luckySpinFrame then
 		luckySpinFrame.Visible = not clientFtueManager:isFtueActive()
@@ -1396,7 +1440,10 @@ function ScreenGuiManager.new(): ScreenGuiManager
 	self.tradeButtonHideReasonMap = {}
 
 	self.indexFrame = nil
+	self.indexV2Frame = nil
 	self.isIndexFeatureEnabled = true
+	self.isLegacyIndexEnabled = false
+	self.isIndexModeKnown = false
 
 	self.dragonRosterFrame = nil
 	self.rebirthFrame = nil

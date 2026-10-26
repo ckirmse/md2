@@ -8,6 +8,8 @@ local elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local indexCatalog = require("@game/ReplicatedStorage/Shared/IndexCatalog")
 local indexHelpers = require("@game/ReplicatedStorage/Shared/IndexHelpers")
+-- GameData tables are authored in Studio and stay untyped
+local indexRewardsData: any = require("@game/ServerScriptService/GameData/Control/IndexRewards")
 
 local indexRewards = require("./IndexRewards")
 local objectDataStore = require("./ObjectDataStore")
@@ -15,6 +17,7 @@ local objectDataStore = require("./ObjectDataStore")
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local indexV2Manager: Types.IndexV2Manager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local plotsManager = require("./PlotsManager")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -414,8 +417,13 @@ function IndexManager.hasAnyClaimableReward(self: IndexManager, playerData: any)
 	return false
 end
 
+-- the old Index runs only when Control/IndexRewards sets useLegacyIndex = true (default off); IndexV2Manager records the discoveries either way
+function IndexManager.isLegacyEnabled(self: IndexManager): boolean
+	return gameController:isIndexEnabled() and indexRewardsData.useLegacyIndex == true
+end
+
 function IndexManager.notifyIfHasClaimableReward(self: IndexManager, player: Player, playerData: any)
-	if not gameController:isIndexEnabled() then
+	if not self:isLegacyEnabled() then
 		return
 	end
 
@@ -424,31 +432,20 @@ function IndexManager.notifyIfHasClaimableReward(self: IndexManager, player: Pla
 	end
 end
 
-function IndexManager.notifyMutationDiscoveredIfNew(self: IndexManager, player: Player, playerData: any, mutationTier: number)
-	if not gameController:isIndexEnabled() then
+function IndexManager.notifyMutationDiscovered(self: IndexManager, player: Player, playerData: any, mutationTier: number)
+	if not self:isLegacyEnabled() then
 		return
 	end
-
-	if playerData:hasDiscoveredIndexMutation(mutationTier) then
-		return
-	end
-
-	playerData:markIndexMutationDiscovered(mutationTier)
 
 	RemoteEvents.NotifyIndexMutationDiscovered:FireClient(player, mutationTier)
 	self:notifyIfHasClaimableReward(player, playerData)
 end
 
-function IndexManager.notifyItemDiscoveredIfNew(self: IndexManager, player: Player, playerData: any, itemName: string)
-	if not gameController:isIndexEnabled() then
+function IndexManager.notifyItemDiscovered(self: IndexManager, player: Player, playerData: any, itemName: string)
+	if not self:isLegacyEnabled() then
 		return
 	end
 
-	if playerData:hasDiscoveredIndexItem(itemName) then
-		return
-	end
-
-	playerData:markIndexItemDiscovered(itemName)
 	self:notifyIfHasClaimableReward(player, playerData)
 
 	local category, chainKey = self:getCategoryAndChainKeyForItemName(itemName)
@@ -576,32 +573,7 @@ function IndexManager.getFullIndexDataForPlayer(self: IndexManager, player: Play
 end
 
 function IndexManager.grantIndexReward(self: IndexManager, player: Player, playerData: any, tierData: any)
-	local rewardEntry = tierData.reward
-	local rewardType = indexRewards.RewardTypeNames[rewardEntry.rewardType]
-
-	if rewardType == indexHelpers.RewardType.MUTATION_PULL or rewardType == indexHelpers.RewardType.VANITY_PULL then
-		local crateItemName = indexHelpers.getIndexRewardCrateItemName(rewardEntry.size)
-		local crateItems: { any } = {}
-		for i = 1, rewardEntry.count do
-			local crateItem = itemManager:createItem(crateItemName, player.UserId) :: Types.Crate?
-			if not crateItem then
-				warn("failed to create index reward crate")
-				continue
-			end
-			crateItem:setRewardSource(rewardType, rewardEntry.lootTableName, tierData.displayText)
-			table.insert(crateItems, crateItem)
-		end
-		gameController:spawnItemsInBackpack(crateItems)
-		for _, item in crateItems do
-			playerData:notifyItemReceived(item)
-		end
-	elseif rewardType == indexHelpers.RewardType.STAT_BUFF then
-		playerData:grantIndexStatBuff(rewardEntry.attribute, rewardEntry.amount)
-	elseif rewardType == indexHelpers.RewardType.MUTATION_CHANCE_BUFF then
-		playerData:grantIndexMutationChanceBuff(rewardEntry.amount)
-	else
-		warn("unknown index reward type", player, rewardEntry.rewardType)
-	end
+	indexV2Manager:grantReward(player, playerData, tierData)
 end
 
 function IndexManager.tryClaimReward(self: IndexManager, player: Player, playerData: any, category: string, scope: string, chainKey: string?, tierIndex: any): boolean
@@ -683,6 +655,7 @@ end
 function IndexManager.initClass(deps: any)
 	gameController = deps.gameController
 	itemManager = deps.itemManager
+	indexV2Manager = deps.indexV2Manager
 end
 
 local singleton = IndexManager.new()

@@ -19,13 +19,6 @@ export type MilestoneTemplate = {
 	},
 }
 
-IndexRewards.RewardTypeNames = {
-	["Chamber Pull"] = indexHelpers.RewardType.MUTATION_PULL,
-	["Chest Pull"] = indexHelpers.RewardType.VANITY_PULL,
-	["Stat Buff"] = indexHelpers.RewardType.STAT_BUFF,
-	["Mutation Chance"] = indexHelpers.RewardType.MUTATION_CHANCE_BUFF,
-} :: { [string]: string }
-
 function IndexRewards.getMilestoneTemplate(scope: string, category: string, chainKey: string?): { MilestoneTemplate }
 	if scope == indexHelpers.Scope.CATEGORY then
 		return ((indexChainReward.category and indexChainReward.category[category]) or {}) :: { MilestoneTemplate }

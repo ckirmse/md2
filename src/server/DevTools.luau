@@ -13,6 +13,7 @@ local Types = require("./Types")
 local gameController: Types.GameController
 local DragonEgg = require("./DragonEgg")
 local indexManager = require("./IndexManager")
+local indexV2Manager = require("./IndexV2Manager")
 local itemManager = require("./ItemManager")
 local lootTableManager = require("./LootTableManager")
 local mergeMixin = require("./MergeMixin")
@@ -104,7 +105,10 @@ function DevTools.tryClaimIndexReward(self: DevTools, player: Player, category: 
 end
 
 function DevTools.notifyIndexDataReset(self: DevTools, player: Player)
-	RemoteEvents.NotifyIndexData:FireClient(player, indexManager:getFullIndexDataForPlayer(player))
+	if indexManager:isLegacyEnabled() then
+		RemoteEvents.NotifyIndexData:FireClient(player, indexManager:getFullIndexDataForPlayer(player))
+	end
+	indexV2Manager:sendData(player)
 end
 
 function DevTools.resetIndexData(self: DevTools, player: Player)
@@ -127,7 +131,7 @@ end
 
 function DevTools.discoverSpecificMutation(self: DevTools, player: Player, mutationTier: any)
 	local playerData = gameController:getPlayerData(player)
-	indexManager:notifyMutationDiscoveredIfNew(player, playerData, mutationTier)
+	indexV2Manager:notifyMutationDiscoveredIfNew(player, playerData, mutationTier)
 	print("index discovered specific mutation", player, enums.getPublicName(enums.Mutations, mutationTier))
 end
 
@@ -154,6 +158,72 @@ function DevTools.dumpIndexMilestones(self: DevTools, player: Player, category: 
 	end
 end
 
+function DevTools.sendIndexV2Data(self: DevTools, player: Player)
+	indexV2Manager:sendData(player)
+end
+
+function DevTools.dumpIndexV2(self: DevTools, player: Player, category: any)
+	if not enums.isValidValue(enums.IndexCategory, category) then
+		warn("invalid index category", category)
+		return
+	end
+
+	local playerData = gameController:getPlayerData(player)
+
+	print("Index V2 milestones for", enums.getPublicName(enums.IndexCategory, category))
+	for _, milestone in indexV2Manager:buildMilestones(playerData, category) do
+		print(
+			milestone.tierId,
+			"collected", milestone.collected,
+			"threshold", milestone.threshold,
+			"of", milestone.total,
+			"claimed", milestone.isClaimed,
+			"claimable", milestone.isClaimable
+		)
+	end
+end
+
+function DevTools.discoverIndexV2Items(self: DevTools, player: Player, category: any, percent: any)
+	if not enums.isValidValue(enums.IndexCategory, category) or typeof(percent) ~= "number" then
+		warn("invalid index V2 discover arguments", category, percent)
+		return
+	end
+
+	local playerData = gameController:getPlayerData(player)
+
+	local entries = indexV2Manager:getEntries(category)
+	local count = math.ceil(#entries * math.clamp(percent, 0, 100) / 100)
+	for i = 1, count do
+		local key = entries[i].key
+		if category == enums.IndexCategory.MUTATION then
+			indexV2Manager:notifyMutationDiscoveredIfNew(player, playerData, key :: number)
+		elseif category == enums.IndexCategory.TRAIT then
+			indexV2Manager:notifyTraitDiscoveredIfNew(player, playerData, key :: number)
+		else
+			indexV2Manager:notifyItemDiscoveredIfNew(player, playerData, key :: string)
+		end
+	end
+
+	print("index V2 discover complete", enums.getPublicName(enums.IndexCategory, category), count, "of", #entries)
+end
+
+function DevTools.claimNextIndexV2Tier(self: DevTools, player: Player, category: any)
+	if not enums.isValidValue(enums.IndexCategory, category) then
+		warn("invalid index category", category)
+		return
+	end
+
+	local playerData = gameController:getPlayerData(player)
+	for _, milestone in indexV2Manager:buildMilestones(playerData, category) do
+		if milestone.isClaimable then
+			gameController:tryClaimIndexV2Tier(player, milestone.tierId)
+			return
+		end
+	end
+
+	print("no claimable index tier for", enums.getPublicName(enums.IndexCategory, category))
+end
+
 function DevTools.discoverIndexItemsForCategory(self: DevTools, player: Player, category: any, percent: any)
 	local playerData = gameController:getPlayerData(player)
 
@@ -175,7 +245,7 @@ function DevTools.discoverIndexItemsForCategory(self: DevTools, player: Player, 
 				if not playerData:hasDiscoveredIndexItem(itemName) then
 					newlyDiscoveredCount += 1
 				end
-				indexManager:notifyItemDiscoveredIfNew(player, playerData, itemName)
+				indexV2Manager:notifyItemDiscoveredIfNew(player, playerData, itemName)
 				discoveredThisRun += 1
 			end
 		elseif chain.mutationTiers then
@@ -185,7 +255,7 @@ function DevTools.discoverIndexItemsForCategory(self: DevTools, player: Player, 
 				if not playerData:hasDiscoveredIndexMutation(mutation) then
 					newlyDiscoveredCount += 1
 				end
-				indexManager:notifyMutationDiscoveredIfNew(player, playerData, mutation)
+				indexV2Manager:notifyMutationDiscoveredIfNew(player, playerData, mutation)
 				discoveredThisRun += 1
 			end
 		end

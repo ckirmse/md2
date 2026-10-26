@@ -11,7 +11,7 @@ local contextualFtueManager = require("./ContextualFtueManager")
 local ftueManager = require("./FtueManager")
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
-local indexManager = require("./IndexManager")
+local indexV2Manager = require("./IndexV2Manager")
 local objectDataStore = require("./ObjectDataStore")
 local plotsManager = require("./PlotsManager")
 
@@ -582,14 +582,15 @@ function Item.putInBackpack(self: Item): Tool?
 
 	local playerData = self:getPlayerData()
 	if playerData then
-		indexManager:notifyItemDiscoveredIfNew(player, playerData, self:getItemName())
+		indexV2Manager:notifyItemDiscoveredIfNew(player, playerData, self:getItemName())
 
 		if itemManager:isMutationCapableType(self:getType()) then
 			-- getMutation only exists on mutation-capable subclasses, checked just above
 			local mutation = (self :: any):getMutation()
 			if mutation and mutation ~= enums.Mutations.NORMAL then
-				indexManager:notifyMutationDiscoveredIfNew(player, playerData, mutation)
+				indexV2Manager:notifyMutationDiscoveredIfNew(player, playerData, mutation)
 			end
+			(self :: any):notifyTraitsDiscovered()
 		end
 	end
 

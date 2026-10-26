@@ -37,6 +37,7 @@ SERVER_SINGLETONS = [
     "RideMixin",
     "FtueManager",
     "ContextualFtueManager",
+    "IndexManager",
     "IslandManager",
     "ScatterZoneManager",
     "MutationStoreManager",

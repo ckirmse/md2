@@ -34,6 +34,7 @@ local clientFeaturedDealManager = require("./ClientFeaturedDealManager")
 local clientFtueManager = require("./ClientFtueManager")
 local clientGiftingManager = require("./ClientGiftingManager")
 local clientFirstSessionOfferManager = require("./ClientFirstSessionOfferManager")
+local clientIndexV2Data = require("./ClientIndexV2Data")
 local clientIndexManager = require("./ClientIndexManager")
 local clientMergeController = require("./ClientMergeController")
 local clientMutationStore = require("./ClientMutationStore")
@@ -172,6 +173,10 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 		clientDayNightManager:setConfig(initData.dayNight)
 		clientFeaturedDealManager:setConfig(initData.featuredDeals)
 		clientSpinWheelManager:setSpinWheelData(initData.spinWheel)
+		screenGuiManager:setLegacyIndexEnabled(initData.isLegacyIndexEnabled == true)
+		if initData.indexV2 then
+			clientIndexV2Data:setData(initData.indexV2)
+		end
 
 		local ftueProgress = initData.ftueProgress
 		clientFtueManager:setFtueProgress(ftueProgress)

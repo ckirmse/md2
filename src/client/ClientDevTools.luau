@@ -91,7 +91,6 @@ export type ClientDevTools = typeof(setmetatable({} :: ClientDevToolsFields, Cli
 function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 	--print("dev tool settings", devToolSettings)
 
-
 	local splendidDataFolder: any = player:WaitForChild("PlayerGui"):WaitForChild(Constants.SPLENDID_DATA_NAME)
 
 	if self.state.debugUseBillboardsState:get() ~= devToolSettings.doUseBillboards then
@@ -108,7 +107,8 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 	local showNetopsWindow = Iris.State(false)
 
 	-- the gui's shape only exists in Studio, so it is untyped here
-	local screenshotViewport: any = player:WaitForChild("PlayerGui"):WaitForChild("ItemScreenshotGui"):WaitForChild("PreviewViewport")
+	local screenshotViewport: any =
+		player:WaitForChild("PlayerGui"):WaitForChild("ItemScreenshotGui"):WaitForChild("PreviewViewport")
 	screenshotViewport.LightColor = Color3.fromRGB(220, 220, 200)
 	local screenshotCamera: any = nil
 	local currentScreenshotClone: any = nil
@@ -256,7 +256,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				(player.Character :: any).HumanoidRootPart.Position.Z
 			),
 		})
-		local plotPosition = (teleporters:getPlotCFrame() :: CFrame):ToObjectSpace((player.Character :: any).HumanoidRootPart.CFrame)
+		local plotPosition = (teleporters:getPlotCFrame() :: CFrame):ToObjectSpace(
+			(player.Character :: any).HumanoidRootPart.CFrame
+		)
 		Iris.Text({ string.format("In Plot: %.1f, %.1f, %.1f", plotPosition.X, plotPosition.Y, plotPosition.Z) })
 
 		Iris.Text({ string.format("Physics Step Time: %i", statsService.PhysicsStepTime) })
@@ -371,7 +373,10 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 
 			Iris.CollapsingHeader({ "Radar" })
 			local radarItemId = Iris.State(0)
-			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = radarItemId })
+			Iris.InputNum(
+				{ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" },
+				{ number = radarItemId }
+			)
 			Iris.SameLine()
 			if Iris.Button({ "Force Activate Radar" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("forceActivateRadar", radarItemId:get())
@@ -386,7 +391,10 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			end
 
 			local scatterZoneObjectId = Iris.State(0)
-			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = scatterZoneObjectId })
+			Iris.InputNum(
+				{ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" },
+				{ number = scatterZoneObjectId }
+			)
 			Iris.SameLine()
 			if Iris.Button({ "Force Take One Egg" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("forceTakeOneScatterEgg", scatterZoneObjectId:get())
@@ -403,7 +411,10 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("dumpEggLootWeights")
 			end
 			local hatchEggItemId = Iris.State(0)
-			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = hatchEggItemId })
+			Iris.InputNum(
+				{ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" },
+				{ number = hatchEggItemId }
+			)
 			Iris.SameLine()
 			if Iris.Button({ "Force Hatch Egg" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("forceHatchEgg", hatchEggItemId:get())
@@ -414,7 +425,10 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			Iris.End()
 
 			local carryExpireItemId = Iris.State(0)
-			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = carryExpireItemId })
+			Iris.InputNum(
+				{ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" },
+				{ number = carryExpireItemId }
+			)
 			Iris.SameLine()
 			if Iris.Button({ "Force Expire Carry Timer" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("forceExpireCarry", carryExpireItemId:get())
@@ -425,14 +439,20 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 
 			Iris.CollapsingHeader({ "Dragon Leveling" })
 			local dragonLevelItemId = Iris.State(0)
-			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = dragonLevelItemId })
+			Iris.InputNum(
+				{ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" },
+				{ number = dragonLevelItemId }
+			)
 			Iris.SameLine()
 			if Iris.Button({ "Dump Dragon Level" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpDragonLevel", dragonLevelItemId:get())
 			end
 			Iris.End()
 			local feedDragonXp = Iris.State(0)
-			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = feedDragonXp })
+			Iris.InputNum(
+				{ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" },
+				{ number = feedDragonXp }
+			)
 			Iris.SameLine()
 			if Iris.Button({ "Feed Dragon" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("feedDragon", dragonLevelItemId:get(), feedDragonXp:get())
@@ -446,7 +466,10 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("dumpPlotLuck")
 			end
 			local plotLuckLevel = Iris.State(1)
-			Iris.InputNum({ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" }, { number = plotLuckLevel })
+			Iris.InputNum(
+				{ [Iris.Args.InputNum.Text] = "", [Iris.Args.InputNum.Format] = "%i" },
+				{ number = plotLuckLevel }
+			)
 			Iris.SameLine()
 			if Iris.Button({ "Set Plot Luck Level" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("setPlotLuckLevel", plotLuckLevel:get())
@@ -750,7 +773,6 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 					RemoteEvents.TryDevTool:FireServer("createItem", itemName)
 				end
 			end
-
 			Iris.End()
 
 			Iris.CollapsingHeader({ "Daily Rewards" })
@@ -815,12 +837,51 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 
 			Iris.CollapsingHeader({ "Playtime Rewards" })
 			local playtimeSecondsState = Iris.State(300)
-			Iris.InputNum({ [Iris.Args.InputNum.Text] = "Seconds", [Iris.Args.InputNum.Format] = "%i" }, { number = playtimeSecondsState })
+			Iris.InputNum(
+				{ [Iris.Args.InputNum.Text] = "Seconds", [Iris.Args.InputNum.Format] = "%i" },
+				{ number = playtimeSecondsState }
+			)
 			if Iris.Button({ "Fast Forward Playtime" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("fastForwardPlaytime", playtimeSecondsState:get())
 			end
 			if Iris.Button({ "Reset Playtime Rewards" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("resetPlaytimeRewards")
+			end
+
+			Iris.End()
+
+			Iris.CollapsingHeader({ "Index V2" })
+			local indexV2CategoryState = Iris.State(enums.getName(enums.IndexCategory, enums.IndexCategory.DRAGON))
+			Iris.Combo({ "" }, { index = indexV2CategoryState })
+			do
+				for _, category in enums.getAllValues(enums.IndexCategory) do
+					local categoryName = enums.getName(enums.IndexCategory, category)
+					Iris.Selectable({ categoryName, categoryName }, { index = indexV2CategoryState })
+				end
+			end
+			Iris.End()
+
+			local indexV2Category = enums.getValueByName(enums.IndexCategory, indexV2CategoryState:get())
+			local indexV2PercentState = Iris.State(50)
+			Iris.InputNum(
+				{ [Iris.Args.InputNum.Text] = "Percent", [Iris.Args.InputNum.Format] = "%i" },
+				{ number = indexV2PercentState }
+			)
+			if Iris.Button({ "Discover Percent" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer(
+					"discoverIndexV2Items",
+					indexV2Category,
+					indexV2PercentState:get()
+				)
+			end
+			if Iris.Button({ "Dump V2 Milestones" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpIndexV2", indexV2Category)
+			end
+			if Iris.Button({ "Claim Next Tier" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("claimNextIndexV2Tier", indexV2Category)
+			end
+			if Iris.Button({ "Resend Data" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("sendIndexV2Data")
 			end
 
 			Iris.End()

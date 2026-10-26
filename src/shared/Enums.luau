@@ -156,6 +156,19 @@ module = {
 			STARLIT = "Starlit",
 		},
 	},
+	IndexCategory = {
+		DRAGON = 1,
+		EGG = 2,
+		MUTATION = 3,
+		TRAIT = 4,
+
+		PublicNames = {
+			DRAGON = "Dragon",
+			EGG = "Egg",
+			MUTATION = "Mutation",
+			TRAIT = "Trait",
+		},
+	},
 	ShopCategory = {
 		DRAGONS = 1,
 		PLANTS = 2,
