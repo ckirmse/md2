@@ -129,6 +129,7 @@ end
 
 function PlayerAttributesManager.resetAttributes(self: PlayerAttributesManager, player: Player)
 	self.attributes[player][PlayerAttributeKeys.COINS] = startData.coins
+	self.attributes[player][PlayerAttributeKeys.DIAMONDS] = 0
 	self.attributes[player][PlayerAttributeKeys.TOTAL_DRAGON_INCOME] = 0
 	self.attributes[player][PlayerAttributeKeys.INCOME_PER_SECOND] = 0
 	self.attributes[player][PlayerAttributeKeys.IS_UNLOCKED_FIRE] = false

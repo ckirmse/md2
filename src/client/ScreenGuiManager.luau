@@ -64,6 +64,9 @@ type ScreenGuiManagerFields = {
 	messages: { MessageData },
 	coinNumberAnimator: NumberLabelAnimator.NumberLabelAnimator?,
 	coinNumberAnimatorConnect: RBXScriptConnection?,
+	diamondsFrame: any?,
+	diamondsFrameBasePosition: UDim2?,
+	diamondNumberAnimator: NumberLabelAnimator.NumberLabelAnimator?,
 	gemNumberAnimator: NumberLabelAnimator.NumberLabelAnimator?,
 	gemNumberAnimatorConnect: RBXScriptConnection?,
 	mutationConnect: RBXScriptConnection?,
@@ -134,6 +137,7 @@ function ScreenGuiManager.notifyBeginOverlay(self: ScreenGuiManager, overlay: Ty
 
 		local tween = tweenService:Create(coinsFrame, tweenInfo, goal)
 		tween:Play()
+		self:slideDiamondsFrame(true)
 	end
 
 	-- legacy (2026-august-20): GemsFrame HUD disconnected, gems no longer earned/spent
@@ -215,6 +219,7 @@ function ScreenGuiManager.notifyEndOverlay(self: ScreenGuiManager, overlay: Type
 
 		local tween = tweenService:Create(coinsFrame, tweenInfo, goal)
 		tween:Play()
+		self:slideDiamondsFrame(false)
 	end
 
 	-- legacy (2026-august-20): GemsFrame HUD disconnected, gems no longer earned/spent
@@ -318,6 +323,69 @@ function ScreenGuiManager.animateCoinsInRange(self: ScreenGuiManager, prevValue:
 		if coinNumberAnimatorConnect then
 			coinNumberAnimatorConnect:Disconnect()
 			self.coinNumberAnimatorConnect = nil
+		end
+	end)
+end
+
+function ScreenGuiManager.slideDiamondsFrame(self: ScreenGuiManager, isHidden: boolean)
+	local diamondsFrame = self.diamondsFrame
+	local basePosition = self.diamondsFrameBasePosition
+	if not diamondsFrame or not basePosition then
+		return
+	end
+
+	local goal = {}
+	goal.Position = if isHidden then UDim2.new(UDim.new(-0.3, 0), basePosition.Y) else basePosition
+	tweenService:Create(diamondsFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad), goal):Play()
+end
+
+function ScreenGuiManager.updateDiamondsFrameVisibility(self: ScreenGuiManager)
+	local diamondsFrame = self.diamondsFrame
+	if diamondsFrame then
+		diamondsFrame.Visible = not clientFtueManager:isFtueActive()
+	end
+end
+
+function ScreenGuiManager.resetDiamondsValue(self: ScreenGuiManager)
+	local diamondsFrame = self.diamondsFrame
+	if not diamondsFrame then
+		return
+	end
+
+	local diamondNumberAnimator = self.diamondNumberAnimator
+	if diamondNumberAnimator then
+		diamondNumberAnimator:destroy()
+		self.diamondNumberAnimator = nil
+	end
+
+	local diamondsLabel: any = utils.findFirstDescendant(diamondsFrame, "Diamonds")
+	if diamondsLabel then
+		diamondsLabel.Text = string.format("%i", clientPlayerAttributesManager:get(PlayerAttributeKeys.DIAMONDS) or 0)
+	end
+end
+
+function ScreenGuiManager.notifyDiamondsValueChange(self: ScreenGuiManager, prevValue: number?, value: number)
+	local diamondsFrame = self.diamondsFrame
+	local diamondsLabel: any = diamondsFrame and utils.findFirstDescendant(diamondsFrame, "Diamonds")
+	if not diamondsLabel then
+		return
+	end
+
+	local diamondNumberAnimator = self.diamondNumberAnimator
+	if diamondNumberAnimator then
+		diamondNumberAnimator:destroy()
+		self.diamondNumberAnimator = nil
+	end
+
+	local startValue = prevValue or 0
+	local animator = NumberLabelAnimator.new(diamondsLabel, startValue, value - startValue, 0.6)
+	self.diamondNumberAnimator = animator
+	local completedConnection: RBXScriptConnection
+	completedConnection = (animator.Completed :: RBXScriptSignal):Connect(function()
+		completedConnection:Disconnect()
+		animator:destroy()
+		if self.diamondNumberAnimator == animator then
+			self.diamondNumberAnimator = nil
 		end
 	end)
 end
@@ -428,6 +496,7 @@ function ScreenGuiManager.resetPlayerAttributeValues(self: ScreenGuiManager)
 	-- self:cleanupGemAnimation()
 
 	self:resetCoinValue()
+	self:resetDiamondsValue()
 	-- self:resetGems()
 end
 
@@ -1273,6 +1342,15 @@ function ScreenGuiManager.init(self: ScreenGuiManager)
 		warn("ScreenGuiManager: DailyRewardsFrame missing from the HUD; no daily rewards buttons")
 	end
 
+	if self.diamondsFrame then
+		self:updateDiamondsFrameVisibility()
+		self:resetDiamondsValue()
+
+		clientFtueManager:getIsEnabledEvent():Connect(function()
+			self:updateDiamondsFrameVisibility()
+		end)
+	end
+
 	local indexV2Frame: any = ScreenGui:FindFirstChild("IndexV2Frame")
 	if indexV2Frame then
 		self.indexV2Frame = indexV2Frame
@@ -1441,6 +1519,9 @@ function ScreenGuiManager.new(): ScreenGuiManager
 
 	self.indexFrame = nil
 	self.indexV2Frame = nil
+	self.diamondsFrame = nil
+	self.diamondsFrameBasePosition = nil
+	self.diamondNumberAnimator = nil
 	self.isIndexFeatureEnabled = true
 	self.isLegacyIndexEnabled = false
 	self.isIndexModeKnown = false
@@ -1473,6 +1554,14 @@ function ScreenGuiManager.new(): ScreenGuiManager
 
 	local coinsFrame = ScreenGui:WaitForChild("CoinsFrame")
 	self.coinsFrameBasePosition = coinsFrame.Position
+
+	local diamondsFrame: any = ScreenGui:FindFirstChild("DiamondsFrame")
+	if diamondsFrame then
+		self.diamondsFrame = diamondsFrame
+		self.diamondsFrameBasePosition = diamondsFrame.Position
+	else
+		warn("ScreenGuiManager: DiamondsFrame missing from the HUD; no Diamonds display")
+	end
 
 	local optionButtonFrame = ScreenGui:WaitForChild("OptionButtonFrame")
 	self.optionButtonFrameBasePosition = optionButtonFrame.Position

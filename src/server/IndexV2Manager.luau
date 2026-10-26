@@ -11,13 +11,11 @@ local elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local indexHelpers = require("@game/ReplicatedStorage/Shared/IndexHelpers")
 local IndexRewardMath = require("@game/ReplicatedStorage/Shared/IndexRewardMath")
-local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 -- GameData tables are authored in Studio and stay untyped; the accessors below cast to the entry types
 local indexRewardsData: any = require("@game/ServerScriptService/GameData/Control/IndexRewards")
 
-local analyticsManager = require("./AnalyticsManager")
+local CurrencyGranter = require("./CurrencyGranter")
 local objectDataStore = require("./ObjectDataStore")
-local playerAttributesManager = require("./PlayerAttributesManager")
 
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
@@ -343,8 +341,7 @@ function IndexV2Manager.notifyDiscovered(self: IndexV2Manager, player: Player, c
 		warn("IndexV2Manager: entry prize pays nothing,", reason, enums.getPublicName(enums.IndexCategory, category), key)
 	end
 	if coins > 0 then
-		playerAttributesManager:addWholeNumber(player, PlayerAttributeKeys.COINS, coins)
-		analyticsManager:logGainCurrency(player, coins, playerAttributesManager:get(player, PlayerAttributeKeys.COINS), "indexEntry")
+		CurrencyGranter.grantCoins(player, coins, "indexEntry")
 		gameController:sendSystemMessageToPlayer(player, `Index: +{coins} coins`)
 	end
 end

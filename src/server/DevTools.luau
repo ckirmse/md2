@@ -6,6 +6,7 @@ DevTools.__index = DevTools
 local analyticsManager = require("./AnalyticsManager")
 local buyStoreManager = require("./BuyStoreManager")
 local contextualFtueManager = require("./ContextualFtueManager")
+local CurrencyGranter = require("./CurrencyGranter")
 local dailyLoginManager = require("./DailyLoginManager")
 local dealShopManager = require("./DealShopManager")
 local vanityStoreManager = require("./VanityStoreManager")
@@ -323,6 +324,26 @@ function DevTools.getCoins(self: DevTools, player: Player, amount: any)
 	amount = math.floor(amount)
 
 	playerAttributesManager:addWholeNumber(player, PlayerAttributeKeys.COINS, amount)
+end
+
+function DevTools.getDiamonds(self: DevTools, player: Player, amount: any)
+	if type(amount) ~= "number" or amount < 1 then
+		print("invalid diamond amount to get", amount)
+		return
+	end
+
+	CurrencyGranter.grantDiamonds(player, math.floor(amount), "devTool")
+end
+
+function DevTools.spendDiamonds(self: DevTools, player: Player, amount: any)
+	if type(amount) ~= "number" or amount < 1 then
+		print("invalid diamond amount to spend", amount)
+		return
+	end
+
+	if not CurrencyGranter.trySpendDiamonds(player, math.floor(amount), "devTool") then
+		print("not enough diamonds to spend", amount, "have", CurrencyGranter.getDiamonds(player))
+	end
 end
 
 function DevTools.getGems(self: DevTools, player: Player, amount: any)

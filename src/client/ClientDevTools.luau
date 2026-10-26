@@ -505,6 +505,12 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			if Iris.Button({ "Get Coins" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("getCoins", numCoins:get())
 			end
+			if Iris.Button({ "Get Diamonds" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("getDiamonds", numCoins:get())
+			end
+			if Iris.Button({ "Spend Diamonds" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("spendDiamonds", numCoins:get())
+			end
 			if Iris.Button({ "Get Gems" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("getGems", numCoins:get())
 			end

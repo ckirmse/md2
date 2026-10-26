@@ -282,6 +282,8 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 		if playerDataKey == PlayerAttributeKeys.COINS then
 			screenGuiManager:notifyCoinValueChange(prevValue, value)
 			clientBuyStore:notifyPlayerCoinsChanged()
+		elseif playerDataKey == PlayerAttributeKeys.DIAMONDS then
+			screenGuiManager:notifyDiamondsValueChange(prevValue, value)
 		elseif
 			playerDataKey == PlayerAttributeKeys.IS_UNLOCKED_FIRE
 			or playerDataKey == PlayerAttributeKeys.IS_UNLOCKED_NATURE

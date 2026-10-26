@@ -6,14 +6,13 @@
 local RewardGranter = {}
 
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
-local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 local PlaytimeRewardMath = require("@game/ReplicatedStorage/Shared/PlaytimeRewardMath")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local analyticsManager = require("./AnalyticsManager")
+local CurrencyGranter = require("./CurrencyGranter")
 local incomeManager = require("./IncomeManager")
 local objectDataStore = require("./ObjectDataStore")
-local playerAttributesManager = require("./PlayerAttributesManager")
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 
@@ -41,11 +40,6 @@ export type RewardEntry = {
 
 local NO_INCOME_MESSAGE = "A time skip pays nothing without income. Place a dragon first!"
 local DELIVERY_FAILED_MESSAGE = "Could not deliver your reward. Make room in your backpack and try again."
-
-function RewardGranter.grantCoins(player: Player, amount: number, acquisitionSource: string)
-	playerAttributesManager:addWholeNumber(player, PlayerAttributeKeys.COINS, amount)
-	analyticsManager:logGainCurrency(player, amount, playerAttributesManager:get(player, PlayerAttributeKeys.COINS), acquisitionSource)
-end
 
 -- what a time skip pays right now: income x seconds, but never less than minCoins
 function RewardGranter.getTimeSkipCoins(playerData: Types.PlayerData, skipSec: number, minCoins: number?): number
@@ -85,14 +79,14 @@ function RewardGranter.grant(
 ): (string?, string?)
 	if reward.kind == kinds.COINS then
 		local amount = reward.coinAmount :: number
-		RewardGranter.grantCoins(player, amount, acquisitionSource)
+		CurrencyGranter.grantCoins(player, amount, acquisitionSource)
 		return `{utils.formatLargePositiveInteger(amount)} Coins`, nil
 	elseif reward.kind == kinds.TIME_SKIP then
 		local amount = RewardGranter.getTimeSkipCoins(playerData, reward.skipSec :: number, reward.minCoins)
 		if amount < 1 then
 			return nil, NO_INCOME_MESSAGE
 		end
-		RewardGranter.grantCoins(player, amount, acquisitionSource)
+		CurrencyGranter.grantCoins(player, amount, acquisitionSource)
 		return `a {utils.formatLargePositiveInteger(amount)} Coin Time Skip`, nil
 	end
 

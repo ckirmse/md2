@@ -67,14 +67,14 @@ AnalyticsManager.CurrencyEvents = {
 -- amount is amount of coins gained
 -- totalBalance is amount of coins when done
 -- object name is what was sold to gain the coins
-function AnalyticsManager.logGainCurrency(self: AnalyticsManager, player: Player, amount: number, totalBalance: number, objectName: string?)
-	analyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Source, "Coins", amount, totalBalance, Enum.AnalyticsEconomyTransactionType.Shop.Name)
-	Trail:PlayerEvent(player, AnalyticsManager.CurrencyEvents.GainCurrency, {amount = amount, totalBalance = totalBalance, objectName = objectName})
+function AnalyticsManager.logGainCurrency(self: AnalyticsManager, player: Player, amount: number, totalBalance: number, objectName: string?, currencyName: string?)
+	analyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Source, currencyName or "Coins", amount, totalBalance, Enum.AnalyticsEconomyTransactionType.Shop.Name)
+	Trail:PlayerEvent(player, AnalyticsManager.CurrencyEvents.GainCurrency, {amount = amount, totalBalance = totalBalance, objectName = objectName, currencyName = currencyName})
 end
 
-function AnalyticsManager.logSpendCurrency(self: AnalyticsManager, player: Player, amount: number, totalBalance: number, objectName: string?)
-	analyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Source, "Coins", amount, totalBalance, Enum.AnalyticsEconomyTransactionType.Shop.Name, objectName)
-	Trail:PlayerEvent(player, AnalyticsManager.CurrencyEvents.SpendCurrency, {amount = amount, totalBalance = totalBalance, objectName = objectName})
+function AnalyticsManager.logSpendCurrency(self: AnalyticsManager, player: Player, amount: number, totalBalance: number, objectName: string?, currencyName: string?)
+	analyticsService:LogEconomyEvent(player, Enum.AnalyticsEconomyFlowType.Source, currencyName or "Coins", amount, totalBalance, Enum.AnalyticsEconomyTransactionType.Shop.Name, objectName)
+	Trail:PlayerEvent(player, AnalyticsManager.CurrencyEvents.SpendCurrency, {amount = amount, totalBalance = totalBalance, objectName = objectName, currencyName = currencyName})
 end
 
 function AnalyticsManager.getFtueAnalyticsEventName(self: AnalyticsManager, stepName: string): string
