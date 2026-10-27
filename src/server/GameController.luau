@@ -1619,6 +1619,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		dailyLogin = dailyLoginManager:getClientData(playerData),
 		spinWheel = spinWheelManager:getClientData(playerData),
 		isLegacyIndexEnabled = indexManager:isLegacyEnabled(),
+		hatching = { holdSec = DragonEgg.getHatchHoldSec(), skipSecPerDiamond = DragonEgg.getSkipSecPerDiamond() },
 		indexV2 = if self:isIndexEnabled() then indexV2Manager:getData(playerData) else nil,
 		ftueProgress = ftueProgress,
 		firstSessionOfferState = playerData:getFirstSessionOfferState(),
@@ -2530,7 +2531,7 @@ function GameController.trySkipHatch(self: GameController, player: Player, eggIt
 		return
 	end
 
-	local cost = HatchSkipMath.getCost(remainingSec)
+	local cost = HatchSkipMath.getCost(remainingSec, DragonEgg.getSkipSecPerDiamond())
 	if cost > expectedCost then
 		self:sendSystemMessageToPlayer(player, "The skip price changed, try again")
 		return

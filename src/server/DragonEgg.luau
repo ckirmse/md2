@@ -22,6 +22,7 @@ local Timer = require("./Timer")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
+local HatchSkipMath = require("@game/ReplicatedStorage/Shared/HatchSkipMath")
 local RarityMath = require("@game/ReplicatedStorage/Shared/RarityMath")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
@@ -45,6 +46,18 @@ local function rollMutation(random: Random): number
 		end
 	end
 	return enums.Mutations.NORMAL
+end
+
+local DEFAULT_HATCH_HOLD_SEC = 1
+
+function DragonEgg.getHatchHoldSec(): number
+	local holdSec = hatchingData.hatchHoldSec
+	return if type(holdSec) == "number" and holdSec >= 0 then holdSec else DEFAULT_HATCH_HOLD_SEC
+end
+
+function DragonEgg.getSkipSecPerDiamond(): number
+	local secPerDiamond = hatchingData.skipSecPerDiamond
+	return if type(secPerDiamond) == "number" and secPerDiamond > 0 then secPerDiamond else HatchSkipMath.DEFAULT_SEC_PER_DIAMOND
 end
 
 local function computeHatchDurationSec(distanceFromPlot: number): number

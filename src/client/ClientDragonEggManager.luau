@@ -45,6 +45,8 @@ type IndicatorData = {
 
 type ClientDragonEggManagerFields = {
 	indicatorMap: { [number]: IndicatorData },
+	hatchHoldSec: number,
+	skipSecPerDiamond: number,
 }
 
 export type ClientDragonEggManager = typeof(setmetatable({} :: ClientDragonEggManagerFields, ClientDragonEggManager))
@@ -82,7 +84,7 @@ function ClientDragonEggManager.updateSkipButton(self: ClientDragonEggManager, i
 
 	local confirmCost = indicatorData.skipConfirmCost
 	setLabelText(indicatorData.skipTitleLabel, if confirmCost then "Confirm?" else "Skip")
-	setLabelText(indicatorData.skipCostLabel, tostring(confirmCost or HatchSkipMath.getCost(remainingSec)))
+	setLabelText(indicatorData.skipCostLabel, tostring(confirmCost or HatchSkipMath.getCost(remainingSec, self.skipSecPerDiamond)))
 end
 
 function ClientDragonEggManager.activateSkip(self: ClientDragonEggManager, itemId: number)
@@ -101,7 +103,7 @@ function ClientDragonEggManager.activateSkip(self: ClientDragonEggManager, itemI
 	end
 
 	local remainingSec = math.max(0, completeTime - workspace:GetServerTimeNow())
-	indicatorData.skipConfirmCost = HatchSkipMath.getCost(remainingSec)
+	indicatorData.skipConfirmCost = HatchSkipMath.getCost(remainingSec, self.skipSecPerDiamond)
 	indicatorData.skipConfirmUntil = workspace:GetServerTimeNow() + SKIP_CONFIRM_SEC
 	self:updateSkipButton(indicatorData, remainingSec)
 end
@@ -219,6 +221,25 @@ function ClientDragonEggManager.cleanupHatchCountdown(self: ClientDragonEggManag
 	end
 end
 
+function ClientDragonEggManager.setHatchConfig(self: ClientDragonEggManager, hatchConfig: any)
+	if typeof(hatchConfig) ~= "table" then
+		return
+	end
+
+	if typeof(hatchConfig.holdSec) == "number" then
+		self.hatchHoldSec = hatchConfig.holdSec
+		for _, indicatorData in self.indicatorMap do
+			if indicatorData.hatchPrompt then
+				indicatorData.hatchPrompt.HoldDuration = self.hatchHoldSec
+			end
+		end
+	end
+
+	if typeof(hatchConfig.skipSecPerDiamond) == "number" then
+		self.skipSecPerDiamond = hatchConfig.skipSecPerDiamond
+	end
+end
+
 function ClientDragonEggManager.createHatchPrompt(self: ClientDragonEggManager, inst: any)
 	if inst:GetAttribute(Attributes.USER_ID) ~= player.UserId then
 		return
@@ -240,7 +261,7 @@ function ClientDragonEggManager.createHatchPrompt(self: ClientDragonEggManager, 
 	prompt.Style = Enum.ProximityPromptStyle.Custom
 	prompt.RequiresLineOfSight = false
 	prompt.ActionText = "Hatch Egg"
-	prompt.HoldDuration = 1
+	prompt.HoldDuration = self.hatchHoldSec
 	prompt.MaxActivationDistance = Constants.HATCH_EGG_DISTANCE
 	prompt.Parent = part
 
@@ -310,6 +331,8 @@ end
 function ClientDragonEggManager.new(): ClientDragonEggManager
 	local self: ClientDragonEggManager = setmetatable({
 		indicatorMap = {},
+		hatchHoldSec = 1,
+		skipSecPerDiamond = HatchSkipMath.DEFAULT_SEC_PER_DIAMOND,
 	} :: ClientDragonEggManagerFields, ClientDragonEggManager)
 
 	return self

@@ -27,6 +27,7 @@ local clientDailyLoginManager = require("./ClientDailyLoginManager")
 local clientDayNightManager = require("./ClientDayNightManager")
 local clientDealShopManager = require("./ClientDealShopManager")
 local clientDevTools = require("./ClientDevTools")
+local clientDragonEggManager = require("./ClientDragonEggManager")
 --local clientDragonManager = nil -- prevent circular reference by not initializing here
 local clientEggWorldCountsManager = require("./ClientEggWorldCountsManager")
 local clientExpansionTeleporter = require("./ClientExpansionTeleporter")
@@ -174,6 +175,7 @@ function ClientEventHandlers.init(self: ClientEventHandlers)
 		clientFeaturedDealManager:setConfig(initData.featuredDeals)
 		clientSpinWheelManager:setSpinWheelData(initData.spinWheel)
 		screenGuiManager:setLegacyIndexEnabled(initData.isLegacyIndexEnabled == true)
+		clientDragonEggManager:setHatchConfig(initData.hatching)
 		if initData.indexV2 then
 			clientIndexV2Data:setData(initData.indexV2)
 		end

@@ -16,6 +16,7 @@ local dailyLoginData = require("@game/ServerScriptService/GameData/Control/Daily
 local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/EggLootTables")
 local playtimeData = require("@game/ServerScriptService/GameData/Control/Playtime")
 local rarityData = require("@game/ServerScriptService/GameData/Control/Rarities")
+local hatchingData = require("@game/ServerScriptService/GameData/Control/Hatching")
 local indexRewardsData = require("@game/ServerScriptService/GameData/Control/IndexRewards")
 local rebirthData = require("@game/ServerScriptService/GameData/Control/Rebirth")
 local spinWheelData = require("@game/ServerScriptService/GameData/Control/SpinWheel")
@@ -363,6 +364,15 @@ function GameDataVerifier.verifyIndexRewardEntry(self: GameDataVerifier, label: 
 
 	if entry.reward.size ~= nil and not INDEX_REWARD_SIZES[entry.reward.size] then
 		warn("GameDataVerifier: Index reward has an unknown crate size", label, entry.reward.size)
+	end
+end
+
+function GameDataVerifier.verifyHatching(self: GameDataVerifier)
+	if type(hatchingData.hatchHoldSec) ~= "number" or hatchingData.hatchHoldSec < 0 then
+		warn("GameDataVerifier: Hatching needs hatchHoldSec >= 0 (seconds to hold the hatch prompt); using the default", hatchingData.hatchHoldSec)
+	end
+	if type(hatchingData.skipSecPerDiamond) ~= "number" or hatchingData.skipSecPerDiamond <= 0 then
+		warn("GameDataVerifier: Hatching needs skipSecPerDiamond > 0 (hatch seconds one Diamond skips); using the default", hatchingData.skipSecPerDiamond)
 	end
 end
 
@@ -829,6 +839,7 @@ function GameDataVerifier.verifyAll(self: GameDataVerifier)
 	self:verifyRarities()
 	self:verifyEggSizes()
 	self:verifyRebirthLevels()
+	self:verifyHatching()
 	self:verifyIndexRewards()
 	self:verifyPlaytimeRewards()
 	self:verifyDailyLogin()
