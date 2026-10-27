@@ -2321,7 +2321,7 @@ function PlayerData.resetSpinWheel(self: PlayerData)
 	self.spinWheel = self:getDefaultSpinWheel()
 end
 
-function PlayerData.hasDiscoveredIndexItem(self: PlayerData, itemName: any)
+function PlayerData.hasDiscoveredIndexItem(self: PlayerData, itemName: any): boolean
 	return self.indexDiscoveredItems[itemName] == true
 end
 
@@ -2393,7 +2393,7 @@ function PlayerData.backfillBlueprintIndexDiscoveryIfNeeded(self: PlayerData)
 	self.hasBackfilledBlueprintIndex = true
 end
 
-function PlayerData.hasDiscoveredIndexMutation(self: PlayerData, mutationTier: any)
+function PlayerData.hasDiscoveredIndexMutation(self: PlayerData, mutationTier: any): boolean
 	return self.indexDiscoveredMutations[mutationTier] == true
 end
 
@@ -2401,7 +2401,7 @@ function PlayerData.markIndexMutationDiscovered(self: PlayerData, mutationTier: 
 	self.indexDiscoveredMutations[mutationTier] = true
 end
 
-function PlayerData.hasDiscoveredIndexTrait(self: PlayerData, trait: any)
+function PlayerData.hasDiscoveredIndexTrait(self: PlayerData, trait: any): boolean
 	return self.indexDiscoveredTraits[trait] == true
 end
 

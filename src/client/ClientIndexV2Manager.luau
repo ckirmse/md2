@@ -32,7 +32,7 @@ local TILE_TEMPLATE_NAME = "PetIconTemplate"
 local REWARD_ICON_NAME = "RewardIcon"
 local MILESTONE_TEMPLATE_NAME = "MilestoneTemplate"
 local ROW_BUTTON_NAME = "RewardButton"
-local STATE_SUFFIXES = { locked = "Locked", collect = "Collect", collected = "Collected" }
+local STATE_SUFFIXES: { [string]: string } = { locked = "Locked", collect = "Collect", collected = "Collected" }
 local COLLECTED_TINT = Color3.new(1, 1, 1)
 local SILHOUETTE_TINT = Color3.new(0, 0, 0)
 local COLLECTED_BACKGROUND = Color3.fromRGB(45, 45, 45)
