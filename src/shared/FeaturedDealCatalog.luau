@@ -74,8 +74,8 @@ function FeaturedDealCatalog.validate(config: FeaturedDealsConfig): { string }
 			table.insert(errors, `{where}: needs exactly 1 tier`)
 			continue
 		end
-		if (deal.tiers[1] :: any).coinCost ~= nil then
-			table.insert(errors, `{where}: the tier must be a Robux tier (productId), not coinCost`)
+		if (deal.tiers[1] :: any).coinCost ~= nil or (deal.tiers[1] :: any).diamondCost ~= nil then
+			table.insert(errors, `{where}: the tier must be a Robux tier (productId), not coinCost or diamondCost`)
 		end
 
 		-- the rest of the rules are the Deal Shop's; a featured deal has no card, so it is checked as a bundle

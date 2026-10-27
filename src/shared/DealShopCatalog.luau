@@ -24,7 +24,7 @@ export type DealContent = {
 	prizes: { GachaPrize }?, -- ITEM in a GACHA deal; filled server-side from the egg's hatch loot table
 }
 
--- a tier is priced either in Robux (productId, a dev product) or in coins (coinCost); never both
+-- a tier is priced in exactly one currency: Robux (productId, a dev product), coins (coinCost) or Diamonds (diamondCost)
 -- one roll group of a deal's stock per restock: `count` rolls, each succeeding with `percent` (0 to 100) chance
 export type StockEntry = {
 	count: number,
@@ -34,6 +34,7 @@ export type StockEntry = {
 export type Tier = {
 	productId: number?,
 	coinCost: number?,
+	diamondCost: number?,
 	slashRobux: number?, -- struck-through "original" price shown next to the live price; Robux tiers only
 	contents: { DealContent },
 }
@@ -98,16 +99,30 @@ local function isRobuxTier(tier: Tier): boolean
 	return tier.productId ~= nil
 end
 
+local function getTierCurrency(tier: Tier): string
+	if tier.productId ~= nil then
+		return "robux"
+	end
+
+	return if tier.diamondCost ~= nil then "diamonds" else "coins"
+end
+
 local function validateTier(errors: { string }, tierWhere: string, tier: Tier, seenProductIds: { [number]: boolean })
 	local productId = tier.productId
 	local coinCost = tier.coinCost
+	local diamondCost = tier.diamondCost
 
-	if coinCost ~= nil then
-		if productId ~= nil then
-			table.insert(errors, `{tierWhere}: set either productId or coinCost, not both`)
-		end
-		if type(coinCost) ~= "number" or coinCost <= 0 or coinCost ~= math.floor(coinCost) then
+	local priceCount = (if productId ~= nil then 1 else 0) + (if coinCost ~= nil then 1 else 0) + (if diamondCost ~= nil then 1 else 0)
+	if priceCount > 1 then
+		table.insert(errors, `{tierWhere}: set only one of productId, coinCost and diamondCost`)
+	end
+
+	if coinCost ~= nil or diamondCost ~= nil then
+		if coinCost ~= nil and (type(coinCost) ~= "number" or coinCost <= 0 or coinCost ~= math.floor(coinCost)) then
 			table.insert(errors, `{tierWhere}: coinCost must be an integer > 0`)
+		end
+		if diamondCost ~= nil and (type(diamondCost) ~= "number" or diamondCost <= 0 or diamondCost ~= math.floor(diamondCost)) then
+			table.insert(errors, `{tierWhere}: diamondCost must be an integer > 0`)
 		end
 		if tier.slashRobux ~= nil then
 			table.insert(errors, `{tierWhere}: slashRobux is only for Robux tiers`)
@@ -151,7 +166,7 @@ local function validateTierPair(errors: { string }, where: string, deal: Deal)
 	local first = deal.tiers[1]
 	local second = deal.tiers[2]
 	if isRobuxTier(first) == isRobuxTier(second) then
-		table.insert(errors, `{where}: two tiers must be one Robux tier and one coin tier`)
+		table.insert(errors, `{where}: two tiers must be one Robux tier and one coin or Diamond tier`)
 	end
 	if type(first.contents) ~= "table" or type(second.contents) ~= "table" then
 		return
@@ -194,7 +209,7 @@ local function validateGachaTiers(errors: { string }, where: string, deal: Deal)
 			previousCount = content.count
 		end
 
-		if isRobuxTier(tier) ~= isRobuxTier(deal.tiers[1]) then
+		if getTierCurrency(tier) ~= getTierCurrency(deal.tiers[1]) then
 			table.insert(errors, `{tierWhere}: every GACHA tier must use the same currency`)
 		end
 	end

@@ -500,8 +500,8 @@ function DealShopManager.tryBuyDeal(self: DealShopManager, player: Player, dealK
 
 	local dealTiers = self.tiersByDealKey[dealKey]
 	local entry = dealTiers and dealTiers[tierIndex :: number]
-	if not entry or entry.tier.coinCost == nil then
-		warn("DealShopManager: TryBuyDeal for unknown or non-coin tier", dealKey, tierIndex, "from", player.Name)
+	if not entry or (entry.tier.coinCost == nil and entry.tier.diamondCost == nil) then
+		warn("DealShopManager: TryBuyDeal for unknown or Robux tier", dealKey, tierIndex, "from", player.Name)
 		return
 	end
 
@@ -511,7 +511,8 @@ function DealShopManager.tryBuyDeal(self: DealShopManager, player: Player, dealK
 	end
 
 	local deal = entry.deal
-	local cost = entry.tier.coinCost :: number
+	local isDiamondTier = entry.tier.diamondCost ~= nil
+	local cost = (entry.tier.diamondCost or entry.tier.coinCost) :: number
 
 	if not self:isDealAvailable(deal, playerData) then
 		gameController:sendSystemMessageToPlayer(player, "That deal is not available")
@@ -526,29 +527,43 @@ function DealShopManager.tryBuyDeal(self: DealShopManager, player: Player, dealK
 		return
 	end
 
-	if playerAttributesManager:get(player, PlayerAttributeKeys.COINS) < cost then
-		gameController:sendSystemMessageToPlayer(player, "You do not have enough coins")
-		self:notifyDealPurchaseResult(player, dealKey, tierIndex, false)
-		return
-	end
+	-- no yields between the checks and the commit, so check-and-commit is atomic
+	if isDiamondTier then
+		if not CurrencyGranter.trySpendDiamonds(player, cost, deal.dealKey) then
+			gameController:sendSystemMessageToPlayer(player, "You do not have enough Diamonds")
+			self:notifyDealPurchaseResult(player, dealKey, tierIndex, false)
+			return
+		end
+	else
+		if playerAttributesManager:get(player, PlayerAttributeKeys.COINS) < cost then
+			gameController:sendSystemMessageToPlayer(player, "You do not have enough coins")
+			self:notifyDealPurchaseResult(player, dealKey, tierIndex, false)
+			return
+		end
 
-	-- no yields between the checks above and this commit, so check-and-commit is atomic
-	playerAttributesManager:subtractWholeNumber(player, PlayerAttributeKeys.COINS, cost)
+		playerAttributesManager:subtractWholeNumber(player, PlayerAttributeKeys.COINS, cost)
+	end
 	self:addStockPurchase(playerData, deal, 1)
 
-	if not self:grantTier(player, deal, entry.tier, "buyCoins") then
-		playerAttributesManager:addWholeNumber(player, PlayerAttributeKeys.COINS, cost)
+	if not self:grantTier(player, deal, entry.tier, if isDiamondTier then "buyDiamonds" else "buyCoins") then
+		if isDiamondTier then
+			CurrencyGranter.grantDiamonds(player, cost, "refund")
+		else
+			playerAttributesManager:addWholeNumber(player, PlayerAttributeKeys.COINS, cost)
+		end
 		self:addStockPurchase(playerData, deal, -1)
 		self:notifyDealPurchaseResult(player, dealKey, tierIndex, false)
 		return
 	end
 
-	analyticsManager:logSpendCurrency(
-		player,
-		cost,
-		playerAttributesManager:get(player, PlayerAttributeKeys.COINS),
-		deal.dealKey
-	)
+	if not isDiamondTier then
+		analyticsManager:logSpendCurrency(
+			player,
+			cost,
+			playerAttributesManager:get(player, PlayerAttributeKeys.COINS),
+			deal.dealKey
+		)
+	end
 	ftueManager:notifyBuyItemForPlayer(player)
 
 	gameController:sendSystemMessageToPlayer(player, string.format("%s purchased!", deal.title))

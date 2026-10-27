@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- the RemoteEvents children only exist in Studio, so they are untyped here
 local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
+local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local DealShopCatalog = require("@game/ReplicatedStorage/Shared/DealShopCatalog")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local ItemIcons = require("@game/ReplicatedStorage/Shared/ItemIcons")
@@ -28,6 +29,8 @@ local ROBUX_SYMBOL = "\u{E002}"
 local UNAFFORDABLE_COLOR = Color3.fromRGB(255, 90, 90)
 -- the server answers every coin purchase it accepts; this only unlocks a button whose request was dropped
 local PENDING_TIMEOUT_SEC = 5
+local TIER_GAP = -20
+local MAX_CONTENTS_BESIDE_TIERS = 3
 local PRIZE_GRID_MAX_COLUMNS = 5
 local PRIZE_GRID_PADDING_X = 0.015
 local PRIZE_GRID_PADDING_Y = 0.04
@@ -79,6 +82,7 @@ type ClientDealShopManagerFields = {
 	unavailableProductIds: { [number]: boolean },
 	refreshConnect: RBXScriptConnection?,
 	lastCoins: number?,
+	lastDiamonds: number?,
 	nextPendingToken: number,
 	purchasedDealKeys: { [string]: boolean },
 	stockByDealKey: { [string]: number },
@@ -110,6 +114,10 @@ local function getTierParent(card: any, deal: DealShopCatalog.Deal): any
 	return card
 end
 
+local function getDiamonds(): number
+	return (clientPlayerAttributesManager:get(PlayerAttributeKeys.DIAMONDS) :: number?) or 0
+end
+
 local function getCoins(): number
 	return (clientPlayerAttributesManager:get(PlayerAttributeKeys.COINS) :: number?) or 0
 end
@@ -139,7 +147,8 @@ end
 -- 0.5 -> "50%", 0.045 -> "4.5%", 0.0005 -> "0.05%"
 local function formatOddsPercent(fraction: number): string
 	local percent = fraction * 100
-	local text = if percent >= 10 then string.format("%.0f", percent)
+	local text = if percent >= 10
+		then string.format("%.0f", percent)
 		elseif percent >= 1 then string.format("%.1f", percent)
 		else string.format("%.2f", percent)
 	if string.find(text, "%.") then
@@ -201,9 +210,20 @@ function ClientDealShopManager.refreshTierRecord(self: ClientDealShopManager, ti
 	local canBuy: boolean
 	local textColor = tierRecord.baseTextColor
 
-	if tier.coinCost then
+	if tier.diamondCost then
+		local isAffordable = getDiamonds() >= tier.diamondCost
+		tierRecord.priceText.Text = if tierRecord.hasCurrencyIcon
+			then formatNumber(tier.diamondCost)
+			else `{formatNumber(tier.diamondCost)} Diamonds`
+		if not isAffordable then
+			textColor = UNAFFORDABLE_COLOR
+		end
+		canBuy = isAffordable and tierRecord.pendingToken == nil
+	elseif tier.coinCost then
 		local isAffordable = getCoins() >= tier.coinCost
-		tierRecord.priceText.Text = if tierRecord.hasCurrencyIcon then formatNumber(tier.coinCost) else `{formatNumber(tier.coinCost)} Coins`
+		tierRecord.priceText.Text = if tierRecord.hasCurrencyIcon
+			then formatNumber(tier.coinCost)
+			else `{formatNumber(tier.coinCost)} Coins`
 		if not isAffordable then
 			textColor = UNAFFORDABLE_COLOR
 		end
@@ -212,7 +232,9 @@ function ClientDealShopManager.refreshTierRecord(self: ClientDealShopManager, ti
 		local productId = tier.productId :: number
 		local price = self.robuxPrices[productId]
 		if price then
-			tierRecord.priceText.Text = if tierRecord.hasCurrencyIcon then formatNumber(price) else `{ROBUX_SYMBOL}{formatNumber(price)}`
+			tierRecord.priceText.Text = if tierRecord.hasCurrencyIcon
+				then formatNumber(price)
+				else `{ROBUX_SYMBOL}{formatNumber(price)}`
 			canBuy = true
 		elseif self.unavailableProductIds[productId] then
 			tierRecord.priceText.Text = "Unavailable"
@@ -243,7 +265,7 @@ end
 
 function ClientDealShopManager.refreshCoinTierRecords(self: ClientDealShopManager)
 	for _, tierRecord in self.tierRecords do
-		if tierRecord.tier.coinCost then
+		if tierRecord.tier.coinCost or tierRecord.tier.diamondCost then
 			self:refreshTierRecord(tierRecord)
 		end
 	end
@@ -256,8 +278,11 @@ function ClientDealShopManager.onTierActivated(self: ClientDealShopManager, tier
 		return
 	end
 
-	if tier.coinCost then
-		if tierRecord.pendingToken ~= nil or getCoins() < tier.coinCost then
+	if tier.coinCost or tier.diamondCost then
+		local isAffordable = if tier.diamondCost
+			then getDiamonds() >= tier.diamondCost
+			else getCoins() >= (tier.coinCost :: number)
+		if tierRecord.pendingToken ~= nil or not isAffordable then
 			return
 		end
 
@@ -290,7 +315,12 @@ function ClientDealShopManager.onTierActivated(self: ClientDealShopManager, tier
 	end
 end
 
-function ClientDealShopManager.notifyDealPurchaseResult(self: ClientDealShopManager, dealKey: string, tierIndex: number, isSuccess: boolean)
+function ClientDealShopManager.notifyDealPurchaseResult(
+	self: ClientDealShopManager,
+	dealKey: string,
+	tierIndex: number,
+	isSuccess: boolean
+)
 	local tierRecord = self.tierRecords[getTierKey(dealKey, tierIndex)]
 	if not tierRecord then
 		return
@@ -331,7 +361,12 @@ function ClientDealShopManager.setPurchasedDealKeys(self: ClientDealShopManager,
 	self:updateTimeLimits()
 end
 
-function ClientDealShopManager.wireTier(self: ClientDealShopManager, card: any, deal: DealShopCatalog.Deal, tierIndex: number)
+function ClientDealShopManager.wireTier(
+	self: ClientDealShopManager,
+	card: any,
+	deal: DealShopCatalog.Deal,
+	tierIndex: number
+)
 	local tier = deal.tiers[tierIndex]
 
 	-- the price label and its frame are both named Cost, so these are direct paths
@@ -347,22 +382,34 @@ function ClientDealShopManager.wireTier(self: ClientDealShopManager, card: any, 
 
 	local robuxIcon: any = costFrame:FindFirstChild("RBX")
 	local coinIcon: any = costFrame:FindFirstChild("Coin")
-	local currencyIcon: any = if tier.coinCost then coinIcon else robuxIcon
+	local diamondIcon: any = costFrame:FindFirstChild("Diamond")
+	local diamondImage = if coinIcon then coinIcon:GetAttribute(Attributes.DIAMOND_IMAGE) else nil
+	if not diamondIcon and tier.diamondCost and coinIcon and typeof(diamondImage) == "string" then
+		diamondIcon = coinIcon
+		coinIcon.Image = diamondImage
+	end
+	local currencyIcon: any = if tier.diamondCost then diamondIcon elseif tier.coinCost then coinIcon else robuxIcon
 	if robuxIcon then
-		robuxIcon.Visible = tier.coinCost == nil
+		robuxIcon.Visible = tier.coinCost == nil and tier.diamondCost == nil
 	end
 	if coinIcon then
-		coinIcon.Visible = tier.coinCost ~= nil
+		coinIcon.Visible = tier.coinCost ~= nil or diamondIcon == coinIcon
+	end
+	if diamondIcon and diamondIcon ~= coinIcon then
+		diamondIcon.Visible = tier.diamondCost ~= nil
 	end
 
 	local amountText: any = button:FindFirstChild("Amount")
 	if amountText then
 		local count = tier.contents[1].count or 1
 		local statesCount = count > 1 or doTierCountsDiffer(deal)
-		local isPack = deal.cardStyle == enums.ShopCardStyle.GACHA or (deal.cardStyle == enums.ShopCardStyle.SINGLE_ITEM and statesCount)
+		local isPack = deal.cardStyle == enums.ShopCardStyle.GACHA
+			or (deal.cardStyle == enums.ShopCardStyle.SINGLE_ITEM and statesCount)
 		amountText.Text = if isPack then `Buy {count}` else "Buy"
 	elseif doTierCountsDiffer(deal) then
-		warn(`ClientDealShopManager: deal {deal.dealKey} sells different counts, so BuyTier{tierIndex}/Purchase needs an Amount label`)
+		warn(
+			`ClientDealShopManager: deal {deal.dealKey} sells different counts, so BuyTier{tierIndex}/Purchase needs an Amount label`
+		)
 	end
 
 	local priceSlashText: any = costFrame:FindFirstChild("PriceSlash")
@@ -440,12 +487,46 @@ function ClientDealShopManager.setActiveSection(self: ClientDealShopManager, sec
 	self.scroll.CanvasPosition = Vector2.zero
 end
 
-function ClientDealShopManager.buildCard(self: ClientDealShopManager, section: DealShopCatalog.Section, deal: DealShopCatalog.Deal, layoutOrder: number)
-	local template: any = if deal.cardStyle == enums.ShopCardStyle.SINGLE_ITEM then self.singleItemTemplate
+function ClientDealShopManager.placeTiersSideBySide(self: ClientDealShopManager, card: any, deal: DealShopCatalog.Deal)
+	if #deal.tiers ~= 2 or deal.cardStyle == enums.ShopCardStyle.GACHA then
+		return
+	end
+
+	local firstTierFrame: any = card:FindFirstChild("BuyTier1")
+	if not firstTierFrame then
+		return
+	end
+
+	local position: UDim2 = firstTierFrame.Position
+	local width: UDim = firstTierFrame.Size.X
+	firstTierFrame.Position = UDim2.new(
+		position.X.Scale - width.Scale,
+		position.X.Offset - width.Offset - TIER_GAP,
+		position.Y.Scale,
+		position.Y.Offset
+	)
+
+	if #deal.tiers[1].contents > MAX_CONTENTS_BESIDE_TIERS then
+		warn(
+			`ClientDealShopManager: deal {deal.dealKey} has {#deal.tiers[1].contents} contents beside two buy buttons; the tiles may overlap the left button`
+		)
+	end
+end
+
+function ClientDealShopManager.buildCard(
+	self: ClientDealShopManager,
+	section: DealShopCatalog.Section,
+	deal: DealShopCatalog.Deal,
+	layoutOrder: number
+)
+	local template: any = if deal.cardStyle == enums.ShopCardStyle.SINGLE_ITEM
+		then self.singleItemTemplate
 		elseif deal.cardStyle == enums.ShopCardStyle.GACHA then self.gachaTemplate
 		else self.bundleTemplate
 	if not template then
-		warn(`ClientDealShopManager: no card template for deal {deal.dealKey}; add GachaDealCardTemplate for gacha deals`)
+		warn(
+			`ClientDealShopManager: no card template for deal {deal.dealKey}; add GachaDealCardTemplate for gacha deals`
+		)
 		return
 	end
 
@@ -485,6 +566,8 @@ function ClientDealShopManager.buildCard(self: ClientDealShopManager, section: D
 			end
 		end
 	end
+
+	self:placeTiersSideBySide(card, deal)
 
 	local stockText: any = utils.findFirstDescendant(card, "StockAmount")
 	if stockText then
@@ -608,7 +691,9 @@ function ClientDealShopManager.buildPrizeTile(
 		tile = rarityFrame:Clone()
 		tile.Visible = true
 	else
-		warn(`ClientDealShopManager: no rarity frame authored for rarity {prize.rarity}; prize {prize.itemName} uses a plain tile`)
+		warn(
+			`ClientDealShopManager: no rarity frame authored for rarity {prize.rarity}; prize {prize.itemName} uses a plain tile`
+		)
 		tile = Instance.new("Frame")
 		tile.BackgroundTransparency = 0.15
 		tile.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
@@ -738,7 +823,11 @@ function ClientDealShopManager.fillGachaCard(self: ClientDealShopManager, card: 
 	end
 end
 
-function ClientDealShopManager.buildSectionTab(self: ClientDealShopManager, section: DealShopCatalog.Section, layoutOrder: number)
+function ClientDealShopManager.buildSectionTab(
+	self: ClientDealShopManager,
+	section: DealShopCatalog.Section,
+	layoutOrder: number
+)
 	local tabTemplate: any = self.sectionTabTemplate
 	local tab: any = tabTemplate:Clone()
 	tab.Name = `SectionTab_{section.sectionKey}`
@@ -891,14 +980,17 @@ function ClientDealShopManager.beginPanel(self: ClientDealShopManager)
 
 	self:updateTimeLimits()
 	self.lastCoins = getCoins()
+	self.lastDiamonds = getDiamonds()
 	self:refreshAllTierRecords()
 
 	self.refreshConnect = RunService.Heartbeat:Connect(function()
 		self:updateTimeLimits()
 
 		local coins = getCoins()
-		if coins ~= self.lastCoins then
+		local diamonds = getDiamonds()
+		if coins ~= self.lastCoins or diamonds ~= self.lastDiamonds then
 			self.lastCoins = coins
+			self.lastDiamonds = diamonds
 			self:refreshCoinTierRecords()
 		end
 	end)
@@ -963,7 +1055,12 @@ function ClientDealShopManager.init(self: ClientDealShopManager)
 		for _, child in (scroll or main or gui):GetChildren() do
 			table.insert(foundNames, child.Name)
 		end
-		warn(`ClientDealShopManager: DealShop is missing {table.concat(missingNames, ", ")}; found [{table.concat(foundNames, ", ")}]; the deal shop is disabled`)
+		warn(
+			`ClientDealShopManager: DealShop is missing {table.concat(missingNames, ", ")}; found [{table.concat(
+				foundNames,
+				", "
+			)}]; the deal shop is disabled`
+		)
 		return
 	end
 
@@ -1000,7 +1097,8 @@ function ClientDealShopManager.init(self: ClientDealShopManager)
 	end
 
 	local sectionTabsFrame: any = utils.findFirstDescendant(gui, "SectionTabs")
-	local sectionTabTemplate: any = sectionTabsFrame and utils.findFirstDescendant(sectionTabsFrame, "SectionTabTemplate")
+	local sectionTabTemplate: any = sectionTabsFrame
+		and utils.findFirstDescendant(sectionTabsFrame, "SectionTabTemplate")
 	if sectionTabTemplate then
 		sectionTabTemplate.Visible = false
 		self.sectionTabsFrame = sectionTabsFrame
@@ -1037,6 +1135,7 @@ function ClientDealShopManager.new(): ClientDealShopManager
 	self.unavailableProductIds = {}
 	self.refreshConnect = nil
 	self.lastCoins = nil
+	self.lastDiamonds = nil
 	self.nextPendingToken = 0
 	self.purchasedDealKeys = {}
 	self.stockByDealKey = {}

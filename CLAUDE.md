@@ -335,7 +335,7 @@ item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter
 
 - **Config** lives in the Studio-only `ServerScriptService.GameData.Control.DealShop`
   (`SECTIONS → deals → tiers → contents`); the field reference is a comment block at the top of that
-  script. A deal has 1–2 tiers, each priced in coins (`coinCost`) or Robux (`productId`); contents are
+  script. A deal has 1–2 tiers, each priced in exactly one of coins (`coinCost`), Diamonds (`diamondCost`) or Robux (`productId`); contents are
   `ITEM` (`objectName`, `count`), `COINS` (`amount`) or `DIAMONDS` (`amount`). Optional per-deal `giftable = false`,
   `oneTimeOnly = true` (saved in `PlayerData.purchasedDealKeys`; never giftable), and
   `startDate`/`endDate` (ISO 8601 UTC).
@@ -350,8 +350,8 @@ item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter
   another system (`GameController:isProductIdReserved` mirrors `tryGrantPlayerRobuxProductId` and must
   stay in sync with it). The display copy for clients is built once and sent in `NotifyInit` as
   `dealShopConfig` (with `purchasedDealKeys`); nothing is stored on workspace.
-- **Buying:** a coin tier fires `TryBuyDeal(dealKey, tierIndex)`; the server checks availability and
-  balance, subtracts, grants, refunds on total failure, and replies `NotifyDealPurchaseResult`. A Robux
+- **Buying:** a coin or Diamond tier fires `TryBuyDeal(dealKey, tierIndex)`; the server checks availability and
+  balance, subtracts (Diamonds through `CurrencyGranter.trySpendDiamonds`), grants, refunds on total failure, and replies `NotifyDealPurchaseResult`. A Robux
   tier prompts the dev product and the receipt flows
   `ProcessReceipt → GameController:tryGrantPlayerRobuxProductId → DealShopManager:tryDeliverToPlayer`. A
   gift (Robux tiers only) records a pending gift with `TryBeginGift`, the receipt grants the recipient,
@@ -374,7 +374,7 @@ item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter
   `Main > SectionTabs > SectionTabTemplate` (a TextButton; its Border-mode `UIStroke` marks the active
   tab); `Main > ToolTip > ToolTipInfo`. Each card has `TitleTimer > DealTitle, TimeLimit`,
   `Contents > Icon` (the tile template, with `NameText` and an optional `CountText`), and
-  `BuyTier1`/`BuyTier2` > `Purchase` (the button) > optional `Amount`, `Cost` (frame) > `RBX`, `Coin`,
+  `BuyTier1`/`BuyTier2` > `Purchase` (the button) > optional `Amount`, `Cost` (frame) > `RBX`, `Coin`, optional `Diamond` (a Diamond tier without one reuses `Coin` with its `DiamondImage` string attribute as the picture),
   `Cost` (label), optional `PriceSlash`, plus a `Gift` button. A gacha card (`GachaDealCardTemplate`) holds its
   buy buttons in `PurchaseTiers > BuyTier1..3`, shows the egg in `Gacha > Title / GachaAssetFrame`, and its
   `Contents` row holds one authored `Frame` per rarity, named after the rarity (they are used as prize tile
@@ -391,6 +391,9 @@ item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter
   player after each purchase of a stock deal, to everyone at a restock (purchases empty). Clients never receive the `stock` list itself, only
   `hasStock`. Cards optionally hold a `StockAmount` label (inside `TitleTimer`), `Main` an optional `RestockTimer` label; an out-of-stock tier shows "Sold out".
   Dev tool `restockDealShop` (client section "Deal Shop") restocks now with a random roll. Not allowed on featured deals.
+- **Two-tier cards** (non-gacha) keep `BuyTier1` and `BuyTier2` authored at the same spot: the client slides `BuyTier1` left by its own width plus `TIER_GAP`
+  (`ClientDealShopManager.placeTiersSideBySide`), so the in-game price sits beside the Robux price; it warns when the first tier has more than
+  `MAX_CONTENTS_BESIDE_TIERS` (3) content tiles, which may then overlap the left button. One-tier cards are untouched.
 - **Current limits:** bundles are Robux-only by convention (not enforced); a two-tier single item must sell
   the same item in both tiers but may differ in count, a two-tier bundle must grant identical contents; there
   is no play-time window yet, and a purchased gacha egg is opened by placing and hatching it (no reveal screen).
