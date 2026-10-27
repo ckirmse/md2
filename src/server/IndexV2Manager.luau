@@ -374,6 +374,24 @@ function IndexV2Manager.notifyMutationDiscoveredIfNew(self: IndexV2Manager, play
 	indexManager:notifyMutationDiscovered(player, playerData, mutationTier)
 end
 
+-- dormant: only records which mutations each dragon entry has shown, nothing reads it yet
+function IndexV2Manager.notifyDragonMutationIfNew(self: IndexV2Manager, playerData: any, item: Types.Item)
+	if not gameController:isIndexEnabled() then
+		return
+	end
+
+	if item:getType() ~= "shadowDragon" then
+		return
+	end
+
+	local mutation = (item :: Types.ShadowDragon):getMutation()
+	if mutation == enums.Mutations.NORMAL then
+		return
+	end
+
+	playerData:markDragonMutationDiscovered(item:getItemName(), mutation)
+end
+
 function IndexV2Manager.notifyTraitDiscoveredIfNew(self: IndexV2Manager, player: Player, playerData: any, trait: number)
 	if not gameController:isIndexEnabled() then
 		return

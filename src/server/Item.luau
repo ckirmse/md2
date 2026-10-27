@@ -591,6 +591,7 @@ function Item.putInBackpack(self: Item): Tool?
 				indexV2Manager:notifyMutationDiscoveredIfNew(player, playerData, mutation)
 			end
 			(self :: any):notifyTraitsDiscovered()
+			indexV2Manager:notifyDragonMutationIfNew(playerData, self)
 		end
 	end
 

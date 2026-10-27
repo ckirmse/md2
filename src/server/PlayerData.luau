@@ -116,6 +116,7 @@ type PlayerDataFields = {
 	spinWheel: any, -- { freeSpins, paidSpins, lastGrantDay, lastDiscountDay }, see SpinWheelMath
 	indexDiscoveredMutations: any,
 	indexDiscoveredTraits: any,
+	indexDiscoveredDragonMutations: any, -- { [dragonItemName]: { [mutationTier]: true } }
 	indexClaimedRewards: any,
 	indexStatBuffs: any,
 	indexMutationChancePercent: number,
@@ -1919,6 +1920,23 @@ function PlayerData.loadSaveData(self: PlayerData, saveData: any)
 		end
 	end
 
+	self.indexDiscoveredDragonMutations = {}
+	local indexDragonMutationsSaveData = saveData and saveData.indexDiscoveredDragonMutations or nil
+	if indexDragonMutationsSaveData then
+		for dragonName, mutationSet in indexDragonMutationsSaveData do
+			local dragonMutations = {}
+			for mutationStr in mutationSet do
+				local mutation = tonumber(mutationStr)
+				if mutation ~= enums.Mutations.NORMAL and enums.isValidValue(enums.Mutations, mutation) then
+					dragonMutations[mutation] = true
+				end
+			end
+			if next(dragonMutations) then
+				self.indexDiscoveredDragonMutations[dragonName] = dragonMutations
+			end
+		end
+	end
+
 	-- vanity needs to cemo before items because vanity islands can hold items
 	local itemsSaveData = saveData and saveData.items or nil
 	if itemsSaveData then
@@ -2413,6 +2431,64 @@ function PlayerData.getIndexDiscoveredMutations(self: PlayerData)
 	return self.indexDiscoveredMutations
 end
 
+function PlayerData.hasDiscoveredDragonMutation(self: PlayerData, dragonName: string, mutationTier: number): boolean
+	local dragonMutations = self.indexDiscoveredDragonMutations[dragonName]
+	return dragonMutations ~= nil and dragonMutations[mutationTier] == true
+end
+
+function PlayerData.markDragonMutationDiscovered(self: PlayerData, dragonName: string, mutationTier: number)
+	local dragonMutations = self.indexDiscoveredDragonMutations[dragonName]
+	if not dragonMutations then
+		dragonMutations = {}
+		self.indexDiscoveredDragonMutations[dragonName] = dragonMutations
+	end
+	dragonMutations[mutationTier] = true
+end
+
+function PlayerData.getDragonMutationCount(self: PlayerData, dragonName: string): number
+	local count = 0
+	local dragonMutations = self.indexDiscoveredDragonMutations[dragonName]
+	if dragonMutations then
+		for _ in dragonMutations do
+			count += 1
+		end
+	end
+	return count
+end
+
+function PlayerData.getDragonMutations(self: PlayerData, dragonName: string): { number }
+	local mutations = {}
+	local dragonMutations = self.indexDiscoveredDragonMutations[dragonName]
+	if dragonMutations then
+		for mutation in dragonMutations do
+			table.insert(mutations, mutation)
+		end
+		table.sort(mutations)
+	end
+	return mutations
+end
+
+function PlayerData.getAllDragonMutationCounts(self: PlayerData): { [string]: number }
+	local counts = {}
+	for dragonName in self.indexDiscoveredDragonMutations do
+		counts[dragonName] = self:getDragonMutationCount(dragonName)
+	end
+	return counts
+end
+
+function PlayerData.buildDragonMutationSaveData(self: PlayerData): any
+	-- string keys: a set keyed by small integers would be saved as an array
+	local saveData = {}
+	for dragonName, dragonMutations in self.indexDiscoveredDragonMutations do
+		local mutationSet = {}
+		for mutation in dragonMutations do
+			mutationSet[tostring(mutation)] = true
+		end
+		saveData[dragonName] = mutationSet
+	end
+	return saveData
+end
+
 function PlayerData.tryConsumeIndexRefreshCooldown(self: PlayerData)
 	local now = workspace:GetServerTimeNow()
 
@@ -2429,6 +2505,7 @@ function PlayerData.resetIndexData(self: PlayerData)
 	self.indexClaimedRewards = {}
 	self.indexDiscoveredMutations = {}
 	self.indexDiscoveredTraits = {}
+	self.indexDiscoveredDragonMutations = {}
 	self.indexStatBuffs = {}
 	self.indexMutationChancePercent = 0
 	self.indexIncomeBonusPercent = 0
@@ -2444,6 +2521,7 @@ end
 
 function PlayerData.resetIndexMutationData(self: PlayerData)
 	self.indexDiscoveredMutations = {}
+	self.indexDiscoveredDragonMutations = {}
 end
 
 function PlayerData.getDefaultContextualFtueState(self: PlayerData)
@@ -2514,6 +2592,7 @@ function PlayerData.getSaveData(self: PlayerData): any
 	saveData.indexClaimedRewards = self.indexClaimedRewards
 	saveData.indexDiscoveredMutations = self.indexDiscoveredMutations
 	saveData.indexDiscoveredTraits = self.indexDiscoveredTraits
+	saveData.indexDiscoveredDragonMutations = self:buildDragonMutationSaveData()
 	saveData.indexStatBuffs = self.indexStatBuffs
 	saveData.indexMutationChancePercent = self.indexMutationChancePercent
 	saveData.indexIncomeBonusPercent = self.indexIncomeBonusPercent
@@ -3544,6 +3623,7 @@ function PlayerData.new(player: Player?): PlayerData
 	self.indexClaimedRewards = {}
 	self.indexDiscoveredMutations = {}
 	self.indexDiscoveredTraits = {}
+	self.indexDiscoveredDragonMutations = {}
 	self.indexStatBuffs = {}
 	self.indexMutationChancePercent = 0
 	self.indexIncomeBonusPercent = 0

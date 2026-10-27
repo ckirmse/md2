@@ -92,6 +92,7 @@ function RideMixin.canRideItem(self: RideMixin, player: Player, itemId: number):
 		if mutation and mutation ~= enums.Mutations.NORMAL then
 			indexV2Manager:notifyMutationDiscoveredIfNew(player, playerData, mutation)
 		end
+		indexV2Manager:notifyDragonMutationIfNew(playerData, item)
 		item:notifyTraitsDiscovered()
 	end
 

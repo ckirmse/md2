@@ -682,6 +682,12 @@ one; the original Index (`IndexManager`, `ClientIndexManager`, `IndexFrame`) is 
 - **Data to the client:** `initData.indexV2` at join (data sent before `NotifyInit` is lost), later `NotifyIndexV2Data`; remotes `TryClaimIndexV2Tier`,
   `NotifyIndexV2Data`, `NotifyIndexV2Discovery`, `NotifyIndexV2TierResult`. `ScreenGuiManager.hideAllOtherGuis` disables unlisted ScreenGuis, so the
   dialog enables its own `PetIndex` gui when opened. HUD: `IndexV2Frame` > `Index` / `IndexAlert`.
+- **Per-dragon mutations (dormant data, 2026-10-27):** `PlayerData.indexDiscoveredDragonMutations = { [dragonItemName] = { [mutationTier] = true } }` (saved with string
+  keys, loaded before the items, cleared by the Index resets, kept through Rebirth) records which of the 8 mutations each dragon entry has shown. `IndexV2Manager:notifyDragonMutationIfNew`
+  writes it, from the same two places as the global mutation discovery (`Item.putInBackpack`, `RideMixin.canRideItem`); NORMAL never counts and only `shadowDragon` items do.
+  Helpers: `hasDiscoveredDragonMutation`, `markDragonMutationDiscovered`, `getDragonMutationCount`, `getDragonMutations`, `getAllDragonMutationCounts`. Nothing reads it and nothing is
+  sent to the client: no UI, rewards or remotes until the design is set. Dev tool `dumpDragonMutations` (client section "Index V2"). A dragon hatched onto the plot is not recorded
+  until it is picked up or ridden (same gap as the global mutation discovery).
 - **Sort order of tiles in a rarity row:** primary element's `sortIndex` (`shared/Elements.luau`, Nature 1, Water 2, Fire 3; no element counts as 1),
   then display name.
 - **Dev tools** (client section "Index V2"): `discoverIndexV2Items`, `dumpIndexV2`, `claimNextIndexV2Tier`, `sendIndexV2Data`.

@@ -136,6 +136,25 @@ function DevTools.discoverSpecificMutation(self: DevTools, player: Player, mutat
 	print("index discovered specific mutation", player, enums.getPublicName(enums.Mutations, mutationTier))
 end
 
+function DevTools.dumpDragonMutations(self: DevTools, player: Player)
+	local playerData = gameController:getPlayerData(player)
+	local counts = playerData:getAllDragonMutationCounts()
+	local dragonNames = {}
+	for dragonName in counts do
+		table.insert(dragonNames, dragonName)
+	end
+	table.sort(dragonNames)
+
+	print("Per-dragon mutations discovered:", #dragonNames, "dragons")
+	for _, dragonName in dragonNames do
+		local names = {}
+		for _, mutation in playerData:getDragonMutations(dragonName) do
+			table.insert(names, enums.getPublicName(enums.Mutations, mutation) :: string)
+		end
+		print(dragonName, counts[dragonName], table.concat(names, ", "))
+	end
+end
+
 function DevTools.dumpIndexChains(self: DevTools, player: Player, category: any)
 	print("Index chains for category", category)
 	for chainIndex, chain in indexManager:getCategoryChains(category) do

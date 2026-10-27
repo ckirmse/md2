@@ -904,6 +904,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			if Iris.Button({ "Resend Data" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("sendIndexV2Data")
 			end
+			if Iris.Button({ "Dump Dragon Mutations" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpDragonMutations")
+			end
 
 			Iris.End()
 
