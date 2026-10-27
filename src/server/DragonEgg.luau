@@ -230,6 +230,19 @@ function DragonEgg.cleanupIncubating(self: DragonEgg)
 	self:getObj():SetAttribute(Attributes.HATCH_COMPLETE_TIME, nil)
 end
 
+function DragonEgg.getHatchRemainingSec(self: DragonEgg): number?
+	if not self.hatchTimer then
+		return nil
+	end
+
+	return self.hatchTimer:getTimeLeft() or 0
+end
+
+function DragonEgg.skipHatch(self: DragonEgg)
+	self:cleanupIncubating()
+	self:notifyHatchReady()
+end
+
 function DragonEgg.pauseIncubating(self: DragonEgg)
 	if not self.hatchTimer then
 		return

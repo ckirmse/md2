@@ -698,9 +698,15 @@ name "Diamonds" (`logGainCurrency` / `logSpendCurrency` take an optional `curren
   `Control/SpinWheel` loot-table result; an Index reward `{ rewardType = "Diamonds", amount = N }`; `entryRewards.diamonds` in `Control/IndexRewards`
   (same shape as `coins`, behind the same `isEnabled`); a Deal Shop content `{ kind = ShopContentKind.DIAMONDS, amount = N }`. The tile picture for
   Playtime and Daily is the `DiamondImage` attribute on the tile's `Icon` (falls back to `CoinImage`).
-- **Not built (deferred by the user, 2026-10-26):** Robux Diamond packs (no dev products yet), and every sink: premium eggs (Luck 25 and 150,
-  instant hatch), premium radar, hatch skip (1 Diamond per 10 minutes remaining), plot luck x100 levels, Style Tokens. "Premium gear" is undefined in the spec.
+- **Not built (deferred by the user, 2026-10-26):** Robux Diamond packs (no dev products yet), and the other sinks: premium eggs (Luck 25 and 150,
+  instant hatch), premium radar, plot luck x100 levels, Style Tokens. "Premium gear" is undefined in the spec.
 - **Dev tools** (client section "Currency"): `getDiamonds`, `spendDiamonds`, `dumpDiamonds`.
+- **Hatch skip (first sink):** a slotted, still-incubating egg can be made ready to hatch for `max(1, ceil(secondsLeft / 600))` Diamonds
+  (`shared/HatchSkipMath.luau`, the spec's price). The button is the optional `SpeedUpButton` inside the egg's `CountdownBillboard`
+  (`ClientDragonEggManager`; hidden unless the egg is slotted): the first tap shows "Confirm: N Diamonds" for 3 s, the second fires
+  `TrySkipHatch(eggItemId, expectedCost)`. `GameController.trySkipHatch` validates, recomputes the cost, refuses if it grew past `expectedCost`
+  ("The skip price changed"), spends through `CurrencyGranter.trySpendDiamonds` (source `hatchSkip`) and calls `DragonEgg:skipHatch` (ready, not
+  opened: the player still holds E). Studio: RemoteEvent `TrySkipHatch` (a missing one stops boot).
 
 ## Design Notes in the Repo
 

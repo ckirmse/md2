@@ -15,17 +15,30 @@ local RemoteEvents: any = ReplicatedStorage:WaitForChild("RemoteEvents")
 
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
+local HatchSkipMath = require("@game/ReplicatedStorage/Shared/HatchSkipMath")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local player = game:GetService("Players").LocalPlayer :: Player
 
 local HATCH_PROMPT_NAME = "HatchEggProxPrompt"
+local SKIP_BUTTON_NAME = "SpeedUpButton"
+local SKIP_FRAME_NAME = "Frame"
+local SKIP_TITLE_NAME = "ActivateNow"
+local SKIP_COST_NAME = "Cost"
+local SKIP_ICON_NAME = "ImageLabel"
+local SKIP_CONFIRM_SEC = 3
 
 type IndicatorData = {
 	instance: any, -- world egg Model; its shape only exists at runtime
 	billboard: any?, -- CountdownBillboard clone
 	hatchPrompt: ProximityPrompt?,
+	skipButton: any?,
+	skipTitleLabel: any?,
+	skipCostLabel: any?,
+	skipConfirmCost: number?,
+	skipConfirmUntil: number?,
+	skipActivatedConnect: RBXScriptConnection?,
 	runConnect: RBXScriptConnection?,
 	hatchCompleteTimeChangedConnect: RBXScriptConnection?,
 }
@@ -41,6 +54,56 @@ export type ClientDragonEggManager = typeof(setmetatable({} :: ClientDragonEggMa
 function ClientDragonEggManager.getInstanceByItemId(self: ClientDragonEggManager, itemId: number): any?
 	local indicatorData = self.indicatorMap[itemId]
 	return indicatorData and indicatorData.instance
+end
+
+local function setLabelText(label: any, text: string)
+	if label and label.Text ~= text then
+		label.Text = text
+	end
+end
+
+function ClientDragonEggManager.updateSkipButton(self: ClientDragonEggManager, indicatorData: IndicatorData, remainingSec: number)
+	local button = indicatorData.skipButton
+	if not button then
+		return
+	end
+
+	local isSlotted = indicatorData.instance:GetAttribute(Attributes.EGG_SLOT_INDEX) ~= nil
+	button.Visible = isSlotted
+	if not isSlotted then
+		return
+	end
+
+	local confirmUntil = indicatorData.skipConfirmUntil
+	if confirmUntil and workspace:GetServerTimeNow() >= confirmUntil then
+		indicatorData.skipConfirmCost = nil
+		indicatorData.skipConfirmUntil = nil
+	end
+
+	local confirmCost = indicatorData.skipConfirmCost
+	setLabelText(indicatorData.skipTitleLabel, if confirmCost then "Confirm?" else "Skip")
+	setLabelText(indicatorData.skipCostLabel, tostring(confirmCost or HatchSkipMath.getCost(remainingSec)))
+end
+
+function ClientDragonEggManager.activateSkip(self: ClientDragonEggManager, itemId: number)
+	local indicatorData = self.indicatorMap[itemId]
+	local completeTime = indicatorData and indicatorData.instance:GetAttribute(Attributes.HATCH_COMPLETE_TIME)
+	if not indicatorData or not completeTime then
+		return
+	end
+
+	local confirmCost = indicatorData.skipConfirmCost
+	if confirmCost then
+		indicatorData.skipConfirmCost = nil
+		indicatorData.skipConfirmUntil = nil
+		RemoteEvents.TrySkipHatch:FireServer(itemId, confirmCost)
+		return
+	end
+
+	local remainingSec = math.max(0, completeTime - workspace:GetServerTimeNow())
+	indicatorData.skipConfirmCost = HatchSkipMath.getCost(remainingSec)
+	indicatorData.skipConfirmUntil = workspace:GetServerTimeNow() + SKIP_CONFIRM_SEC
+	self:updateSkipButton(indicatorData, remainingSec)
 end
 
 function ClientDragonEggManager.updateBillboardByItemId(self: ClientDragonEggManager, itemId: number)
@@ -66,6 +129,7 @@ function ClientDragonEggManager.updateBillboardByItemId(self: ClientDragonEggMan
 	end
 
 	local remainingSec = math.ceil(math.max(0, completeTime - workspace:GetServerTimeNow()))
+	self:updateSkipButton(indicatorData, remainingSec)
 
 	local textLabel = billboard:FindFirstChild("TextLabel")
 	local s = string.format("Hatches in %ds", remainingSec)
@@ -93,12 +157,26 @@ function ClientDragonEggManager.beginHatchCountdown(self: ClientDragonEggManager
 	billboard.Adornee = inst
 	billboard.Enabled = true
 	local _, size = inst:GetBoundingBox()
-	billboard.StudsOffset = Vector3.new(0, 4 + size.Y / 2, 0)
+	billboard.SizeOffset = Vector2.new(0, 0.5)
+	billboard.StudsOffset = Vector3.new(0, 1 + size.Y / 2, 0)
 	billboard:SetAttribute(Attributes.ITEM_ID, itemId) -- for debugging
 
-	local button = billboard:FindFirstChild("SpeedUpButton")
+	local button = billboard:FindFirstChild(SKIP_BUTTON_NAME)
 	if button then
 		button.Visible = false
+		indicatorData.skipButton = button
+		local skipFrame = button:FindFirstChild(SKIP_FRAME_NAME)
+		indicatorData.skipTitleLabel = skipFrame and skipFrame:FindFirstChild(SKIP_TITLE_NAME)
+		indicatorData.skipCostLabel = skipFrame and skipFrame:FindFirstChild(SKIP_COST_NAME)
+		local skipIcon = skipFrame and skipFrame:FindFirstChild(SKIP_ICON_NAME)
+		local diamondImage = if skipIcon then skipIcon:GetAttribute(Attributes.DIAMOND_IMAGE) else nil
+		if skipIcon and typeof(diamondImage) == "string" then
+			skipIcon.Image = diamondImage
+		end
+		billboard.Active = true
+		indicatorData.skipActivatedConnect = button.Activated:Connect(function()
+			self:activateSkip(itemId)
+		end)
 	end
 
 	indicatorData.billboard = billboard
@@ -124,6 +202,16 @@ function ClientDragonEggManager.cleanupHatchCountdown(self: ClientDragonEggManag
 		indicatorData.runConnect:Disconnect()
 		indicatorData.runConnect = nil
 	end
+
+	if indicatorData.skipActivatedConnect then
+		indicatorData.skipActivatedConnect:Disconnect()
+		indicatorData.skipActivatedConnect = nil
+	end
+	indicatorData.skipButton = nil
+	indicatorData.skipTitleLabel = nil
+	indicatorData.skipCostLabel = nil
+	indicatorData.skipConfirmCost = nil
+	indicatorData.skipConfirmUntil = nil
 
 	if indicatorData.billboard then
 		indicatorData.billboard:Destroy()

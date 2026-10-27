@@ -14,6 +14,7 @@ local buyStoreManager = require("./BuyStoreManager")
 local Chest = require("./Chest")
 local codeManager = require("./CodeManager")
 local contextualFtueManager = require("./ContextualFtueManager")
+local CurrencyGranter = require("./CurrencyGranter")
 local Critter = require("./Critter")
 local Crop = require("./Crop")
 local Crystal = require("./Crystal")
@@ -89,6 +90,7 @@ local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local FtueSteps = require("@game/ReplicatedStorage/Shared/FtueSteps")
 local GameConfigKeys = require("@game/ReplicatedStorage/Shared/GameConfigKeys")
+local HatchSkipMath = require("@game/ReplicatedStorage/Shared/HatchSkipMath")
 local PivotToTargetTween = require("@game/ReplicatedStorage/Shared/PivotToTargetTween")
 local PivotToTween = require("@game/ReplicatedStorage/Shared/PivotToTween")
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
@@ -2507,6 +2509,44 @@ function GameController.tryHatchEgg(self: GameController, player: Player, eggIte
 	egg:finishHatching()
 end
 
+function GameController.trySkipHatch(self: GameController, player: Player, eggItemId: any, expectedCost: any): ()
+	if not Validate.isItemIdForPlayer(player, eggItemId) then
+		return
+	end
+
+	if type(expectedCost) ~= "number" or expectedCost < 1 or expectedCost ~= math.floor(expectedCost) then
+		print("invalid hatch skip cost from player", player, expectedCost)
+		return
+	end
+
+	local item = itemManager:getItemById(eggItemId) :: Types.Item
+	if item:getType() ~= "dragonEgg" then
+		return
+	end
+
+	local egg = item :: Types.DragonEgg
+	local remainingSec = egg:getHatchRemainingSec()
+	if egg:getEggSlotIndex() == nil or remainingSec == nil then
+		return
+	end
+
+	local cost = HatchSkipMath.getCost(remainingSec)
+	if cost > expectedCost then
+		self:sendSystemMessageToPlayer(player, "The skip price changed, try again")
+		return
+	end
+
+	if not CurrencyGranter.trySpendDiamonds(player, cost, "hatchSkip") then
+		self:sendSystemMessageToPlayer(
+			player,
+			`You need {cost} Diamonds to skip this hatch (you have {CurrencyGranter.getDiamonds(player)})`
+		)
+		return
+	end
+
+	egg:skipHatch()
+end
+
 function GameController.tryOpenCrate(self: GameController, player: Player, crateItemId: any): ()
 	if not Validate.isItemIdForPlayer(player, crateItemId) then
 		print("invalid item id by", player, "item id", crateItemId)
@@ -3778,6 +3818,7 @@ function GameController.listenToRemoteEvents(self: GameController): ()
 	self:addRemoteEventHandler("TryMineWhileRiding", "tryMineWhileRiding")
 	self:addRemoteEventHandler("TryOpenPack", "tryOpenPack")
 	self:addRemoteEventHandler("TryHatchEgg", "tryHatchEgg")
+	self:addRemoteEventHandler("TrySkipHatch", "trySkipHatch")
 	self:addRemoteEventHandler("TryOpenCrate", "tryOpenCrate")
 	self:addRemoteEventHandler("TrySetRidingItemCFrame", "trySetRidingItemCFrame")
 	self:addRemoteEventHandler("TryShootFireballAtCrop", "tryShootFireballAtCrop")
