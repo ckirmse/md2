@@ -665,8 +665,9 @@ one; the original Index (`IndexManager`, `ClientIndexManager`, `IndexFrame`) is 
   Index is on. The two managers reference each other through `initClass` (`indexManager`, `indexV2Manager`); `Types.IndexV2Manager` is a small
   hand-written interface because `generate_types.py` cannot emit its milestone signatures. `PlayerData.loadSaveData` loads the Index state BEFORE the
   items, otherwise every loaded item looks newly discovered (and the entry prize pays on every boot).
-- **Rewards:** ROW rewards (Dragon and Egg: every entry of a rarity discovered) and category TIER rewards (claimed in order), each with an income-percent,
-  crate or stat/mutation reward. Studio-only `GameData.Control.IndexRewards`: `rowRewards[category][rarity]`, `categoryTiers[category] = { { requiredPercent,
+- **Rewards:** category TIER rewards (claimed in order), each with an income-percent, crate, stat/mutation or Diamonds reward. ROW rewards (Dragon and Egg: every
+  entry of a rarity discovered) are supported but no longer authored (design change 2026-10-27: no reward per rarity row): with no `rowRewards` data the rarity
+  headers show only their progress bar and the claim popup never opens. Studio-only `GameData.Control.IndexRewards`: `rowRewards[category][rarity]`, `categoryTiers[category] = { { requiredPercent,
   displayText, reward }, ... }` (add tiers at the end only: the position is saved in claims), `entryRewards`, `useLegacyIndex`, `singleTierBar`. A reward
   may carry `icon = "rbxassetid://..."` inside its `reward` table. The server rebuilds and validates every claim (`TryClaimIndexV2Tier`).
 - **Per-entry coin prize:** `entryRewards = { isEnabled = false|true, coins = { [category] = number | { [rarity] = number } } }`, off unless
@@ -684,7 +685,7 @@ one; the original Index (`IndexManager`, `ClientIndexManager`, `IndexFrame`) is 
 - **Sort order of tiles in a rarity row:** primary element's `sortIndex` (`shared/Elements.luau`, Nature 1, Water 2, Fire 3; no element counts as 1),
   then display name.
 - **Dev tools** (client section "Index V2"): `discoverIndexV2Items`, `dumpIndexV2`, `claimNextIndexV2Tier`, `sendIndexV2Data`.
-- **Known gaps:** row rewards gate on a whole row (the spec says never); 120 dragon entries vs the spec's 126; no Parts category; no Pure/Chimera
+- **Known gaps:** 120 dragon entries vs the spec's 126; no Parts category; no Pure/Chimera
   tiers; prizes are coins only (no Diamonds or Style Tokens yet).
 
 ## Diamonds (hard currency)
