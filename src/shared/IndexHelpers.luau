@@ -8,6 +8,7 @@ IndexHelpers.RewardType = {
 	STAT_BUFF = "statBuff",
 	MUTATION_CHANCE_BUFF = "mutationChanceBuff",
 	INCOME_BONUS = "incomeBonus",
+	DIAMONDS = "diamonds",
 }
 
 IndexHelpers.RewardCrateSize = {

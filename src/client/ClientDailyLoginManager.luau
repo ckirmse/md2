@@ -350,8 +350,8 @@ function ClientDailyLoginManager.init(self: ClientDailyLoginManager)
 	end)
 
 	-- authored in Studio, so a missing one must not hang client startup
-	local playerGui = player:FindFirstChild("PlayerGui") :: Instance
-	local gui: any = playerGui:FindFirstChild("DailyRewards")
+	local playerGui = player:WaitForChild("PlayerGui")
+	local gui: any = playerGui:WaitForChild("DailyRewards", 10)
 	if not gui then
 		warn("ClientDailyLoginManager: DailyRewards gui missing from PlayerGui; the daily rewards dialog is disabled")
 		return

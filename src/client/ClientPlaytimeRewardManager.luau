@@ -395,8 +395,8 @@ function ClientPlaytimeRewardManager.init(self: ClientPlaytimeRewardManager)
 	end)
 
 	-- authored in Studio, so a missing one must not hang client startup
-	local playerGui = player:FindFirstChild("PlayerGui") :: Instance
-	local gui: any = playerGui:FindFirstChild("PlaytimeRewards")
+	local playerGui = player:WaitForChild("PlayerGui")
+	local gui: any = playerGui:WaitForChild("PlaytimeRewards", 10)
 	if not gui then
 		warn("ClientPlaytimeRewardManager: PlaytimeRewards gui missing from PlayerGui; the playtime rewards dialog is disabled")
 		return

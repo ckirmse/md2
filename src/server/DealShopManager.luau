@@ -17,6 +17,7 @@ local featuredDealsData: FeaturedDealCatalog.FeaturedDealsConfig = require("@gam
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
 
 local analyticsManager = require("./AnalyticsManager")
+local CurrencyGranter = require("./CurrencyGranter")
 local EraManager = require("./EraManager")
 local ftueManager = require("./FtueManager")
 local lootTableManager = require("./LootTableManager")
@@ -354,6 +355,9 @@ function DealShopManager.grantTier(
 				playerAttributesManager:get(player, PlayerAttributeKeys.COINS),
 				deal.dealKey
 			)
+			grantedCount += 1
+		elseif content.kind == enums.ShopContentKind.DIAMONDS then
+			CurrencyGranter.grantDiamonds(player, content.amount :: number, deal.dealKey)
 			grantedCount += 1
 		end
 	end

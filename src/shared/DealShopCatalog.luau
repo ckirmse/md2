@@ -16,7 +16,7 @@ export type GachaPrize = {
 
 export type DealContent = {
 	kind: number, -- Enums.ShopContentKind
-	amount: number?, -- COINS
+	amount: number?, -- COINS, DIAMONDS
 	objectName: string?, -- ITEM
 	count: number?, -- ITEM
 	displayName: string?, -- ITEM; filled server-side from ObjectDataStore
@@ -80,9 +80,9 @@ local function validateContent(errors: { string }, where: string, content: DealC
 		return
 	end
 
-	if content.kind == enums.ShopContentKind.COINS then
+	if content.kind == enums.ShopContentKind.COINS or content.kind == enums.ShopContentKind.DIAMONDS then
 		if type(content.amount) ~= "number" or content.amount <= 0 or content.amount ~= math.floor(content.amount) then
-			table.insert(errors, `{where}: COINS content needs integer amount > 0`)
+			table.insert(errors, `{where}: {if content.kind == enums.ShopContentKind.COINS then "COINS" else "DIAMONDS"} content needs integer amount > 0`)
 		end
 	elseif content.kind == enums.ShopContentKind.ITEM then
 		if type(content.objectName) ~= "string" or content.objectName == "" then
@@ -291,9 +291,10 @@ function DealShopCatalog.validate(config: DealShopConfig): { string }
 	local seenProductIds: { [number]: boolean } = {}
 	local hasStockDeal = false
 
-	for _, section in config.SECTIONS do
+	for sectionIndex, section in config.SECTIONS do
 		if type(section.sectionKey) ~= "string" or section.sectionKey == "" then
-			table.insert(errors, "section with missing/empty sectionKey")
+			local hint = if (section :: any).dealKey then ` (it has a dealKey, {tostring((section :: any).dealKey)}: a deal placed directly in SECTIONS instead of inside a section's deals)` else ""
+			table.insert(errors, `SECTIONS[{sectionIndex}] has a missing/empty sectionKey{hint}`)
 			continue
 		end
 		local sectionWhere = `section {section.sectionKey}`

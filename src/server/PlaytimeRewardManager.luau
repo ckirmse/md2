@@ -38,6 +38,7 @@ type PlaytimeRewardState = {
 	unlockSec: number,
 	claimed: boolean,
 	coinAmount: number?, -- COINS only, fixed at session start
+	diamondAmount: number?, -- DIAMONDS only
 	skipSec: number?, -- TIME_SKIP only
 	fixedItemName: string?, -- FIXED_ITEM only
 	receivedItemName: string?, -- item kinds, set once claimed
@@ -65,6 +66,7 @@ type ClientReward = {
 	unlockSec: number,
 	claimed: boolean,
 	coinAmount: number?,
+	diamondAmount: number?,
 	skipSec: number?,
 	label: string?,
 	rarity: number?,
@@ -128,12 +130,15 @@ function PlaytimeRewardManager.resolveRewards(self: PlaytimeRewardManager, playe
 			unlockSec = entry.unlockSec,
 			claimed = false,
 			coinAmount = nil,
+			diamondAmount = nil,
 			skipSec = nil,
 			fixedItemName = nil,
 			receivedItemName = nil,
 		}
 		if entry.kind == kinds.COINS then
 			reward.coinAmount = PlaytimeRewardMath.computeCoinReward(hourlyIncome, entry.hourlyPercent, entry.minCoins, entry.maxCoins)
+		elseif entry.kind == kinds.DIAMONDS then
+			reward.diamondAmount = entry.diamondAmount
 		elseif entry.kind == kinds.TIME_SKIP then
 			reward.skipSec = entry.skipSec
 		elseif entry.kind == kinds.FIXED_ITEM then
@@ -153,6 +158,7 @@ function PlaytimeRewardManager.buildClientReward(self: PlaytimeRewardManager, re
 		unlockSec = reward.unlockSec,
 		claimed = reward.claimed,
 		coinAmount = reward.coinAmount,
+		diamondAmount = reward.diamondAmount,
 		skipSec = reward.skipSec,
 		label = nil,
 		rarity = nil,
@@ -218,11 +224,12 @@ function PlaytimeRewardManager.grantReward(
 	local grantable: RewardGranter.GrantableReward = {
 		kind = reward.kind,
 		coinAmount = reward.coinAmount,
+		diamondAmount = reward.diamondAmount,
 		skipSec = reward.skipSec,
 		minCoins = nil,
 		itemName = nil,
 	}
-	if reward.kind ~= kinds.COINS and reward.kind ~= kinds.TIME_SKIP then
+	if reward.kind ~= kinds.COINS and reward.kind ~= kinds.DIAMONDS and reward.kind ~= kinds.TIME_SKIP then
 		grantable.itemName = reward.fixedItemName or self:rollItemName(entry)
 		if not grantable.itemName then
 			self:rejectClaim(player, reward.index, nil)

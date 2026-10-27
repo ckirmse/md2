@@ -42,6 +42,7 @@ type ClientSegment = {
 	fraction: number,
 	paidFraction: number,
 	coinAmount: number?,
+	diamondAmount: number?,
 	skipSec: number?,
 	itemName: string?,
 	itemType: number?,
@@ -122,6 +123,7 @@ function SpinWheelManager.getCatalog(self: SpinWheelManager): { ClientSegment }
 				fraction = fractions[index],
 				paidFraction = paidFractions[index],
 				coinAmount = nil,
+				diamondAmount = nil,
 				skipSec = nil,
 				itemName = nil,
 				itemType = nil,
@@ -132,6 +134,8 @@ function SpinWheelManager.getCatalog(self: SpinWheelManager): { ClientSegment }
 
 			if result.kind == kinds.COINS then
 				segment.coinAmount = result.minCoins
+			elseif result.kind == kinds.DIAMONDS then
+				segment.diamondAmount = result.diamondAmount
 			elseif result.kind == kinds.TIME_SKIP then
 				segment.skipSec = result.skipSec
 			elseif result.kind == kinds.FIXED_ITEM then
@@ -227,6 +231,8 @@ end
 function SpinWheelManager.resolveReward(self: SpinWheelManager, result: any): RewardGranter.GrantableReward?
 	if result.kind == kinds.COINS then
 		return { kind = result.kind, coinAmount = result.minCoins, skipSec = nil, minCoins = nil, itemName = nil }
+	elseif result.kind == kinds.DIAMONDS then
+		return { kind = result.kind, diamondAmount = result.diamondAmount }
 	elseif result.kind == kinds.TIME_SKIP then
 		return { kind = result.kind, coinAmount = nil, skipSec = result.skipSec, minCoins = result.minCoins, itemName = nil }
 	elseif result.kind == kinds.FIXED_ITEM then

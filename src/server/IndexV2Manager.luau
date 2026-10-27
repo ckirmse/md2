@@ -62,6 +62,7 @@ local RewardTypeNames = {
 	["Chest Pull"] = indexHelpers.RewardType.VANITY_PULL,
 	["Stat Buff"] = indexHelpers.RewardType.STAT_BUFF,
 	["Mutation Chance"] = indexHelpers.RewardType.MUTATION_CHANCE_BUFF,
+	["Diamonds"] = indexHelpers.RewardType.DIAMONDS,
 } :: { [string]: string }
 
 local CategoryItemTypes: { [number]: string } = {
@@ -125,28 +126,29 @@ local function getCategoryTiers(category: number): { TierEntry }
 	return (categoryTiers or {}) :: { TierEntry }
 end
 
-local function getEntryCoins(category: number, key: string | number): (number, string?)
+-- currencyField is "coins" or "diamonds" (the entryRewards table to read); a currency with no table pays nothing and warns nothing
+local function getEntryAmount(category: number, key: string | number, currencyField: string): (number, string?)
 	local entryRewards = indexRewardsData.entryRewards
-	if not entryRewards or entryRewards.isEnabled ~= true then
+	if not entryRewards or entryRewards.isEnabled ~= true or entryRewards[currencyField] == nil then
 		return 0, nil
 	end
 
-	local categoryCoins = entryRewards.coins and entryRewards.coins[category]
-	if type(categoryCoins) == "number" then
-		return categoryCoins, nil
+	local categoryAmounts = entryRewards[currencyField][category]
+	if type(categoryAmounts) == "number" then
+		return categoryAmounts, nil
 	end
-	if type(categoryCoins) ~= "table" or not ROW_CATEGORIES[category] then
-		return 0, "no coins authored for the category"
+	if type(categoryAmounts) ~= "table" or not ROW_CATEGORIES[category] then
+		return 0, `no {currencyField} authored for the category`
 	end
 
 	local itemData = objectDataStore:getObjectDataByName(key :: string)
 	local rarity = if itemData then itemData.rarity else nil
-	local coins = categoryCoins[rarity]
-	if not coins then
-		return 0, `no coins authored for rarity {enums.getPublicName(enums.Rarity, rarity) or tostring(rarity)}`
+	local amount = categoryAmounts[rarity]
+	if not amount then
+		return 0, `no {currencyField} authored for rarity {enums.getPublicName(enums.Rarity, rarity) or tostring(rarity)}`
 	end
 
-	return coins, nil
+	return amount, nil
 end
 
 function IndexV2Manager.getCategoryForItemName(self: IndexV2Manager, itemName: string): number?
@@ -297,6 +299,8 @@ function IndexV2Manager.grantReward(self: IndexV2Manager, player: Player, player
 		playerData:grantIndexStatBuff(reward.attribute, reward.amount)
 	elseif rewardType == indexHelpers.RewardType.MUTATION_CHANCE_BUFF then
 		playerData:grantIndexMutationChanceBuff(reward.amount)
+	elseif rewardType == indexHelpers.RewardType.DIAMONDS then
+		CurrencyGranter.grantDiamonds(player, reward.amount or 0, "indexReward")
 	else
 		warn("unknown index reward type", player, reward.rewardType)
 	end
@@ -336,13 +340,22 @@ end
 function IndexV2Manager.notifyDiscovered(self: IndexV2Manager, player: Player, category: number, key: string | number): ()
 	RemoteEvents.NotifyIndexV2Discovery:FireClient(player, category, key)
 
-	local coins, reason = getEntryCoins(category, key)
-	if reason then
-		warn("IndexV2Manager: entry prize pays nothing,", reason, enums.getPublicName(enums.IndexCategory, category), key)
+	local coins, coinsReason = getEntryAmount(category, key, "coins")
+	if coinsReason then
+		warn("IndexV2Manager: entry prize pays nothing,", coinsReason, enums.getPublicName(enums.IndexCategory, category), key)
 	end
 	if coins > 0 then
 		CurrencyGranter.grantCoins(player, coins, "indexEntry")
 		gameController:sendSystemMessageToPlayer(player, `Index: +{coins} coins`)
+	end
+
+	local diamonds, diamondsReason = getEntryAmount(category, key, "diamonds")
+	if diamondsReason then
+		warn("IndexV2Manager: entry prize pays nothing,", diamondsReason, enums.getPublicName(enums.IndexCategory, category), key)
+	end
+	if diamonds > 0 then
+		CurrencyGranter.grantDiamonds(player, diamonds, "indexEntry")
+		gameController:sendSystemMessageToPlayer(player, `Index: +{diamonds} diamonds`)
 	end
 end
 

@@ -42,6 +42,7 @@ export type Segment = {
 	fraction: number,
 	paidFraction: number,
 	coinAmount: number?,
+	diamondAmount: number?,
 	skipSec: number?,
 	itemName: string?,
 	itemType: number?,
@@ -128,6 +129,8 @@ end
 local function getSegmentTitle(segment: Segment): string
 	if segment.kind == Enums.PlaytimeRewardKind.COINS then
 		return if segment.coinAmount then `{utils.formatLargePositiveInteger(segment.coinAmount)} Coins` else "Coins"
+	elseif segment.kind == Enums.PlaytimeRewardKind.DIAMONDS then
+		return if segment.diamondAmount then `{utils.formatLargePositiveInteger(segment.diamondAmount)} Diamonds` else "Diamonds"
 	elseif segment.kind == Enums.PlaytimeRewardKind.TIME_SKIP then
 		return formatSkipTitle(segment.skipSec or 0)
 	end

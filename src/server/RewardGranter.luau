@@ -23,6 +23,7 @@ local kinds = enums.PlaytimeRewardKind
 export type GrantableReward = {
 	kind: number,
 	coinAmount: number?,
+	diamondAmount: number?,
 	skipSec: number?,
 	minCoins: number?,
 	itemName: string?,
@@ -32,6 +33,7 @@ export type GrantableReward = {
 export type RewardEntry = {
 	kind: number,
 	coinAmount: number?,
+	diamondAmount: number?,
 	skipSec: number?,
 	itemName: string?,
 	displayName: string?,
@@ -52,6 +54,7 @@ function RewardGranter.buildRewardEntry(reward: GrantableReward): RewardEntry
 	local entry: RewardEntry = {
 		kind = reward.kind,
 		coinAmount = reward.coinAmount,
+		diamondAmount = reward.diamondAmount,
 		skipSec = reward.skipSec,
 		itemName = nil,
 		displayName = nil,
@@ -81,6 +84,10 @@ function RewardGranter.grant(
 		local amount = reward.coinAmount :: number
 		CurrencyGranter.grantCoins(player, amount, acquisitionSource)
 		return `{utils.formatLargePositiveInteger(amount)} Coins`, nil
+	elseif reward.kind == kinds.DIAMONDS then
+		local amount = reward.diamondAmount :: number
+		CurrencyGranter.grantDiamonds(player, amount, acquisitionSource)
+		return `{utils.formatLargePositiveInteger(amount)} Diamonds`, nil
 	elseif reward.kind == kinds.TIME_SKIP then
 		local amount = RewardGranter.getTimeSkipCoins(playerData, reward.skipSec :: number, reward.minCoins)
 		if amount < 1 then

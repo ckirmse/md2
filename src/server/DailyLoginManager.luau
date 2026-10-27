@@ -50,6 +50,8 @@ function DailyLoginManager.getGrantableReward(self: DailyLoginManager, tileIndex
 
 	if entry.kind == kinds.COINS then
 		return { kind = entry.kind, coinAmount = entry.minCoins, skipSec = nil, minCoins = nil, itemName = nil }
+	elseif entry.kind == kinds.DIAMONDS then
+		return { kind = entry.kind, diamondAmount = entry.diamondAmount }
 	elseif entry.kind == kinds.TIME_SKIP then
 		return { kind = entry.kind, coinAmount = nil, skipSec = entry.skipSec, minCoins = entry.minCoins, itemName = nil }
 	elseif entry.kind == kinds.FIXED_ITEM then

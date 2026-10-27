@@ -693,6 +693,11 @@ function ClientIndexV2Manager.openPopUp(self: ClientIndexV2Manager, tierId: stri
 		setLabelText(outerTitle, "Title", rewardText)
 	end
 	local rarityName = if milestone.rarity then `{Enums.getPublicName(Enums.Rarity, milestone.rarity)} ` else ""
+	local popUpIcon = clientIndexV2Data:getRewardIcon(category, milestone)
+	local popUpIconLabel = popUp:FindFirstChild(REWARD_ICON_NAME)
+	if popUpIcon and popUpIconLabel and (popUpIconLabel:IsA("ImageLabel") or popUpIconLabel:IsA("ImageButton")) then
+		popUpIconLabel.Image = popUpIcon
+	end
 	setLabelText(popUp, "RewardDetails", `Collect every {rarityName}entry: {milestone.collected}/{milestone.total}`)
 
 	popUp.Visible = true
@@ -920,8 +925,8 @@ function ClientIndexV2Manager.init(self: ClientIndexV2Manager)
 	end)
 
 	-- authored in Studio, so a missing one must not hang client startup
-	local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui") :: Instance
-	local gui: any = playerGui:FindFirstChild(INDEX_GUI_NAME)
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	local gui: any = playerGui:WaitForChild(INDEX_GUI_NAME, 10)
 	if not gui then
 		warn("ClientIndexV2Manager: the PetIndex gui is missing from PlayerGui; the Index dialog is disabled")
 		return

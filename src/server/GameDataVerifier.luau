@@ -85,7 +85,12 @@ function GameDataVerifier.checkAssetPath(self: GameDataVerifier, itemName: strin
 	return true
 end
 
-function GameDataVerifier.verifyCategory(self: GameDataVerifier, folder: Instance, shape: any, hasTemplatePaths: boolean)
+function GameDataVerifier.verifyCategory(
+	self: GameDataVerifier,
+	folder: Instance,
+	shape: any,
+	hasTemplatePaths: boolean
+)
 	for _, inst in folder:GetDescendants() do
 		if not inst:IsA("ModuleScript") then
 			continue
@@ -141,7 +146,11 @@ function GameDataVerifier.verifyLootTableItems(self: GameDataVerifier)
 				+ (lootEntry.resultLootTable and 1 or 0)
 				+ (lootEntry.resultLootTables and 1 or 0)
 			if resultCount ~= 1 then
-				warn("GameDataVerifier: loot entry must have exactly one of result, resultLootTable, resultLootTables", inst.Name, i)
+				warn(
+					"GameDataVerifier: loot entry must have exactly one of result, resultLootTable, resultLootTables",
+					inst.Name,
+					i
+				)
 			end
 
 			local ok, shapeErr = Validate.isTableShape(lootEntry, lootEntryShape)
@@ -214,7 +223,18 @@ function GameDataVerifier.verifyRarities(self: GameDataVerifier)
 		end
 
 		if previousRow and type(row) == "table" and #RarityMath.validateRow(row) == 0 then
-			for _, field in { "hatchOddsN", "hatchTimerSec", "baseIncome", "baseSpeed", "modelScale", "levelCap", "timeToCapSec", "xpToCap" } do
+			for _, field in
+				{
+					"hatchOddsN",
+					"hatchTimerSec",
+					"baseIncome",
+					"baseSpeed",
+					"modelScale",
+					"levelCap",
+					"timeToCapSec",
+					"xpToCap",
+				}
+			do
 				if row[field] < previousRow[field] then
 					warn("GameDataVerifier: Rarities", rarityName, field, "is lower than the previous rarity's")
 				end
@@ -232,7 +252,10 @@ function GameDataVerifier.verifyEggSizes(self: GameDataVerifier)
 		local low = itemData.sizePercentileMin
 		local high = itemData.sizePercentileMax
 		if (low == nil) ~= (high == nil) then
-			warn("GameDataVerifier: egg needs both sizePercentileMin and sizePercentileMax, or neither (Standard 0 to 70)", eggName)
+			warn(
+				"GameDataVerifier: egg needs both sizePercentileMin and sizePercentileMax, or neither (Standard 0 to 70)",
+				eggName
+			)
 		elseif low ~= nil and (low > high or high > 100) then
 			warn("GameDataVerifier: egg size percentile range must satisfy min <= max <= 100", eggName, low, high)
 		end
@@ -247,22 +270,47 @@ function GameDataVerifier.verifyRebirthLevels(self: GameDataVerifier)
 	while rebirthData.levels[level] do
 		local levelData = rebirthData.levels[level]
 		if levelData.requiredRarity == nil or Enums.getName(Enums.Rarity, levelData.requiredRarity) == nil then
-			warn("GameDataVerifier: Rebirth level needs a requiredRarity (use Enums.Rarity)", level, levelData.requiredRarity)
+			warn(
+				"GameDataVerifier: Rebirth level needs a requiredRarity (use Enums.Rarity)",
+				level,
+				levelData.requiredRarity
+			)
 		end
-		if levelData.bypassCoinCost ~= nil and (type(levelData.bypassCoinCost) ~= "number" or levelData.bypassCoinCost <= 0) then
-			warn("GameDataVerifier: Rebirth level bypassCoinCost must be a number > 0 or absent", level, levelData.bypassCoinCost)
+		if
+			levelData.bypassCoinCost ~= nil
+			and (type(levelData.bypassCoinCost) ~= "number" or levelData.bypassCoinCost <= 0)
+		then
+			warn(
+				"GameDataVerifier: Rebirth level bypassCoinCost must be a number > 0 or absent",
+				level,
+				levelData.bypassCoinCost
+			)
 		end
 
 		local eggSlots = rebirthData.levels[level].eggSlots
 		if type(eggSlots) ~= "number" or eggSlots ~= math.floor(eggSlots) or eggSlots < previousEggSlots then
-			warn("GameDataVerifier: Rebirth level needs an integer eggSlots not below the previous level's", level, eggSlots, previousEggSlots)
+			warn(
+				"GameDataVerifier: Rebirth level needs an integer eggSlots not below the previous level's",
+				level,
+				eggSlots,
+				previousEggSlots
+			)
 		else
 			previousEggSlots = eggSlots
 		end
 
 		local dragonLimit = rebirthData.levels[level].dragonLimit
-		if type(dragonLimit) ~= "number" or dragonLimit ~= math.floor(dragonLimit) or dragonLimit < previousDragonLimit then
-			warn("GameDataVerifier: Rebirth level needs an integer dragonLimit not below the previous level's", level, dragonLimit, previousDragonLimit)
+		if
+			type(dragonLimit) ~= "number"
+			or dragonLimit ~= math.floor(dragonLimit)
+			or dragonLimit < previousDragonLimit
+		then
+			warn(
+				"GameDataVerifier: Rebirth level needs an integer dragonLimit not below the previous level's",
+				level,
+				dragonLimit,
+				previousDragonLimit
+			)
 		else
 			previousDragonLimit = dragonLimit
 		end
@@ -277,6 +325,7 @@ local INDEX_REWARD_FIELDS: { [string]: { string } } = {
 	["Chest Pull"] = { "lootTableName" },
 	["Stat Buff"] = { "attribute", "amount" },
 	["Mutation Chance"] = { "amount" },
+	["Diamonds"] = { "amount" },
 }
 
 local INDEX_REWARD_SIZES: { [string]: boolean } = { small = true, medium = true, large = true }
@@ -299,10 +348,17 @@ function GameDataVerifier.verifyIndexRewardEntry(self: GameDataVerifier, label: 
 
 	for _, field in requiredFields do
 		local value = entry.reward[field]
-		local isValid = if field == "lootTableName" or field == "attribute" then type(value) == "string" else type(value) == "number"
+		local isValid = if field == "lootTableName" or field == "attribute"
+			then type(value) == "string"
+			else type(value) == "number"
 		if not isValid then
 			warn("GameDataVerifier: Index reward is missing or has a bad field", label, entry.reward.rewardType, field)
 		end
+	end
+
+	local diamondAmount = entry.reward.amount
+	if entry.reward.rewardType == "Diamonds" and type(diamondAmount) == "number" and (diamondAmount < 1 or diamondAmount ~= math.floor(diamondAmount)) then
+		warn("GameDataVerifier: Index Diamonds reward needs a whole amount >= 1", label, diamondAmount)
 	end
 
 	if entry.reward.size ~= nil and not INDEX_REWARD_SIZES[entry.reward.size] then
@@ -340,17 +396,28 @@ function GameDataVerifier.verifyIndexRewards(self: GameDataVerifier)
 		if type(entryRewards.isEnabled) ~= "boolean" then
 			warn("GameDataVerifier: Index entryRewards needs a boolean isEnabled")
 		end
-		for category, coins in entryRewards.coins or {} do
-			if not Enums.isValidValue(Enums.IndexCategory, category) then
-				warn("GameDataVerifier: Index entryRewards.coins has an unknown category key", category)
-			elseif type(coins) == "table" then
-				for rarity, amount in coins do
-					if not Enums.isValidValue(Enums.Rarity, rarity) or type(amount) ~= "number" or amount < 0 then
-						warn("GameDataVerifier: Index entryRewards.coins needs a rarity key and a non-negative amount", category, rarity, amount)
+		for _, currencyField in { "coins", "diamonds" } do
+			for category, amounts in entryRewards[currencyField] or {} do
+				if not Enums.isValidValue(Enums.IndexCategory, category) then
+					warn(`GameDataVerifier: Index entryRewards.{currencyField} has an unknown category key`, category)
+				elseif type(amounts) == "table" then
+					for rarity, amount in amounts do
+						if not Enums.isValidValue(Enums.Rarity, rarity) or type(amount) ~= "number" or amount < 0 then
+							warn(
+								`GameDataVerifier: Index entryRewards.{currencyField} needs a rarity key and a non-negative amount`,
+								category,
+								rarity,
+								amount
+							)
+						end
 					end
+				elseif type(amounts) ~= "number" or amounts < 0 then
+					warn(
+						`GameDataVerifier: Index entryRewards.{currencyField} needs a non-negative number or a rarity table`,
+						category,
+						amounts
+					)
 				end
-			elseif type(coins) ~= "number" or coins < 0 then
-				warn("GameDataVerifier: Index entryRewards.coins needs a non-negative number or a rarity table", category, coins)
 			end
 		end
 	end
@@ -368,7 +435,12 @@ function GameDataVerifier.verifyIndexRewards(self: GameDataVerifier)
 
 			local requiredPercent = tier.requiredPercent
 			if type(requiredPercent) ~= "number" or requiredPercent <= previousPercent or requiredPercent > 100 then
-				warn("GameDataVerifier: Index tier needs a requiredPercent above the previous tier's and at most 100", categoryName, tierIndex, requiredPercent)
+				warn(
+					"GameDataVerifier: Index tier needs a requiredPercent above the previous tier's and at most 100",
+					categoryName,
+					tierIndex,
+					requiredPercent
+				)
 			else
 				previousPercent = requiredPercent
 			end
@@ -404,8 +476,29 @@ function GameDataVerifier.verifyPlaytimeRewards(self: GameDataVerifier)
 			if type(entry.hourlyPercent) ~= "number" or entry.hourlyPercent < 0 then
 				warn("GameDataVerifier: Playtime COINS reward needs hourlyPercent >= 0", i, entry.hourlyPercent)
 			end
-			if type(entry.minCoins) ~= "number" or type(entry.maxCoins) ~= "number" or entry.minCoins > entry.maxCoins then
-				warn("GameDataVerifier: Playtime COINS reward needs numeric minCoins <= maxCoins", i, entry.minCoins, entry.maxCoins)
+			if
+				type(entry.minCoins) ~= "number"
+				or type(entry.maxCoins) ~= "number"
+				or entry.minCoins > entry.maxCoins
+			then
+				warn(
+					"GameDataVerifier: Playtime COINS reward needs numeric minCoins <= maxCoins",
+					i,
+					entry.minCoins,
+					entry.maxCoins
+				)
+			end
+		elseif entry.kind == kinds.DIAMONDS then
+			if
+				type(entry.diamondAmount) ~= "number"
+				or entry.diamondAmount < 1
+				or entry.diamondAmount ~= math.floor(entry.diamondAmount)
+			then
+				warn(
+					"GameDataVerifier: Playtime DIAMONDS reward needs a whole diamondAmount >= 1",
+					i,
+					entry.diamondAmount
+				)
 			end
 		elseif entry.kind == kinds.TIME_SKIP then
 			if type(entry.skipSec) ~= "number" or entry.skipSec <= 0 then
@@ -418,11 +511,19 @@ function GameDataVerifier.verifyPlaytimeRewards(self: GameDataVerifier)
 		elseif entry.kind == kinds.RANDOM_BY_RARITY then
 			local objectType = Enums.ItemType.ObjectTypes[entry.itemType]
 			if objectType == nil then
-				warn("GameDataVerifier: Playtime RANDOM_BY_RARITY reward has an unknown itemType (use Enums.ItemType)", i, entry.itemType)
+				warn(
+					"GameDataVerifier: Playtime RANDOM_BY_RARITY reward has an unknown itemType (use Enums.ItemType)",
+					i,
+					entry.itemType
+				)
 				continue
 			end
 			if not Enums.isValidValue(Enums.Rarity, entry.rarity) then
-				warn("GameDataVerifier: Playtime RANDOM_BY_RARITY reward has an unknown rarity (use Enums.Rarity)", i, entry.rarity)
+				warn(
+					"GameDataVerifier: Playtime RANDOM_BY_RARITY reward has an unknown rarity (use Enums.Rarity)",
+					i,
+					entry.rarity
+				)
 				continue
 			end
 			local hasMatch = false
@@ -433,17 +534,32 @@ function GameDataVerifier.verifyPlaytimeRewards(self: GameDataVerifier)
 				end
 			end
 			if not hasMatch then
-				warn("GameDataVerifier: Playtime RANDOM_BY_RARITY reward matches no object", i, entry.itemType, entry.rarity)
+				warn(
+					"GameDataVerifier: Playtime RANDOM_BY_RARITY reward matches no object",
+					i,
+					entry.itemType,
+					entry.rarity
+				)
 			end
 		elseif entry.kind == kinds.LOOT_TABLE then
-			local lootTableModule = if type(entry.lootTableName) == "string" then LootTables:FindFirstChild(entry.lootTableName, true) else nil
+			local lootTableModule = if type(entry.lootTableName) == "string"
+				then LootTables:FindFirstChild(entry.lootTableName, true)
+				else nil
 			if not lootTableModule or not lootTableModule:IsA("ModuleScript") then
-				warn("GameDataVerifier: Playtime LOOT_TABLE reward has an unknown lootTableName", i, entry.lootTableName)
+				warn(
+					"GameDataVerifier: Playtime LOOT_TABLE reward has an unknown lootTableName",
+					i,
+					entry.lootTableName
+				)
 				continue
 			end
 			for lootIndex, lootEntry in require(lootTableModule) :: any do
 				if not Validate.isTable(lootEntry.result) or type(lootEntry.result.itemName) ~= "string" then
-					warn("GameDataVerifier: Playtime loot table results must be { itemName = string }", entry.lootTableName, lootIndex)
+					warn(
+						"GameDataVerifier: Playtime loot table results must be { itemName = string }",
+						entry.lootTableName,
+						lootIndex
+					)
 				end
 			end
 		end
@@ -467,24 +583,57 @@ function GameDataVerifier.verifyDailyLogin(self: GameDataVerifier)
 		end
 
 		if entry.kind == kinds.COINS then
-			if type(entry.minCoins) ~= "number" or entry.minCoins < 1 or entry.minCoins ~= math.floor(entry.minCoins) then
+			if
+				type(entry.minCoins) ~= "number"
+				or entry.minCoins < 1
+				or entry.minCoins ~= math.floor(entry.minCoins)
+			then
 				warn("GameDataVerifier: DailyLogin COINS reward needs a whole minCoins >= 1", i, entry.minCoins)
 			elseif entry.maxCoins ~= entry.minCoins then
-				warn("GameDataVerifier: DailyLogin COINS reward needs maxCoins equal to minCoins (a fixed amount)", i, entry.minCoins, entry.maxCoins)
+				warn(
+					"GameDataVerifier: DailyLogin COINS reward needs maxCoins equal to minCoins (a fixed amount)",
+					i,
+					entry.minCoins,
+					entry.maxCoins
+				)
+			end
+		elseif entry.kind == kinds.DIAMONDS then
+			if
+				type(entry.diamondAmount) ~= "number"
+				or entry.diamondAmount < 1
+				or entry.diamondAmount ~= math.floor(entry.diamondAmount)
+			then
+				warn(
+					"GameDataVerifier: DailyLogin DIAMONDS reward needs a whole diamondAmount >= 1",
+					i,
+					entry.diamondAmount
+				)
 			end
 		elseif entry.kind == kinds.TIME_SKIP then
 			if type(entry.skipSec) ~= "number" or entry.skipSec <= 0 then
 				warn("GameDataVerifier: DailyLogin TIME_SKIP reward needs a positive skipSec", i, entry.skipSec)
 			end
-			if type(entry.minCoins) ~= "number" or entry.minCoins < 1 or entry.minCoins ~= math.floor(entry.minCoins) then
-				warn("GameDataVerifier: DailyLogin TIME_SKIP reward needs a whole minCoins >= 1 (paid when income is low)", i, entry.minCoins)
+			if
+				type(entry.minCoins) ~= "number"
+				or entry.minCoins < 1
+				or entry.minCoins ~= math.floor(entry.minCoins)
+			then
+				warn(
+					"GameDataVerifier: DailyLogin TIME_SKIP reward needs a whole minCoins >= 1 (paid when income is low)",
+					i,
+					entry.minCoins
+				)
 			end
 		elseif entry.kind == kinds.FIXED_ITEM then
 			if type(entry.itemName) ~= "string" or objectDataStore:getObjectDataByName(entry.itemName) == nil then
 				warn("GameDataVerifier: DailyLogin FIXED_ITEM reward has an unknown itemName", i, entry.itemName)
 			end
 		else
-			warn("GameDataVerifier: DailyLogin supports only COINS, TIME_SKIP and FIXED_ITEM rewards", i, entry.kind)
+			warn(
+				"GameDataVerifier: DailyLogin supports only COINS, DIAMONDS, TIME_SKIP and FIXED_ITEM rewards",
+				i,
+				entry.kind
+			)
 		end
 	end
 end
@@ -511,14 +660,23 @@ function GameDataVerifier.verifySpinWheel(self: GameDataVerifier)
 	end
 
 	if not isWholeNumberAtLeast(spinWheelData.maxAccruedFreeSpins, 1) then
-		warn("GameDataVerifier: SpinWheel.maxAccruedFreeSpins must be a whole number >= 1", spinWheelData.maxAccruedFreeSpins)
+		warn(
+			"GameDataVerifier: SpinWheel.maxAccruedFreeSpins must be a whole number >= 1",
+			spinWheelData.maxAccruedFreeSpins
+		)
 	end
 	if not isWholeNumberAtLeast(spinWheelData.paidLuckMultiplier, 1) then
-		warn("GameDataVerifier: SpinWheel.paidLuckMultiplier must be a whole number >= 1", spinWheelData.paidLuckMultiplier)
+		warn(
+			"GameDataVerifier: SpinWheel.paidLuckMultiplier must be a whole number >= 1",
+			spinWheelData.paidLuckMultiplier
+		)
 	end
 	-- the client's longest spin animation is 4 seconds
 	if type(spinWheelData.prizeClaimTimeoutSec) ~= "number" or spinWheelData.prizeClaimTimeoutSec <= 4 then
-		warn("GameDataVerifier: SpinWheel.prizeClaimTimeoutSec must exceed the 4s spin animation", spinWheelData.prizeClaimTimeoutSec)
+		warn(
+			"GameDataVerifier: SpinWheel.prizeClaimTimeoutSec must exceed the 4s spin animation",
+			spinWheelData.prizeClaimTimeoutSec
+		)
 	end
 
 	local robuxProductIds = spinWheelData.robuxProductIds
@@ -529,7 +687,11 @@ function GameDataVerifier.verifySpinWheel(self: GameDataVerifier)
 		for _, name in { "single", "singleDiscount", "five" } do
 			local id = robuxProductIds[name]
 			if id == nil or id == 0 then
-				warn("GameDataVerifier: SpinWheel.robuxProductIds has no id for", name, "(that Robux button stays inactive)")
+				warn(
+					"GameDataVerifier: SpinWheel.robuxProductIds has no id for",
+					name,
+					"(that Robux button stays inactive)"
+				)
 			elseif not isWholeNumberAtLeast(id, 1) then
 				warn("GameDataVerifier: SpinWheel.robuxProductIds has an invalid id for", name, id)
 			elseif seen[id] then
@@ -543,15 +705,28 @@ function GameDataVerifier.verifySpinWheel(self: GameDataVerifier)
 	-- the verifier runs before LootTableManager loads, so read the module itself
 	local lootTableModule = findLootTableModule(spinWheelData.lootTableName)
 	if not lootTableModule then
-		warn("GameDataVerifier: no ModuleScript named", spinWheelData.lootTableName, "anywhere under GameData/LootTables (a Folder of that name does not count)")
+		warn(
+			"GameDataVerifier: no ModuleScript named",
+			spinWheelData.lootTableName,
+			"anywhere under GameData/LootTables (a Folder of that name does not count)"
+		)
 		return
 	end
 	local lootTable: any = require(lootTableModule)
 	if not Validate.isTable(lootTable) then
-		warn("GameDataVerifier: SpinWheel loot table returned a", typeof(lootTable), "at", lootTableModule:GetFullName(), "but must return an array")
+		warn(
+			"GameDataVerifier: SpinWheel loot table returned a",
+			typeof(lootTable),
+			"at",
+			lootTableModule:GetFullName(),
+			"but must return an array"
+		)
 		return
 	elseif #lootTable == 0 then
-		warn("GameDataVerifier: SpinWheel loot table has no array entries (a dictionary or empty table?) at", lootTableModule:GetFullName())
+		warn(
+			"GameDataVerifier: SpinWheel loot table has no array entries (a dictionary or empty table?) at",
+			lootTableModule:GetFullName()
+		)
 		return
 	end
 
@@ -563,20 +738,40 @@ function GameDataVerifier.verifySpinWheel(self: GameDataVerifier)
 			continue
 		end
 		if entry.requiredConfig or entry.resultLootTable or entry.resultLootTables then
-			warn("GameDataVerifier: SpinWheel loot entry must not use requiredConfig or nested tables (position is the wheel segment)", i)
+			warn(
+				"GameDataVerifier: SpinWheel loot entry must not use requiredConfig or nested tables (position is the wheel segment)",
+				i
+			)
 		end
 
 		local result = entry.result
 		if result.kind == kinds.COINS then
 			if not isWholeNumberAtLeast(result.minCoins, 1) or result.maxCoins ~= result.minCoins then
-				warn("GameDataVerifier: SpinWheel COINS prize needs a whole minCoins >= 1 and maxCoins equal to it", i, result.minCoins, result.maxCoins)
+				warn(
+					"GameDataVerifier: SpinWheel COINS prize needs a whole minCoins >= 1 and maxCoins equal to it",
+					i,
+					result.minCoins,
+					result.maxCoins
+				)
+			end
+		elseif result.kind == kinds.DIAMONDS then
+			if not isWholeNumberAtLeast(result.diamondAmount, 1) then
+				warn(
+					"GameDataVerifier: SpinWheel DIAMONDS prize needs a whole diamondAmount >= 1",
+					i,
+					result.diamondAmount
+				)
 			end
 		elseif result.kind == kinds.TIME_SKIP then
 			if type(result.skipSec) ~= "number" or result.skipSec <= 0 then
 				warn("GameDataVerifier: SpinWheel TIME_SKIP prize needs a positive skipSec", i, result.skipSec)
 			end
 			if not isWholeNumberAtLeast(result.minCoins, 1) then
-				warn("GameDataVerifier: SpinWheel TIME_SKIP prize needs a whole minCoins >= 1 (paid when income is low)", i, result.minCoins)
+				warn(
+					"GameDataVerifier: SpinWheel TIME_SKIP prize needs a whole minCoins >= 1 (paid when income is low)",
+					i,
+					result.minCoins
+				)
 			end
 		elseif result.kind == kinds.FIXED_ITEM then
 			if type(result.itemName) ~= "string" or objectDataStore:getObjectDataByName(result.itemName) == nil then
@@ -591,21 +786,38 @@ function GameDataVerifier.verifySpinWheel(self: GameDataVerifier)
 				warn("GameDataVerifier: SpinWheel LOOT_TABLE prize has an unknown rarity", i, result.rarity)
 			end
 			if result.iconAssetId ~= nil and type(result.iconAssetId) ~= "string" then
-				warn("GameDataVerifier: SpinWheel LOOT_TABLE iconAssetId must be an rbxassetid:// string", i, result.iconAssetId)
+				warn(
+					"GameDataVerifier: SpinWheel LOOT_TABLE iconAssetId must be an rbxassetid:// string",
+					i,
+					result.iconAssetId
+				)
 			end
 			local rolledModule = findLootTableModule(result.lootTableName)
 			if not rolledModule then
-				warn("GameDataVerifier: SpinWheel LOOT_TABLE prize has an unknown lootTableName", i, result.lootTableName)
+				warn(
+					"GameDataVerifier: SpinWheel LOOT_TABLE prize has an unknown lootTableName",
+					i,
+					result.lootTableName
+				)
 				continue
 			end
 			for rolledIndex, rolledEntry in require(rolledModule) :: any do
 				local rolledName = if Validate.isTable(rolledEntry.result) then rolledEntry.result.itemName else nil
 				if type(rolledName) ~= "string" or objectDataStore:getObjectDataByName(rolledName) == nil then
-					warn("GameDataVerifier: SpinWheel loot table results must be { itemName = an existing object }", result.lootTableName, rolledIndex, rolledName)
+					warn(
+						"GameDataVerifier: SpinWheel loot table results must be { itemName = an existing object }",
+						result.lootTableName,
+						rolledIndex,
+						rolledName
+					)
 				end
 			end
 		else
-			warn("GameDataVerifier: SpinWheel supports only COINS, TIME_SKIP, FIXED_ITEM and LOOT_TABLE prizes", i, result.kind)
+			warn(
+				"GameDataVerifier: SpinWheel supports only COINS, TIME_SKIP, FIXED_ITEM and LOOT_TABLE prizes",
+				i,
+				result.kind
+			)
 		end
 	end
 end

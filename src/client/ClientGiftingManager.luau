@@ -184,8 +184,8 @@ end
 
 function ClientGiftingManager.init(self: ClientGiftingManager)
 	-- authored in Studio, so a missing one must not hang client startup
-	local playerGui = player:FindFirstChild("PlayerGui") :: Instance
-	local gui: any = playerGui:FindFirstChild("Gifting")
+	local playerGui = player:WaitForChild("PlayerGui")
+	local gui: any = playerGui:WaitForChild("Gifting", 10)
 	if not gui then
 		warn("ClientGiftingManager: Gifting gui missing from PlayerGui; gifting is disabled")
 		return

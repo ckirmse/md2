@@ -117,12 +117,14 @@ end
 local function getContentName(content: DealShopCatalog.DealContent): string
 	if content.kind == enums.ShopContentKind.COINS then
 		return "Coins"
+	elseif content.kind == enums.ShopContentKind.DIAMONDS then
+		return "Diamonds"
 	end
 	return (content.displayName or content.objectName) :: string
 end
 
 local function getContentCount(content: DealShopCatalog.DealContent): number
-	if content.kind == enums.ShopContentKind.COINS then
+	if content.kind == enums.ShopContentKind.COINS or content.kind == enums.ShopContentKind.DIAMONDS then
 		return content.amount :: number
 	end
 	return content.count :: number
@@ -932,8 +934,8 @@ end
 
 function ClientDealShopManager.init(self: ClientDealShopManager)
 	-- authored in Studio, so a missing one must not hang client startup
-	local playerGui = player:FindFirstChild("PlayerGui") :: Instance
-	local gui: any = playerGui:FindFirstChild("DealShop")
+	local playerGui = player:WaitForChild("PlayerGui")
+	local gui: any = playerGui:WaitForChild("DealShop", 10)
 	if not gui then
 		warn("ClientDealShopManager: DealShop gui missing from PlayerGui; the deal shop is disabled")
 		return

@@ -27,6 +27,7 @@ export type RewardContent = {
 	displayName: string?,
 	skipSec: number?,
 	coinAmount: number?,
+	diamondAmount: number?,
 	label: string?,
 	rarity: number?,
 }
@@ -76,6 +77,8 @@ end
 function RewardTileUi.getTileTitle(reward: RewardContent, tileState: number?): string
 	if reward.kind == enums.PlaytimeRewardKind.COINS then
 		return if reward.coinAmount then `{utils.formatLargePositiveInteger(reward.coinAmount)} Coins` else "Coins"
+	elseif reward.kind == enums.PlaytimeRewardKind.DIAMONDS then
+		return if reward.diamondAmount then `{utils.formatLargePositiveInteger(reward.diamondAmount)} Diamonds` else "Diamonds"
 	elseif reward.kind == enums.PlaytimeRewardKind.TIME_SKIP then
 		return formatSkipTitle(reward.skipSec or 0)
 	end
@@ -120,6 +123,7 @@ function RewardTileUi.fillTileContent(tile: GuiObject, reward: RewardContent, ti
 
 		local coinIcon = icon:GetAttribute(Attributes.COIN_IMAGE)
 		local clockIcon = icon:GetAttribute(Attributes.CLOCK_IMAGE)
+		local diamondIcon = icon:GetAttribute(Attributes.DIAMOND_IMAGE)
 		local mysteryIcon = icon:GetAttribute(Attributes.MYSTERY_IMAGE)
 		if itemIcon then
 			icon.Image = itemIcon
@@ -127,6 +131,8 @@ function RewardTileUi.fillTileContent(tile: GuiObject, reward: RewardContent, ti
 			icon.Image = clockIcon
 		elseif reward.kind == enums.PlaytimeRewardKind.COINS and typeof(coinIcon) == "string" then
 			icon.Image = coinIcon
+		elseif reward.kind == enums.PlaytimeRewardKind.DIAMONDS and typeof(diamondIcon or coinIcon) == "string" then
+			icon.Image = (diamondIcon or coinIcon) :: string
 		elseif reward.itemName == nil and reward.label ~= nil and typeof(mysteryIcon) == "string" then
 			icon.Image = mysteryIcon
 		end

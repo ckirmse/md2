@@ -205,6 +205,7 @@ module = {
 		RANDOM_BY_RARITY = 3,
 		LOOT_TABLE = 4,
 		TIME_SKIP = 5,
+		DIAMONDS = 6,
 
 		PublicNames = {
 			FIXED_ITEM = "Fixed Item",
@@ -212,15 +213,18 @@ module = {
 			RANDOM_BY_RARITY = "Random By Rarity",
 			LOOT_TABLE = "Loot Table",
 			TIME_SKIP = "Time Skip",
+			DIAMONDS = "Diamonds",
 		},
 	},
 	ShopContentKind = {
 		ITEM = 1,
 		COINS = 2,
+		DIAMONDS = 3,
 
 		PublicNames = {
 			ITEM = "Item",
 			COINS = "Coins",
+			DIAMONDS = "Diamonds",
 		},
 	},
 	ShopCardStyle = {

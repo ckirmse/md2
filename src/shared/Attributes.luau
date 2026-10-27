@@ -197,6 +197,7 @@ module = {
 	-- coin and time skip rewards
 	COIN_IMAGE = "CoinImage",
 	CLOCK_IMAGE = "ClockImage",
+	DIAMOND_IMAGE = "DiamondImage",
 	-- the same, for a random or loot table reward that has not been claimed yet
 	MYSTERY_IMAGE = "MysteryImage",
 }

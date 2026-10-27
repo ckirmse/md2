@@ -336,7 +336,7 @@ item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter
 - **Config** lives in the Studio-only `ServerScriptService.GameData.Control.DealShop`
   (`SECTIONS → deals → tiers → contents`); the field reference is a comment block at the top of that
   script. A deal has 1–2 tiers, each priced in coins (`coinCost`) or Robux (`productId`); contents are
-  `ITEM` (`objectName`, `count`) or `COINS` (`amount`). Optional per-deal `giftable = false`,
+  `ITEM` (`objectName`, `count`), `COINS` (`amount`) or `DIAMONDS` (`amount`). Optional per-deal `giftable = false`,
   `oneTimeOnly = true` (saved in `PlayerData.purchasedDealKeys`; never giftable), and
   `startDate`/`endDate` (ISO 8601 UTC).
 - **Gacha deals** (`cardStyle = Enums.ShopCardStyle.GACHA`) sell packs of one premium dragon egg: 1–3 tiers,
@@ -683,6 +683,24 @@ one; the original Index (`IndexManager`, `ClientIndexManager`, `IndexFrame`) is 
 - **Dev tools** (client section "Index V2"): `discoverIndexV2Items`, `dumpIndexV2`, `claimNextIndexV2Tier`, `sendIndexV2Data`.
 - **Known gaps:** row rewards gate on a whole row (the spec says never); 120 dragon entries vs the spec's 126; no Parts category; no Pure/Chimera
   tiers; prizes are coins only (no Diamonds or Style Tokens yet).
+
+## Diamonds (hard currency)
+
+Diamonds are a player attribute (`PlayerAttributeKeys.DIAMONDS`), so they are saved, replicated and reset to 0 with the other attributes; Rebirth zeroes
+only coins, so they survive it. All currency changes go through the leaf module `server/CurrencyGranter.luau` (`grantCoins`, `grantDiamonds`,
+`getDiamonds`, `trySpendDiamonds`, which checks funds): it requires only `AnalyticsManager` and `PlayerAttributesManager`, so any module can require it
+without a cycle (`RewardGranter` cannot be required from the Index because it pulls in `IncomeManager`). Analytics log Diamonds under the currency
+name "Diamonds" (`logGainCurrency` / `logSpendCurrency` take an optional `currencyName`).
+
+- **HUD:** `ScreenGui > DiamondsFrame > Diamonds` (a label; a missing frame only warns), animated like coins, hidden in the FTUE, slides out with the
+  coins during overlays. Set up in `ScreenGuiManager.init` (not `new`: the FTUE manager is injected later).
+- **Earning (all Studio-authored):** `{ kind = Enums.PlaytimeRewardKind.DIAMONDS, diamondAmount = N }` in `Control/Playtime`, `Control/DailyLogin` and a
+  `Control/SpinWheel` loot-table result; an Index reward `{ rewardType = "Diamonds", amount = N }`; `entryRewards.diamonds` in `Control/IndexRewards`
+  (same shape as `coins`, behind the same `isEnabled`); a Deal Shop content `{ kind = ShopContentKind.DIAMONDS, amount = N }`. The tile picture for
+  Playtime and Daily is the `DiamondImage` attribute on the tile's `Icon` (falls back to `CoinImage`).
+- **Not built (deferred by the user, 2026-10-26):** Robux Diamond packs (no dev products yet), and every sink: premium eggs (Luck 25 and 150,
+  instant hatch), premium radar, hatch skip (1 Diamond per 10 minutes remaining), plot luck x100 levels, Style Tokens. "Premium gear" is undefined in the spec.
+- **Dev tools** (client section "Currency"): `getDiamonds`, `spendDiamonds`, `dumpDiamonds`.
 
 ## Design Notes in the Repo
 
