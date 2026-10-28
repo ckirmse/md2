@@ -37,7 +37,7 @@ local PRIZE_GRID_PADDING_Y = 0.04
 
 -- the authored per-rarity prize frames are named after the rarity's public name
 local rarityByPublicName: { [string]: number } = {}
-for key, publicName in enums.Rarity.PublicNames do
+for key, publicName in enums.Rarity.PublicNames :: { [string]: string } do
 	rarityByPublicName[publicName] = enums.Rarity[key]
 end
 

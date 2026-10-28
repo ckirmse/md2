@@ -143,7 +143,13 @@ function ClientPlaytimeRewardManager.rebuildTiles(self: ClientPlaytimeRewardMana
 	end
 
 	local layoutOrderByIndex: { [number]: number } = {}
-	for rank, rewardIndex in PlaytimeRewardMath.getSortedOrder(data.rewards) do
+	-- array element types are invariant, so the rewards are copied into the shape the math expects
+	local sortable: { PlaytimeRewardMath.SortableReward } = {}
+	for _, reward in data.rewards do
+		table.insert(sortable, reward)
+	end
+
+	for rank, rewardIndex in PlaytimeRewardMath.getSortedOrder(sortable) do
 		layoutOrderByIndex[rewardIndex] = rank
 	end
 
