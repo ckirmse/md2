@@ -80,19 +80,21 @@ export type ClientPlaytimeRewards = {
 }
 
 function PlaytimeRewardManager.getNamesForTypeAndRarity(self: PlaytimeRewardManager, itemType: string, rarity: number): { string }
-	local byRarity = self.namesByTypeAndRarity[itemType]
-	if not byRarity then
-		byRarity = {}
-		for _, objectName in objectDataStore:getAllObjectNamesByDataKeyValue("type", itemType) do
-			local itemRarity = objectDataStore:getObjectDataByName(objectName).rarity or enums.Rarity.COMMON
-			byRarity[itemRarity] = byRarity[itemRarity] or {}
-			table.insert(byRarity[itemRarity], objectName)
-		end
-		for _, names in byRarity do
-			table.sort(names)
-		end
-		self.namesByTypeAndRarity[itemType] = byRarity
+	local cached = self.namesByTypeAndRarity[itemType]
+	if cached then
+		return cached[rarity] or {}
 	end
+
+	local byRarity: { [number]: { string } } = {}
+	for _, objectName in objectDataStore:getAllObjectNamesByDataKeyValue("type", itemType) do
+		local itemRarity = objectDataStore:getObjectDataByName(objectName).rarity or enums.Rarity.COMMON
+		byRarity[itemRarity] = byRarity[itemRarity] or {}
+		table.insert(byRarity[itemRarity], objectName)
+	end
+	for _, names in byRarity do
+		table.sort(names)
+	end
+	self.namesByTypeAndRarity[itemType] = byRarity
 
 	return byRarity[rarity] or {}
 end

@@ -351,6 +351,81 @@ function DealShopCatalog.validate(config: DealShopConfig): { string }
 	return errors
 end
 
+-- the fields a designer authors; a name outside these is ignored by the code (a typo, or a field the shop does not have)
+local AUTHORED_ROOT_FIELDS = { "SECTIONS", "RESTOCK_SEC" }
+local AUTHORED_SECTION_FIELDS = { "sectionKey", "title", "deals" }
+local AUTHORED_DEAL_FIELDS =
+	{ "dealKey", "title", "cardStyle", "icon", "tooltip", "giftable", "oneTimeOnly", "startDate", "endDate", "stock", "tiers" }
+local AUTHORED_STOCK_FIELDS = { "count", "percent" }
+local AUTHORED_TIER_FIELDS = { "productId", "coinCost", "diamondCost", "slashRobux", "contents" }
+local AUTHORED_CONTENT_FIELDS = { "kind", "amount", "objectName", "count", "displayName" }
+
+local function findUnknownFieldsIn(messages: { string }, where: string, source: any, allowedFields: { string })
+	if type(source) ~= "table" then
+		return
+	end
+
+	local allowed: { [string]: boolean } = {}
+	for _, field in allowedFields do
+		allowed[field] = true
+	end
+
+	for field in source do
+		if not allowed[tostring(field)] then
+			table.insert(messages, `{where}: unknown field "{tostring(field)}" is ignored (known: {table.concat(allowedFields, ", ")})`)
+		end
+	end
+end
+
+-- warnings, not errors: an unknown field changes nothing, but it usually means the designer expects it to do something.
+-- Run it on the raw config before the server fills in display fields
+function DealShopCatalog.findUnknownFields(config: DealShopConfig): { string }
+	local messages: { string } = {}
+	findUnknownFieldsIn(messages, "config", config, AUTHORED_ROOT_FIELDS)
+	if type(config) ~= "table" or type(config.SECTIONS) ~= "table" then
+		return messages
+	end
+
+	for sectionIndex, section in config.SECTIONS do
+		local sectionWhere = `SECTIONS[{sectionIndex}]`
+		findUnknownFieldsIn(messages, sectionWhere, section, AUTHORED_SECTION_FIELDS)
+		if type(section) ~= "table" or type(section.deals) ~= "table" then
+			continue
+		end
+
+		for dealIndex, deal in section.deals do
+			local dealWhere = `{sectionWhere} deal {if type(deal) == "table" and deal.dealKey then tostring(deal.dealKey) else tostring(dealIndex)}`
+			findUnknownFieldsIn(messages, dealWhere, deal, AUTHORED_DEAL_FIELDS)
+			if type(deal) ~= "table" then
+				continue
+			end
+
+			if type(deal.stock) == "table" then
+				for stockIndex, stockEntry in deal.stock do
+					findUnknownFieldsIn(messages, `{dealWhere} stock[{stockIndex}]`, stockEntry, AUTHORED_STOCK_FIELDS)
+				end
+			end
+
+			if type(deal.tiers) ~= "table" then
+				continue
+			end
+			for tierIndex, tier in deal.tiers do
+				local tierWhere = `{dealWhere} tier {tierIndex}`
+				findUnknownFieldsIn(messages, tierWhere, tier, AUTHORED_TIER_FIELDS)
+				if type(tier) ~= "table" or type(tier.contents) ~= "table" then
+					continue
+				end
+
+				for contentIndex, content in tier.contents do
+					findUnknownFieldsIn(messages, `{tierWhere} contents[{contentIndex}]`, content, AUTHORED_CONTENT_FIELDS)
+				end
+			end
+		end
+	end
+
+	return messages
+end
+
 function DealShopCatalog.getAllProductIds(config: DealShopConfig): { number }
 	local productIds: { number } = {}
 	for _, section in config.SECTIONS do

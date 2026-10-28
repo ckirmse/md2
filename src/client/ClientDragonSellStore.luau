@@ -172,7 +172,7 @@ function ClientDragonSellStore.updateStoreInterface(self: ClientDragonSellStore)
 end
 
 local function setupSellSection(self: ClientDragonSellStore, sectionName: string, sellType: string): SellSectionRecord
-	local section = utils.findFirstDescendant(self.dialogFit, sectionName)
+	local section = assert(utils.findFirstDescendant(self.dialogFit, sectionName), `sell gui is missing {sectionName}`)
 
 	local record: SellSectionRecord = {
 		sellButton = utils.findFirstDescendant(section, "SellButton"),

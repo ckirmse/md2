@@ -53,6 +53,7 @@ CLIENT_SINGLETONS = [
     "ClientBuyStore",
     "ClientConsumableCropManager",
     "ClientCrystalManager",
+    "ClientDragonEggManager",
     "ClientDragonManager",
     "ClientEventHandlers",
     "ClientFtueManager",

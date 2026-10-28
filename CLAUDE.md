@@ -351,7 +351,8 @@ item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter
 - **Startup:** `DealShopManager:init` validates the config and errors (stopping the server) on a bad one:
   catalog rules, every `objectName` exists and is deliverable, and no `productId` is already delivered by
   another system (`GameController:isProductIdReserved` mirrors `tryGrantPlayerRobuxProductId` and must
-  stay in sync with it). The display copy for clients is built once and sent in `NotifyInit` as
+  stay in sync with it). A field name the shop does not know (for example `slashPrice`, which is `slashRobux`) only logs a warning naming the deal and the
+  known fields (`DealShopCatalog.findUnknownFields`; add a newly supported field to its `AUTHORED_*_FIELDS` list). The display copy for clients is built once and sent in `NotifyInit` as
   `dealShopConfig` (with `purchasedDealKeys`); nothing is stored on workspace.
 - **Buying:** a coin or Diamond tier fires `TryBuyDeal(dealKey, tierIndex)`; the server checks availability and
   balance, subtracts (Diamonds through `CurrencyGranter.trySpendDiamonds`), grants, refunds on total failure, and replies `NotifyDealPurchaseResult`. A Robux
@@ -702,7 +703,8 @@ one; the original Index (`IndexManager`, `ClientIndexManager`, `IndexFrame`) is 
 Diamonds are a player attribute (`PlayerAttributeKeys.DIAMONDS`), so they are saved, replicated and reset to 0 with the other attributes; Rebirth zeroes
 only coins, so they survive it. All currency changes go through the leaf module `server/CurrencyGranter.luau` (`grantCoins`, `grantDiamonds`,
 `getDiamonds`, `trySpendDiamonds`, which checks funds): it requires only `AnalyticsManager` and `PlayerAttributesManager`, so any module can require it
-without a cycle (`RewardGranter` cannot be required from the Index because it pulls in `IncomeManager`). Analytics log Diamonds under the currency
+without a cycle (`RewardGranter` cannot be required from the Index because it pulls in `IncomeManager`). The reward paths, the Index, the Deal Shop and the
+dragon sell-all payout (source `sellDragons`) all pay coins through it. Analytics log Diamonds under the currency
 name "Diamonds" (`logGainCurrency` / `logSpendCurrency` take an optional `currencyName`).
 
 - **HUD:** `ScreenGui > DiamondsFrame > Diamonds` (a label; a missing frame only warns), animated like coins, hidden in the FTUE, slides out with the

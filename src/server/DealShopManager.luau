@@ -119,6 +119,10 @@ function DealShopManager.validateConfig(self: DealShopManager)
 		error("DealShopManager: invalid DealShop config: " .. table.concat(errors, "; "))
 	end
 
+	for _, message in DealShopCatalog.findUnknownFields(dealShopData) do
+		warn("DealShopManager:", message)
+	end
+
 	for _, section in dealShopData.SECTIONS do
 		for _, deal in section.deals do
 			local dealTiers: { TierEntry } = {}

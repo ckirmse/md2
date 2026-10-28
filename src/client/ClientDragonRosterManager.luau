@@ -110,7 +110,7 @@ local function createCardRecord(self: ClientDragonRosterManager, dragon: any): C
 		icon = icon,
 		name = utils.findFirstDescendant(card, "NameText"),
 		income = utils.findFirstDescendant(card, "IncomeText"),
-		fill = utils.findFirstDescendant(card, "FillBar"):WaitForChild("Fill"),
+		fill = assert(utils.findFirstDescendant(card, "FillBar"), "roster card is missing FillBar"):WaitForChild("Fill"),
 		xpText = utils.findFirstDescendant(card, "XpText"),
 		levelText = utils.findFirstDescendant(card, "LevelText"),
 	}

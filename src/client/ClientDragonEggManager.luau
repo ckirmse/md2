@@ -64,7 +64,7 @@ local function setLabelText(label: any, text: string)
 	end
 end
 
-function ClientDragonEggManager.updateSkipButton(self: ClientDragonEggManager, indicatorData: IndicatorData, remainingSec: number)
+local function updateSkipButton(self: ClientDragonEggManager, indicatorData: IndicatorData, remainingSec: number)
 	local button = indicatorData.skipButton
 	if not button then
 		return
@@ -105,7 +105,7 @@ function ClientDragonEggManager.activateSkip(self: ClientDragonEggManager, itemI
 	local remainingSec = math.max(0, completeTime - workspace:GetServerTimeNow())
 	indicatorData.skipConfirmCost = HatchSkipMath.getCost(remainingSec, self.skipSecPerDiamond)
 	indicatorData.skipConfirmUntil = workspace:GetServerTimeNow() + SKIP_CONFIRM_SEC
-	self:updateSkipButton(indicatorData, remainingSec)
+	updateSkipButton(self, indicatorData, remainingSec)
 end
 
 function ClientDragonEggManager.updateBillboardByItemId(self: ClientDragonEggManager, itemId: number)
@@ -131,7 +131,7 @@ function ClientDragonEggManager.updateBillboardByItemId(self: ClientDragonEggMan
 	end
 
 	local remainingSec = math.ceil(math.max(0, completeTime - workspace:GetServerTimeNow()))
-	self:updateSkipButton(indicatorData, remainingSec)
+	updateSkipButton(self, indicatorData, remainingSec)
 
 	local textLabel = billboard:FindFirstChild("TextLabel")
 	local s = string.format("Hatches in %ds", remainingSec)

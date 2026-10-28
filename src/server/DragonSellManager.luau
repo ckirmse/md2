@@ -6,9 +6,7 @@ DragonSellManager.__index = DragonSellManager
 local Types = require("./Types")
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
-local playerAttributesManager = require("./PlayerAttributesManager")
-
-local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")
+local CurrencyGranter = require("./CurrencyGranter")
 
 type DragonSellManagerFields = {}
 
@@ -76,7 +74,7 @@ function DragonSellManager.trySellBackpackDragons(self: DragonSellManager, playe
 		return
 	end
 
-	playerAttributesManager:addWholeNumber(player, PlayerAttributeKeys.COINS, totalValue)
+	CurrencyGranter.grantCoins(player, totalValue, "sellDragons")
 	gameController:sendSystemMessageToPlayer(
 		player,
 		string.format("Sold %d dragon%s for %d coins", soldCount, if soldCount == 1 then "" else "s", totalValue)

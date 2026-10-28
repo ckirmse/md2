@@ -19,20 +19,22 @@ local COLOR_SEQUENCE = ColorSequence.new({
 })
 
 function RainbowSweep.start(label: GuiObject): () -> ()
-	local gradient = label:FindFirstChildOfClass("UIGradient")
-	if not gradient then
+	local gradient: UIGradient
+	local existing = label:FindFirstChildOfClass("UIGradient")
+	if existing then
+		gradient = existing
+	else
 		gradient = Instance.new("UIGradient")
 		gradient.Color = COLOR_SEQUENCE
 		gradient.Rotation = 0
 		gradient.Parent = label
 	end
-	local sweepGradient: UIGradient = assert(gradient)
 
 	local running = true
 	task.spawn(function()
-		while running and sweepGradient.Parent do
-			sweepGradient.Offset = Vector2.new(-1, 0)
-			local sweep = TweenService:Create(sweepGradient, TweenInfo.new(SWEEP_SEC, Enum.EasingStyle.Linear), { Offset = Vector2.new(1, 0) })
+		while running and gradient.Parent do
+			gradient.Offset = Vector2.new(-1, 0)
+			local sweep = TweenService:Create(gradient, TweenInfo.new(SWEEP_SEC, Enum.EasingStyle.Linear), { Offset = Vector2.new(1, 0) })
 			sweep:Play()
 			sweep.Completed:Wait()
 		end

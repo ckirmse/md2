@@ -133,6 +133,20 @@ export type ClientCrystalManager = {
 	updateBillboardByItemId: (self: ClientCrystalManager, itemId: number) -> (),
 }
 
+export type ClientDragonEggManager = {
+	activateSkip: (self: ClientDragonEggManager, itemId: number) -> (),
+	beginHatchCountdown: (self: ClientDragonEggManager, itemId: number) -> (),
+	cleanupHatchCountdown: (self: ClientDragonEggManager, itemId: number) -> (),
+	createHatchPrompt: (self: ClientDragonEggManager, inst: any) -> (),
+	getInstanceByItemId: (self: ClientDragonEggManager, itemId: number) -> any?,
+	init: (self: ClientDragonEggManager) -> (),
+	notifyNewInstance: (self: ClientDragonEggManager, inst: any) -> (),
+	notifyRemoveInstance: (self: ClientDragonEggManager, inst: any) -> (),
+	removeHatchPrompt: (self: ClientDragonEggManager, inst: any) -> (),
+	setHatchConfig: (self: ClientDragonEggManager, hatchConfig: any) -> (),
+	updateBillboardByItemId: (self: ClientDragonEggManager, itemId: number) -> (),
+}
+
 export type ClientDragonManager = {
 	beginAnimateChargeUp: (self: ClientDragonManager, itemId: any) -> (),
 	beginAnimateEat: (self: ClientDragonManager, itemId: any, audioPitchShift: any) -> (),

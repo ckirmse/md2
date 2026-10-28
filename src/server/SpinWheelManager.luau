@@ -37,6 +37,14 @@ type PendingPrize = {
 }
 
 -- one record per wheel segment, in loot-table order, with the odds at both luck levels; never holds a rolled item
+-- the saved shape of PlayerData.spinWheel
+type SpinState = {
+	freeSpins: number,
+	paidSpins: number,
+	lastGrantDay: number,
+	lastDiscountDay: number,
+}
+
 type ClientSegment = {
 	kind: number,
 	fraction: number,
@@ -72,7 +80,7 @@ type SpinWheelManagerFields = {
 export type SpinWheelManager = typeof(setmetatable({} :: SpinWheelManagerFields, SpinWheelManager))
 
 -- the Robux product ids and how many paid spins each one buys
-local PRODUCT_SPINS = {
+local PRODUCT_SPINS: { [string]: { count: number, isDiscount: boolean } } = {
 	single = { count = 1, isDiscount = false },
 	singleDiscount = { count = 1, isDiscount = true },
 	five = { count = 5, isDiscount = false },
@@ -182,7 +190,7 @@ end
 -- grants any elapsed UTC days' free spins (idempotent) without sending anything
 function SpinWheelManager.grantElapsedSpins(self: SpinWheelManager, playerData: Types.PlayerData)
 	local today = getToday()
-	local state = table.clone(playerData:getSpinWheel())
+	local state: SpinState = table.clone(playerData:getSpinWheel())
 	local granted = SpinWheelMath.computeGrantedFreeSpins(state.lastGrantDay, today, spinWheelData.maxAccruedFreeSpins)
 	if granted > 0 then
 		state.freeSpins += granted
@@ -271,7 +279,7 @@ function SpinWheelManager.deliverPending(self: SpinWheelManager, player: Player,
 		return
 	end
 
-	local state = table.clone(playerData:getSpinWheel())
+	local state: SpinState = table.clone(playerData:getSpinWheel())
 	if pending.wasPaid then
 		state.paidSpins += 1
 	else
@@ -309,7 +317,7 @@ function SpinWheelManager.trySpin(self: SpinWheelManager, player: Player)
 	-- refresh first so a spin raced against the day boundary sees fresh state
 	self:grantElapsedSpins(playerData)
 
-	local state = table.clone(playerData:getSpinWheel())
+	local state: SpinState = table.clone(playerData:getSpinWheel())
 	local wasPaid: boolean
 	if state.freeSpins > 0 then
 		state.freeSpins -= 1
@@ -412,7 +420,7 @@ function SpinWheelManager.tryDeliverToPlayer(self: SpinWheelManager, player: Pla
 			continue
 		end
 
-		local state = table.clone(playerData:getSpinWheel())
+		local state: SpinState = table.clone(playerData:getSpinWheel())
 		state.paidSpins += product.count
 		if product.isDiscount then
 			-- ProcessReceipt can't reject a completed purchase, so a stale client buying the discount product twice in
@@ -438,7 +446,7 @@ function SpinWheelManager.debugAddSpins(self: SpinWheelManager, player: Player, 
 		return
 	end
 
-	local state = table.clone(playerData:getSpinWheel())
+	local state: SpinState = table.clone(playerData:getSpinWheel())
 	state.freeSpins += freeCount
 	state.paidSpins += paidCount
 	playerData:setSpinWheel(state)
@@ -453,7 +461,7 @@ function SpinWheelManager.debugAdvanceDay(self: SpinWheelManager, player: Player
 		return
 	end
 
-	local state = table.clone(playerData:getSpinWheel())
+	local state: SpinState = table.clone(playerData:getSpinWheel())
 	state.lastGrantDay = math.max(1, getToday() - 1)
 	state.lastDiscountDay = math.min(state.lastDiscountDay, getToday() - 1)
 	playerData:setSpinWheel(state)

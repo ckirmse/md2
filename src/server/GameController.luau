@@ -3661,7 +3661,7 @@ function GameController.tryRebirth(self: GameController, player: Player): ()
 	if not itemManager:hasDragonWithRarity(player, requiredRarity) then
 		self:sendSystemMessageToPlayer(
 			player,
-			string.format("You need a %s dragon to rebirth", enums.getPublicName(enums.Rarity, requiredRarity))
+			string.format("You need a %s dragon to rebirth", enums.getPublicName(enums.Rarity, requiredRarity) :: string)
 		)
 		return
 	end

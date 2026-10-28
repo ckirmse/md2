@@ -195,7 +195,7 @@ function ClientRebirthManager.init(self: ClientRebirthManager)
 	self.incomeText = utils.findFirstDescendant(self.rewardsFrame, "IncomeText")
 	self.luckText = utils.findFirstDescendant(self.rewardsFrame, "LuckText")
 
-	self.costFill = utils.findFirstDescendant(self.requirementsFrame, "CostFillBar"):WaitForChild("Fill")
+	self.costFill = assert(utils.findFirstDescendant(self.requirementsFrame, "CostFillBar"), "Rebirth gui is missing CostFillBar"):WaitForChild("Fill")
 	self.costText = utils.findFirstDescendant(self.requirementsFrame, "CostText")
 	self.petRequired = utils.findFirstDescendant(self.requirementsFrame, "PetRequiredText")
 
