@@ -2,13 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-this was copied from md, the parent game--need to update/rewrite this for the new game, fuse dragons 2
+This file was copied from `md`, the parent game, and is being rewritten for the new game, **Dragon Riders 2** (spec v1.0). Sections for the systems built since the fork (Deal Shop, Day and Night, Weather, Playtime, Daily Login, Spin Wheel, Index, Diamonds, Egg Slots) are current; the object and item model sections still describe the parent game's crops and crystals.
 
 ## Project Overview
 
 A Roblox idle/farming/merging game written in Luau. Players fuse (merge) dragon eggs, crops,
 crystals, gems, packs and keys on island plots to progress. The Rojo project and the wally package
-are both named `md` ("Marge those Dargons!"); the player-facing brand is "Fuse Dragons". Note that
+are both named `md` ("Marge those Dargons!"); the player-facing brand was "Fuse Dragons" and is now "Dragon Riders 2". Note that
 what players call **fuse** is called **merge** everywhere in code (`MergeMixin`,
 `ClientMergeController`, `Tags.MERGEABLE`) — the word "fuse" only appears in display strings.
 

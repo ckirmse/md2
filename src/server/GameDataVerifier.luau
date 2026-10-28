@@ -14,6 +14,7 @@ local Enums = require("@game/ReplicatedStorage/Shared/Enums")
 local RarityMath = require("@game/ReplicatedStorage/Shared/RarityMath")
 local dailyLoginData = require("@game/ServerScriptService/GameData/Control/DailyLogin")
 local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/EggLootTables")
+local dragonProgressionData = require("@game/ServerScriptService/GameData/Control/DragonProgression")
 local playtimeData = require("@game/ServerScriptService/GameData/Control/Playtime")
 local rarityData = require("@game/ServerScriptService/GameData/Control/Rarities")
 local hatchingData = require("@game/ServerScriptService/GameData/Control/Hatching")
@@ -238,6 +239,21 @@ function GameDataVerifier.verifyRarities(self: GameDataVerifier)
 			do
 				if row[field] < previousRow[field] then
 					warn("GameDataVerifier: Rarities", rarityName, field, "is lower than the previous rarity's")
+				end
+			end
+		end
+		if type(row) == "table" and #RarityMath.validateRow(row) == 0 then
+			local plotXpPerSec = dragonProgressionData.assignXpPerSec
+			if type(plotXpPerSec) == "number" and plotXpPerSec > 0 then
+				local expectedSec = row.xpToCap / plotXpPerSec
+				if math.abs(row.timeToCapSec - expectedSec) > expectedSec * 0.01 then
+					warn(
+						"GameDataVerifier: Rarities",
+						rarityName,
+						"timeToCapSec does not match xpToCap / assignXpPerSec",
+						row.timeToCapSec,
+						expectedSec
+					)
 				end
 			end
 		end
