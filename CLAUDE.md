@@ -29,6 +29,9 @@ running the place in Studio. `sourcemap.json` is checked in and consumed by luau
 `ServerScriptService.GameData` to `src/GameData/` (a pulled-in copy of the Studio-side GameData) so
 luau-lsp can resolve GameData requires. `rojo serve` still uses `default.project.json`, so
 `src/GameData/` is never synced into Studio.
+`src/GameData/` does not exist in a normal checkout, and `rojo sourcemap analysis.project.json` fails without it: create an empty
+`src/GameData` folder, run the command, then remove the folder (the GameData requires stay unresolved, as noted below). Regenerate the sourcemap
+whenever a file is added or renamed; a stale one hides type errors in the new files (it showed no error for a missing argument in `HatchSkipMath`).
 
 All of `src/shared` and `src/server` is `--!strict`. Analyze with
 `luau-lsp analyze --defs=<globalTypes> --sourcemap=sourcemap.json src/shared src/server`; expect
