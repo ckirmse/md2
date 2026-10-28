@@ -1486,7 +1486,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		return
 	end
 
-	local playerData = PlayerData.new(player)
+	local playerData: Types.PlayerData = PlayerData.new(player) :: any
 	self.playerDatas[player] = playerData
 
 	-- default to not save bad data unless initialization succeeds
@@ -1623,7 +1623,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		indexV2 = if self:isIndexEnabled() then indexV2Manager:getData(playerData) else nil,
 		ftueProgress = ftueProgress,
 		firstSessionOfferState = playerData:getFirstSessionOfferState(),
-		showLuckBillboard = not playerData.hasClaimedGroupLuck and not ftueProgress.isEnabled,
+		showLuckBillboard = not playerData:hasClaimedGroupLuckBonus() and not ftueProgress.isEnabled,
 	}
 	RemoteEvents.NotifyInit:FireClient(player, initData)
 

@@ -1132,7 +1132,7 @@ function PlayerData.setDefaultStats(self: PlayerData)
 	self.stats.crittersShot = 0
 end
 
-function PlayerData.getCreationTime(self: PlayerData)
+function PlayerData.getCreationTime(self: PlayerData): number
 	return self.stats.creationTime
 end
 
@@ -2219,8 +2219,12 @@ function PlayerData.getDealShopPurchaseCountsForEra(self: PlayerData, era: numbe
 	return self.dealShopPurchases.counts
 end
 
-function PlayerData.getFtueProgress(self: PlayerData)
+function PlayerData.getFtueProgress(self: PlayerData): any
 	return self.ftueProgress
+end
+
+function PlayerData.hasClaimedGroupLuckBonus(self: PlayerData): boolean
+	return self.hasClaimedGroupLuck
 end
 
 function PlayerData.setFtueProgress(self: PlayerData, ftueProgress: any)
