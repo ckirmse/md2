@@ -1424,6 +1424,13 @@ function DevTools.getRemoteEventMetrics(self: DevTools, player: Player)
 	RemoteEvents.NotifyRemoteEventMetrics:FireClient(player, remoteEventMetrics)
 end
 
+function DevTools.setShowVanityGnome(self: DevTools, player: Player, doShow: any)
+	local playerData = gameController:getPlayerData(player)
+
+	playerData:setDevToolSetting("showVanityGnome", doShow == true)
+	playerData:updateVanityStateVisuals()
+end
+
 function DevTools.setPlayerVanityState(self: DevTools, player: Player, playerVanityState: any)
 	if not enums.validateValue(enums.PlayerVanityState, playerVanityState) then
 		print("invalid player vanity state", player, playerVanityState)

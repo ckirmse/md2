@@ -641,11 +641,18 @@ function PlayerData.updateLevelsVisuals(self: PlayerData)
 end
 
 function PlayerData.updateVanityStateVisuals(self: PlayerData)
-	if not gameController:areChestIslandsEnabled() then
+	local plotIndex = plotsManager:getPlotIndexByUserId(self.player.UserId)
+
+	-- the dev tool switch shows the gnome while the chest islands feature is off
+	if not (gameController:areChestIslandsEnabled() or self.devToolSettings.showVanityGnome == true) then
+		for _, tag in { Tags.VANITY_GNOME_LOCKED, Tags.VANITY_GNOME_UNLOCKED } do
+			local leftover = utils.findFirstDescendantWithTagAndAttribute(ClonedPlotElements, tag, Attributes.INDEX, plotIndex)
+			if leftover then
+				leftover:Destroy()
+			end
+		end
 		return
 	end
-
-	local plotIndex = plotsManager:getPlotIndexByUserId(self.player.UserId)
 
 	if self.vanityState == enums.PlayerVanityState.LOCKED then
 		local gnomeEmpty: any = utils.findFirstDescendantWithTagAndAttribute(

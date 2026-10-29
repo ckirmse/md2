@@ -1242,6 +1242,22 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("goToIsland")
 			end
 
+			local showGnomeState = Iris.State(false)
+			local showGnomeChangeCountState = Iris.State(0)
+			local showGnomeCheckbox = Iris.Checkbox({ "Show Vanity Gnome" }, { isChecked = showGnomeState })
+			if showGnomeCheckbox.checked() then
+				showGnomeChangeCountState:set(showGnomeChangeCountState:get() + 1)
+				if showGnomeChangeCountState:get() > 1 then
+					RemoteEvents.TryDevTool:FireServer("setShowVanityGnome", true)
+				end
+			end
+			if showGnomeCheckbox.unchecked() then
+				showGnomeChangeCountState:set(showGnomeChangeCountState:get() + 1)
+				if showGnomeChangeCountState:get() > 1 then
+					RemoteEvents.TryDevTool:FireServer("setShowVanityGnome", false)
+				end
+			end
+
 			local eatFastState = Iris.State(false)
 			local eatFastChangeCountState = Iris.State(0)
 			local eatFastCheckbox = Iris.Checkbox({ "Eat Fast" }, { isChecked = eatFastState })
