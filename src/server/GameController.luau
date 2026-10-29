@@ -130,7 +130,7 @@ local defaultGameConfigSnapshot = {
 	tradingEnabled = false,
 	chestIslandsEnabled = false,
 	indexEnabled = true,
-	proceduralIslandsEnabled = false,
+	proceduralIslandsEnabled = true,
 }
 
 -- keys missing from the snapshot; GetValue logs every call, so skip it once we know. cleared on (re)load/refresh.
