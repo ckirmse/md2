@@ -1112,7 +1112,6 @@ export type ItemManager = {
 
 export type PlotsManager = {
 	addAllChildrenAndMapCFramesForPlotIndex: (self: PlotsManager, plotIndex: number, root: any, holder: Instance) -> (),
-	calculateTreeBounds: (self: PlotsManager, root: any) -> any,
 	createItemOnPlot: (self: PlotsManager, index: number, name: any, plotPosition: Vector3, userId: number) -> (),
 	equipVanityComponentForPlayerAtPlacement: (self: PlotsManager, player: Player, vanityPlacement: number, vanityComponentName: string) -> (),
 	getAllExpansionInnerNames: (self: PlotsManager) -> { string },
@@ -1126,6 +1125,7 @@ export type PlotsManager = {
 	getClosestPlotIndexByPosition: (self: PlotsManager, position: Vector3) -> any,
 	getEndCapCFrame: (self: PlotsManager, endCapIndex: number) -> CFrame,
 	getGroundPositionFromPlotPosition: (self: PlotsManager, plotPosition: Vector3, index: number) -> Vector3,
+	getMainPlotBounds: (self: PlotsManager) -> { minX: number, maxX: number, minZ: number, maxZ: number },
 	getNumEndCaps: (self: PlotsManager) -> number,
 	getNumPlots: (self: PlotsManager) -> number,
 	getPerPlotElements: (self: PlotsManager) -> Instance,

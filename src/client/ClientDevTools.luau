@@ -1266,6 +1266,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 				RemoteEvents.TryDevTool:FireServer("eraseSaveData")
 				saveOnExitState:set(false)
 			end
+			if Iris.Button({ "Dump Plot Bounds" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpPlotBounds")
+			end
 			Iris.SameLine()
 			Iris.Text({ "Go To Plot" })
 			for i = 1, 6 do

@@ -1271,6 +1271,41 @@ function DevTools.setEatFast(self: DevTools, player: Player, doEatFast: any)
 	playerData:setDevToolSetting("eatFast", doEatFast)
 end
 
+function DevTools.dumpPlotBounds(self: DevTools, player: Player)
+	local bounds = plotsManager:getMainPlotBounds()
+	print("Main plot bounds in plot space: x", bounds.minX, bounds.maxX, "z", bounds.minZ, bounds.maxZ)
+	for plotIndex = 1, plotsManager:getNumPlots() do
+		local originCFrame = PlotHelpers.getPlotCFrame(plotIndex)
+		if not originCFrame then
+			continue
+		end
+
+		local _, yaw = originCFrame:ToOrientation()
+		local corners = {}
+		for _, plotCorner in {
+			Vector3.new(bounds.minX, 0, bounds.minZ),
+			Vector3.new(bounds.maxX, 0, bounds.minZ),
+			Vector3.new(bounds.maxX, 0, bounds.maxZ),
+			Vector3.new(bounds.minX, 0, bounds.maxZ),
+		} do
+			local world = plotsManager:translatePositionPlotToWorld(plotCorner, plotIndex)
+			table.insert(corners, string.format("(%.1f, %.1f)", world.X, world.Z))
+		end
+
+		local center = plotsManager:translatePositionPlotToWorld(
+			Vector3.new((bounds.minX + bounds.maxX) / 2, 0, (bounds.minZ + bounds.maxZ) / 2),
+			plotIndex
+		)
+		print(
+			"plot", plotIndex,
+			"origin", originCFrame.Position, "yaw", math.round(math.deg(yaw)),
+			"corners", table.concat(corners, " "),
+			"center inside", plotsManager:isPositionInMainPlotXZ(center, plotIndex),
+			"origin inside", plotsManager:isPositionInMainPlotXZ(originCFrame.Position, plotIndex)
+		)
+	end
+end
+
 function DevTools.goToPlot(self: DevTools, player: Player, plotIndex: any)
 	-- a missing character or unknown plot crashed here before typing too
 	(player.Character :: Model):PivotTo((PlotHelpers.getPlotCFrame(plotIndex) :: CFrame) + Vector3.new(0, 5, 0))

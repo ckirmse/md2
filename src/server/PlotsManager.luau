@@ -32,8 +32,15 @@ local DEFAULT_EXPANSION_OUTER_NAME = "Expansion Outer Template"
 
 local NUM_PLOTS = 6
 
--- vanity component data comes from GameData modules and bounds records are simple min/max pairs,
--- so both stay untyped
+-- a box in plot space (the frame of an Origin attachment), so one box serves every plot however it is rotated
+type PlotBounds = {
+	minX: number,
+	maxX: number,
+	minZ: number,
+	maxZ: number,
+}
+
+-- vanity component data comes from GameData modules, so it stays untyped
 type PlotsManagerFields = {
 	mainPlotInnerDatas: { [string]: any },
 	mainPlotOuterDatas: { [string]: any },
@@ -42,8 +49,8 @@ type PlotsManagerFields = {
 	expansionOuterDatas: { [string]: any },
 	plotPartCFrames: { [string]: CFrame },
 	assignments: { [number]: number },
-	mainBounds: { [number]: any },
-	expansionBounds: { [number]: { [number]: any } },
+	mainBounds: PlotBounds,
+	expansionBounds: { [number]: PlotBounds },
 	allVanityComponentNames: { string }?,
 }
 
@@ -51,6 +58,10 @@ export type PlotsManager = typeof(setmetatable({} :: PlotsManagerFields, PlotsMa
 
 function PlotsManager.getNumPlots(self: PlotsManager): number
 	return NUM_PLOTS
+end
+
+function PlotsManager.getMainPlotBounds(self: PlotsManager): { minX: number, maxX: number, minZ: number, maxZ: number }
+	return self.mainBounds
 end
 
 function PlotsManager.getPerPlotElements(self: PlotsManager): Instance
@@ -222,11 +233,12 @@ function PlotsManager.getPlotItemRecoveryPositionByUserId(self: PlotsManager, us
 		return nil
 	end
 
-	local mainBounds = self.mainBounds[plotIndex]
-	return utils.getGroundPosition(
-		(mainBounds.minPosition.X + mainBounds.maxPosition.X) / 2,
-		(mainBounds.minPosition.Z + mainBounds.maxPosition.Z) / 2
+	local mainBounds = self.mainBounds
+	local center = self:translatePositionPlotToWorld(
+		Vector3.new((mainBounds.minX + mainBounds.maxX) / 2, 0, (mainBounds.minZ + mainBounds.maxZ) / 2),
+		plotIndex
 	)
+	return utils.getGroundPosition(center.X, center.Z)
 end
 
 function PlotsManager.getPlotPositionFromWorldPositionForUserId(
@@ -288,32 +300,25 @@ function PlotsManager.isPlotIndexOccupied(self: PlotsManager, plotIndex: number)
 	return self.assignments[plotIndex] ~= nil
 end
 
-function PlotsManager.isPositionInMainPlotXZ(self: PlotsManager, position: Vector3, plotIndex: number): boolean
-	local bounds = self.mainBounds[plotIndex]
-	if position.X < bounds.minPosition.X then
-		return false
-	end
-	if position.X > bounds.maxPosition.X then
-		return false
-	end
-	if position.Z < bounds.minPosition.Z then
-		return false
-	end
-	if position.Z > bounds.maxPosition.Z then
-		return false
-	end
+local function isInBoundsXZ(bounds: PlotBounds, plotPosition: Vector3): boolean
+	return plotPosition.X >= bounds.minX
+		and plotPosition.X <= bounds.maxX
+		and plotPosition.Z >= bounds.minZ
+		and plotPosition.Z <= bounds.maxZ
+end
 
-	return true
+function PlotsManager.isPositionInMainPlotXZ(self: PlotsManager, position: Vector3, plotIndex: number): boolean
+	return isInBoundsXZ(self.mainBounds, self:translatePositionWorldToPlot(position, plotIndex))
 end
 
 function PlotsManager.getRandomLocationInMainPlot(self: PlotsManager, plotIndex: number): Vector3
 	local random = Random.new()
 
-	local bounds = self.mainBounds[plotIndex]
-	local x = random:NextNumber(bounds.minPosition.X, bounds.maxPosition.X)
-	local z = random:NextNumber(bounds.minPosition.Z, bounds.maxPosition.Z)
+	local bounds = self.mainBounds
+	local plotPosition = Vector3.new(random:NextNumber(bounds.minX, bounds.maxX), 0, random:NextNumber(bounds.minZ, bounds.maxZ))
+	local worldPosition = self:translatePositionPlotToWorld(plotPosition, plotIndex)
 
-	return Vector3.new(x, 0, z)
+	return Vector3.new(worldPosition.X, 0, worldPosition.Z)
 end
 
 function PlotsManager.getRandomLocationInMainPlotByUserId(self: PlotsManager, userId: number): Vector3?
@@ -338,21 +343,7 @@ function PlotsManager.isPositionInExpansionXZ(
 	vanityArea: number,
 	plotIndex: number
 ): boolean
-	local bounds = self.expansionBounds[plotIndex][vanityArea]
-	if position.X < bounds.minPosition.X then
-		return false
-	end
-	if position.X > bounds.maxPosition.X then
-		return false
-	end
-	if position.Z < bounds.minPosition.Z then
-		return false
-	end
-	if position.Z > bounds.maxPosition.Z then
-		return false
-	end
-
-	return true
+	return isInBoundsXZ(self.expansionBounds[vanityArea], self:translatePositionWorldToPlot(position, plotIndex))
 end
 
 function PlotsManager.isPositionInExpansionXZByUserId(
@@ -780,104 +771,58 @@ function PlotsManager.unequipVanityPlacementForPlayer(self: PlotsManager, player
 	warn("unknown vanity placement to unequip", player, vanityPlacement)
 end
 
-function PlotsManager.calculateTreeBounds(self: PlotsManager, root: any): any
-	local minX = math.huge
-	local maxX = -math.huge
-	local minZ = math.huge
-	local maxZ = -math.huge
+-- bounds of every part under root in plot 1's space (all eight corners, so a turned part is covered too)
+local function calculateTreeBounds(root: Instance): PlotBounds
+	local worldToPlot = (PlotHelpers.getPlotCFrame(1) :: CFrame):Inverse()
+	local bounds: PlotBounds = { minX = math.huge, maxX = -math.huge, minZ = math.huge, maxZ = -math.huge }
+
+	local function addPart(part: BasePart)
+		local half = part.Size / 2
+		for _, xSign in { -1, 1 } do
+			for _, ySign in { -1, 1 } do
+				for _, zSign in { -1, 1 } do
+					local corner = worldToPlot * part.CFrame * Vector3.new(half.X * xSign, half.Y * ySign, half.Z * zSign)
+					bounds.minX = math.min(bounds.minX, corner.X)
+					bounds.maxX = math.max(bounds.maxX, corner.X)
+					bounds.minZ = math.min(bounds.minZ, corner.Z)
+					bounds.maxZ = math.max(bounds.maxZ, corner.Z)
+				end
+			end
+		end
+	end
 
 	if root:IsA("BasePart") then
-		minX = math.min(minX, root.Position.X - root.Size.X / 2)
-		maxX = math.max(maxX, root.Position.X + root.Size.X / 2)
-		minZ = math.min(minZ, root.Position.Z - root.Size.Z / 2)
-		maxZ = math.max(maxZ, root.Position.Z + root.Size.Z / 2)
+		addPart(root)
 	end
-
 	for _, descendant in root:GetDescendants() do
-		if not descendant:IsA("BasePart") then
-			continue
+		if descendant:IsA("BasePart") then
+			addPart(descendant)
 		end
-
-		minX = math.min(minX, descendant.Position.X - descendant.Size.X / 2)
-		maxX = math.max(maxX, descendant.Position.X + descendant.Size.X / 2)
-		minZ = math.min(minZ, descendant.Position.Z - descendant.Size.Z / 2)
-		maxZ = math.max(maxZ, descendant.Position.Z + descendant.Size.Z / 2)
 	end
 
-	local minPosition = Vector3.new(minX, 0, minZ)
-	local maxPosition = Vector3.new(maxX, 0, maxZ)
-
-	return {
-		minPosition = minPosition,
-		maxPosition = maxPosition,
-	}
+	return bounds
 end
 
 function PlotsManager.init(self: PlotsManager)
 	self:initVanityData()
 
-	-- calculate bounding rect of the plot area
-
-	local InnerPart = utils.findFirstDescendant(MergePlot, "InnerPart")
-	local mainBounds = self:calculateTreeBounds(InnerPart)
-
-	--print("bounding of plot 1", minPosition, "to", maxPosition)
-
-	local expansionBounds: { [number]: any } = {}
-	local expansionVanityAreas = PlotHelpers.getExpansionVanityAreas()
-	for _, vanityArea in expansionVanityAreas do
-		local vanityPlacement = PlotHelpers.getInnerVanityPlacementByVanityArea(vanityArea) :: number
-		local vanityComponentName = DEFAULT_EXPANSION_INNER_NAME
-		local path = self.expansionInnerDatas[vanityComponentName].templatePaths[vanityPlacement]
-		local template = utils.getPathReference(GameAssets, path)
-
-		local bounds = self:calculateTreeBounds(template)
-		expansionBounds[vanityArea] = bounds
+	-- the bounds are measured once in plot space; a point is moved into the plot's space before it is tested, so
+	-- plots may be rotated. That needs every origin to be level (yaw only).
+	for _, origin in collectionService:GetTagged("Origin") do
+		if math.abs((origin :: Attachment).WorldCFrame.UpVector.Y) < 0.999 then
+			warn("PlotsManager: plot origin is tilted, plot bounds assume yaw-only rotation", origin:GetFullName())
+		end
 	end
 
-	-- now calculate it for all plots
+	local InnerPart = assert(utils.findFirstDescendant(MergePlot, "InnerPart"), "MergePlot has no InnerPart")
+	self.mainBounds = calculateTreeBounds(InnerPart)
 
-	-- map from plot index to bounds structure {minPosition, maxPosition}
-	self.mainBounds = {}
-	-- map from plot index to vanity area to bounds structure {minPosition, maxPosition}
 	self.expansionBounds = {}
-	for plotIndex = 1, NUM_PLOTS do
-		local mainPosition1 =
-			self:translatePositionPlotToWorld(self:translatePositionWorldToPlot(mainBounds.minPosition, 1), plotIndex)
-		local mainPosition2 =
-			self:translatePositionPlotToWorld(self:translatePositionWorldToPlot(mainBounds.maxPosition, 1), plotIndex)
-
-		local plotMainMinPosition =
-			Vector3.new(math.min(mainPosition1.X, mainPosition2.X), 0, math.min(mainPosition1.Z, mainPosition2.Z))
-		local plotMainMaxPosition =
-			Vector3.new(math.max(mainPosition1.X, mainPosition2.X), 0, math.max(mainPosition1.Z, mainPosition2.Z))
-
-		self.mainBounds[plotIndex] = {
-			minPosition = plotMainMinPosition,
-			maxPosition = plotMainMaxPosition,
-		}
-		--print("main bounds", plotIndex, self.mainBounds[plotIndex])
-
-		self.expansionBounds[plotIndex] = {}
-		for _, vanityArea in expansionVanityAreas do
-			local position1 = self:translatePositionPlotToWorld(
-				self:translatePositionWorldToPlot(expansionBounds[vanityArea].minPosition, 1),
-				plotIndex
-			)
-			local position2 = self:translatePositionPlotToWorld(
-				self:translatePositionWorldToPlot(expansionBounds[vanityArea].maxPosition, 1),
-				plotIndex
-			)
-
-			local minPosition = Vector3.new(math.min(position1.X, position2.X), 0, math.min(position1.Z, position2.Z))
-			local maxPosition = Vector3.new(math.max(position1.X, position2.X), 0, math.max(position1.Z, position2.Z))
-
-			self.expansionBounds[plotIndex][vanityArea] = {
-				minPosition = minPosition,
-				maxPosition = maxPosition,
-			}
-			--print("expansion bounds", plotIndex, "vanity area", vanityArea, self.expansionBounds[plotIndex][vanityArea])
-		end
+	for _, vanityArea in PlotHelpers.getExpansionVanityAreas() do
+		local vanityPlacement = PlotHelpers.getInnerVanityPlacementByVanityArea(vanityArea) :: number
+		local path = self.expansionInnerDatas[DEFAULT_EXPANSION_INNER_NAME].templatePaths[vanityPlacement]
+		local template = assert(utils.getPathReference(GameAssets, path), "missing expansion template " .. path)
+		self.expansionBounds[vanityArea] = calculateTreeBounds(template)
 	end
 
 	-- take cframe of pre-existing inner and outer as the reference points
