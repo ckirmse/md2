@@ -131,6 +131,8 @@ local defaultGameConfigSnapshot = {
 	chestIslandsEnabled = false,
 	indexEnabled = true,
 	proceduralIslandsEnabled = true,
+	crystalNodesEnabled = false,
+	crittersEnabled = false,
 }
 
 -- keys missing from the snapshot; GetValue logs every call, so skip it once we know. cleared on (re)load/refresh.
@@ -4051,6 +4053,16 @@ end
 function GameController.areProceduralIslandsEnabled(self: GameController): boolean
 	-- not yet registered in the remote ConfigService, so read the code-side default directly
 	return defaultGameConfigSnapshot[GameConfigKeys.proceduralIslandsEnabled]
+end
+
+function GameController.areCrystalNodesEnabled(self: GameController): boolean
+	-- not yet registered in the remote ConfigService, so read the code-side default directly
+	return defaultGameConfigSnapshot[GameConfigKeys.crystalNodesEnabled]
+end
+
+function GameController.areCrittersEnabled(self: GameController): boolean
+	-- not yet registered in the remote ConfigService, so read the code-side default directly
+	return defaultGameConfigSnapshot[GameConfigKeys.crittersEnabled]
 end
 
 function GameController.init(self: GameController): ()

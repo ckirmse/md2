@@ -51,6 +51,10 @@ export type IslandManager = typeof(setmetatable({} :: IslandManagerFields, Islan
 function IslandManager.createNodesOnIsland(self: IslandManager, islandData: any, nodeTypeLootName: string?, random: Random)
 	-- add a node to each NodeSpawn attachment point on the island
 
+	if not gameController:areCrystalNodesEnabled() then
+		return
+	end
+
 	local island = islandData.island
 
 	for _, attachment in utils.getAllDescendantsByName(island, "NodeSpawn") do
@@ -205,6 +209,10 @@ function IslandManager.tryCreateIsland(self: IslandManager, lootTableName: strin
 		local cframe = rotation + position
 
 		local islandData: any
+
+		if lootEntry.result.critterTypeLootName and not gameController:areCrittersEnabled() then
+			continue
+		end
 
 		if lootEntry.result.critterTypeLootName then
 			island = nil

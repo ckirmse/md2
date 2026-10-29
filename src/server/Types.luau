@@ -905,6 +905,8 @@ export type GameController = {
 	addPrimaryElementXpToPlayer: (self: GameController, player: Player?, primaryElement: number, xpDiff: number, part: any) -> (),
 	addRemoteEventHandler: (self: GameController, remoteEventName: string, funcName: string) -> (),
 	areChestIslandsEnabled: (self: GameController) -> boolean,
+	areCrittersEnabled: (self: GameController) -> boolean,
+	areCrystalNodesEnabled: (self: GameController) -> boolean,
 	areProceduralIslandsEnabled: (self: GameController) -> boolean,
 	calculateEatingSteps: (self: GameController, dragon: any, crop: any) -> (number, number),
 	calculateGemsForHarvest: (self: GameController, dragon: any, crop: any) -> number,
