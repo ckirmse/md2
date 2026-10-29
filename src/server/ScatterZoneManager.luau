@@ -3,8 +3,6 @@
 local ScatterZoneManager = {}
 ScatterZoneManager.__index = ScatterZoneManager
 
-local collectionService = game:GetService("CollectionService")
-
 local ScatterZone = require("./ScatterZone")
 local objectDataStore = require("./ObjectDataStore")
 local Timer = require("./Timer")
@@ -15,6 +13,7 @@ local itemManager: Types.ItemManager -- injected via initClass(deps); typed thro
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
 local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
+local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local eggSpawningData = require("@game/ServerScriptService/GameData/Control/EggSpawning")
 
@@ -185,7 +184,7 @@ function ScatterZoneManager.initClass(deps: any)
 end
 
 function ScatterZoneManager.init(self: ScatterZoneManager)
-	for _, marker in collectionService:GetTagged(Tags.EGG_SCATTER_ZONE) do
+	for _, marker in utils.getTaggedInWorkspace(Tags.EGG_SCATTER_ZONE) do
 		self:createZoneFromMarker(marker)
 	end
 

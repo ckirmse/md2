@@ -2,15 +2,14 @@
 
 local PlotHelpers = {}
 
-local collectionService = game:GetService("CollectionService")
-
 local Attributes = require("./Attributes")
 local enums = require("./Enums")
+local utils = require("./utils")
 
 local expansionVanityAreas: { number } = {enums.VanityAreas.EXPANSION_1, enums.VanityAreas.EXPANSION_2, enums.VanityAreas.EXPANSION_3, enums.VanityAreas.EXPANSION_4}
 
 function PlotHelpers.getPlotCFrame(plotIndex: number): CFrame?
-	local origins = collectionService:GetTagged("Origin")
+	local origins = utils.getTaggedInWorkspace("Origin")
 	for _, origin in origins do
 		if origin:GetAttribute(Attributes.INDEX) ~= plotIndex then
 			continue

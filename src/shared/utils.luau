@@ -79,6 +79,19 @@ function utils.findFirstDescendantWithTagAndAttribute(parent: Instance, tag: str
     return nil
 end
 
+-- CollectionService:GetTagged covers the whole game, so a copy of the level kept in ServerStorage (a backup) would be found too
+function utils.getTaggedInWorkspace(tag: string): { Instance }
+	local collectionService = game:GetService("CollectionService")
+
+	local found: { Instance } = {}
+	for _, instance in collectionService:GetTagged(tag) do
+		if instance:IsDescendantOf(workspace) then
+			table.insert(found, instance)
+		end
+	end
+	return found
+end
+
 function utils.getAllDescendantsByName(parent: Instance, name: string): { Instance }
 	local retval: { Instance } = {}
     for _, descendant in parent:GetDescendants() do

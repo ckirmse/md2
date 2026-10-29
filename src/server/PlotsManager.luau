@@ -3,7 +3,6 @@
 local PlotsManager = {}
 PlotsManager.__index = PlotsManager
 
-local collectionService = game:GetService("CollectionService")
 local playersService = game:GetService("Players")
 
 local Level = workspace:WaitForChild("Level")
@@ -82,12 +81,12 @@ function PlotsManager.translatePositionWorldToPlot(self: PlotsManager, position:
 end
 
 function PlotsManager.getNumEndCaps(self: PlotsManager): number
-	local endCaps = collectionService:GetTagged("EndCap")
+	local endCaps = utils.getTaggedInWorkspace("EndCap")
 	return #endCaps
 end
 
 function PlotsManager.getEndCapCFrame(self: PlotsManager, endCapIndex: number): CFrame
-	local endCaps = collectionService:GetTagged("EndCap")
+	local endCaps = utils.getTaggedInWorkspace("EndCap")
 	return (endCaps[endCapIndex] :: any).WorldCFrame
 end
 
@@ -282,7 +281,7 @@ end
 function PlotsManager.getClosestPlotIndexByPosition(self: PlotsManager, position: Vector3): any
 	local bestIndex: any = nil
 	local bestDistance = math.huge
-	local origins = collectionService:GetTagged("Origin")
+	local origins = utils.getTaggedInWorkspace("Origin")
 	for _, origin in origins do
 		local distance = ((origin :: any).Position - position).Magnitude
 		if distance >= bestDistance then
@@ -808,7 +807,7 @@ function PlotsManager.init(self: PlotsManager)
 
 	-- the bounds are measured once in plot space; a point is moved into the plot's space before it is tested, so
 	-- plots may be rotated. That needs every origin to be level (yaw only).
-	for _, origin in collectionService:GetTagged("Origin") do
+	for _, origin in utils.getTaggedInWorkspace("Origin") do
 		if math.abs((origin :: Attachment).WorldCFrame.UpVector.Y) < 0.999 then
 			warn("PlotsManager: plot origin is tilted, plot bounds assume yaw-only rotation", origin:GetFullName())
 		end

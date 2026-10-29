@@ -76,6 +76,15 @@ Consequences:
 - `GameDataVerifier` runs at startup and `warn()`s about malformed GameData (missing asset paths,
   bad loot-table shapes, unknown item names). Check the output console when data-driven things break.
 
+## Plot Layout
+
+A plot's position is data: an `Origin` attachment (tag `Origin`, attribute `Index`) per plot in the level, read by `PlotHelpers.getPlotCFrame`. The template for every plot is
+`Level.PerPlotElements`, authored at plot 1's real position; `PlotsManager` re-poses it for plot N with `origin_N * origin_1:Inverse() * template`, so a plot may be moved and rotated
+(yaw only) by moving its attachment, and anything authored at plot 1 (template, `Origin 1`, egg slot markers, signs, weather templates) must move together as one group.
+Inside-the-plot tests use a box measured once in plot space (`PlotsManager.mainBounds` / `expansionBounds`): a world point is moved into the plot's space first, so rotation is safe.
+Tagged level objects (`Origin`, `EndCap`, `EggScatterZone`) are looked up with `utils.getTaggedInWorkspace`, because `CollectionService:GetTagged` covers the whole game and a backup copy of `Level` kept in `ServerStorage` would otherwise be found too (it made plots 1 to 3 use the backup's origins). Startup warns if an origin is tilted. Dev tool `dumpPlotBounds` (client button next to "Go To Plot") prints each plot's origin, yaw and world corners. Ground raycasts only hit
+`workspace.Level`, so walkable platforms must live under it.
+
 ## Rojo Layout
 
 ```
