@@ -60,8 +60,8 @@ function DragonEgg.getSkipSecPerDiamond(): number
 	return if type(secPerDiamond) == "number" and secPerDiamond > 0 then secPerDiamond else HatchSkipMath.DEFAULT_SEC_PER_DIAMOND
 end
 
-local function computeHatchDurationSec(distanceFromPlot: number): number
-	return hatchingData.baseHatchSec + distanceFromPlot * hatchingData.hatchSecPerStud
+local function computeHatchDurationSec(distanceFromHub: number): number
+	return hatchingData.baseHatchSec + distanceFromHub * hatchingData.hatchSecPerStud
 end
 
 function DragonEgg.computeLuckMultiplier(eggBaseLuck: number?, userId: number): number
@@ -195,14 +195,15 @@ function DragonEgg.notifyPlacedInPlot(self: DragonEgg)
 		return
 	end
 
+	-- measured from the hub's centre, like the carry limit, so it does not depend on which plot the player owns
 	local sourcePosition = self:getObj():GetAttribute(Attributes.SOURCE_POSITION) :: Vector3?
-	local plotCenter = plotsManager:getPlotItemRecoveryPositionByUserId(self:getUserId())
-	local distanceFromPlot = 0
-	if sourcePosition and plotCenter then
-		distanceFromPlot = (sourcePosition - plotCenter).Magnitude
+	local hubCenter = plotsManager:getHubCenter()
+	local distanceFromHub = 0
+	if sourcePosition then
+		distanceFromHub = (Vector3.new(sourcePosition.X, 0, sourcePosition.Z) - Vector3.new(hubCenter.X, 0, hubCenter.Z)).Magnitude
 	end
 
-	self:beginIncubating(computeHatchDurationSec(distanceFromPlot))
+	self:beginIncubating(computeHatchDurationSec(distanceFromHub))
 end
 
 function DragonEgg.beginIncubating(self: DragonEgg, durationSec: number)
