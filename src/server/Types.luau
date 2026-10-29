@@ -1125,6 +1125,7 @@ export type PlotsManager = {
 	getClosestPlotIndexByPosition: (self: PlotsManager, position: Vector3) -> any,
 	getEndCapCFrame: (self: PlotsManager, endCapIndex: number) -> CFrame,
 	getGroundPositionFromPlotPosition: (self: PlotsManager, plotPosition: Vector3, index: number) -> Vector3,
+	getHubCenter: (self: PlotsManager) -> Vector3,
 	getMainPlotBounds: (self: PlotsManager) -> { minX: number, maxX: number, minZ: number, maxZ: number },
 	getNumEndCaps: (self: PlotsManager) -> number,
 	getNumPlots: (self: PlotsManager) -> number,

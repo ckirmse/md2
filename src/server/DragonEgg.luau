@@ -274,10 +274,11 @@ function DragonEgg.beginCarrying(self: DragonEgg, dragon: Types.ShadowDragon)
 		carryReturnSec = self.pausedCarryRemainingSec
 		self.pausedCarryRemainingSec = nil
 	else
+		-- measured from the hub's centre so the limit does not depend on which plot the player owns
 		local pickupPosition = self:getObj():GetPivot().Position
-		local plotCenter = plotsManager:getPlotItemRecoveryPositionByUserId(dragon:getUserId())
-		local distanceFromPlotCenter = plotCenter and (pickupPosition - plotCenter).Magnitude or 0
-		carryReturnSec = computeCarryReturnSec(distanceFromPlotCenter)
+		local hubCenter = plotsManager:getHubCenter()
+		local distanceFromHub = (Vector3.new(pickupPosition.X, 0, pickupPosition.Z) - Vector3.new(hubCenter.X, 0, hubCenter.Z)).Magnitude
+		carryReturnSec = computeCarryReturnSec(distanceFromHub)
 		self:getObj():SetAttribute(Attributes.CARRY_TOTAL_SEC, carryReturnSec)
 	end
 

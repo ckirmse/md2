@@ -50,6 +50,7 @@ type PlotsManagerFields = {
 	assignments: { [number]: number },
 	mainBounds: PlotBounds,
 	expansionBounds: { [number]: PlotBounds },
+	hubCenter: Vector3,
 	allVanityComponentNames: { string }?,
 }
 
@@ -57,6 +58,10 @@ export type PlotsManager = typeof(setmetatable({} :: PlotsManagerFields, PlotsMa
 
 function PlotsManager.getNumPlots(self: PlotsManager): number
 	return NUM_PLOTS
+end
+
+function PlotsManager.getHubCenter(self: PlotsManager): Vector3
+	return self.hubCenter
 end
 
 function PlotsManager.getMainPlotBounds(self: PlotsManager): { minX: number, maxX: number, minZ: number, maxZ: number }
@@ -811,6 +816,22 @@ function PlotsManager.init(self: PlotsManager)
 		if math.abs((origin :: Attachment).WorldCFrame.UpVector.Y) < 0.999 then
 			warn("PlotsManager: plot origin is tilted, plot bounds assume yaw-only rotation", origin:GetFullName())
 		end
+	end
+
+	-- the hub's centre is the invisible Center part inside Level.Main.HubPlatform; without it the middle of the plot origins stands in
+	local main = Level:FindFirstChild("Main")
+	local hubPlatform = main and main:FindFirstChild("HubPlatform")
+	local hubCenterPart = hubPlatform and hubPlatform:FindFirstChild("Center")
+	if hubCenterPart and hubCenterPart:IsA("BasePart") then
+		self.hubCenter = hubCenterPart.Position
+	else
+		warn("PlotsManager: no Center part in Level.Main.HubPlatform, using the middle of the plot origins")
+		local sum, count = Vector3.zero, 0
+		for _, origin in utils.getTaggedInWorkspace("Origin") do
+			sum += (origin :: Attachment).WorldPosition
+			count += 1
+		end
+		self.hubCenter = if count > 0 then sum / count else Vector3.zero
 	end
 
 	local InnerPart = assert(utils.findFirstDescendant(MergePlot, "InnerPart"), "MergePlot has no InnerPart")
