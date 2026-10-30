@@ -7,6 +7,7 @@ local GameConfigKeys = {
 	proceduralIslandsEnabled = "proceduralIslandsEnabled",
 	crystalNodesEnabled = "crystalNodesEnabled",
 	crittersEnabled = "crittersEnabled",
+	islandChestsEnabled = "islandChestsEnabled",
 }
 
 return GameConfigKeys

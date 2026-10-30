@@ -909,6 +909,7 @@ export type GameController = {
 	addRemoteEventHandler: (self: GameController, remoteEventName: string, funcName: string) -> (),
 	areChestIslandsEnabled: (self: GameController) -> boolean,
 	areCrittersEnabled: (self: GameController) -> boolean,
+	areIslandChestsEnabled: (self: GameController) -> boolean,
 	areCrystalNodesEnabled: (self: GameController) -> boolean,
 	areProceduralIslandsEnabled: (self: GameController) -> boolean,
 	calculateEatingSteps: (self: GameController, dragon: any, crop: any) -> (number, number),

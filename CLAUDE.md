@@ -299,7 +299,7 @@ migration path from the pre-ProfileStore format in `GameController` player-join.
   starting with `_` and `init`/`initClass`, then dispatches to `devTools[command]`. Adding a dev
   command is just adding a method to `DevTools`.
 - The vanity gnome (the box shown while vanity is locked, the gnome once it is unlocked, placed at `Level.Main.VanityGnome<N>`) is only created when the config flag
-  `chestIslandsEnabled` is true (default false in `GameController.defaultGameConfigSnapshot`). The client dev panel checkbox "Show Vanity Gnome" (`DevTools.setShowVanityGnome`,
+  `chestIslandsEnabled` is true (default true since 2026-10-30 in `GameController.defaultGameConfigSnapshot`, because vanity is live). The chest-themed island rows in `LootTables/Islands` are no longer gated by it, so those islands spawn, but `islandChestsEnabled` (false in the same table, read by `IslandManager.createChestsOnIsland`) keeps their chests from being created. The client dev panel checkbox "Show Vanity Gnome" (`DevTools.setShowVanityGnome`,
   a per-player dev setting) shows it anyway and refreshes it at once; unchecking removes it.
 - `CustomerTools` / `ClientCustomerTools` — same shape over `TryCustomerTool`, for CS operations.
 - `ClientNetopsTools` — network metrics readout.

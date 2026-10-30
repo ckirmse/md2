@@ -128,11 +128,12 @@ local vanityAreasData = require("@game/ServerScriptService/GameData/Control/Vani
 
 local defaultGameConfigSnapshot = {
 	tradingEnabled = false,
-	chestIslandsEnabled = false,
+	chestIslandsEnabled = true,
 	indexEnabled = true,
 	proceduralIslandsEnabled = true,
 	crystalNodesEnabled = false,
 	crittersEnabled = false,
+	islandChestsEnabled = false,
 }
 
 -- keys missing from the snapshot; GetValue logs every call, so skip it once we know. cleared on (re)load/refresh.
@@ -4063,6 +4064,11 @@ end
 function GameController.areCrittersEnabled(self: GameController): boolean
 	-- not yet registered in the remote ConfigService, so read the code-side default directly
 	return defaultGameConfigSnapshot[GameConfigKeys.crittersEnabled]
+end
+
+function GameController.areIslandChestsEnabled(self: GameController): boolean
+	-- not yet registered in the remote ConfigService, so read the code-side default directly
+	return defaultGameConfigSnapshot[GameConfigKeys.islandChestsEnabled]
 end
 
 function GameController.init(self: GameController): ()

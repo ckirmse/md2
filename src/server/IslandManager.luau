@@ -107,6 +107,10 @@ end
 function IslandManager.createChestsOnIsland(self: IslandManager, islandData: any, chestTypeLootName: string?, random: Random)
 	-- add a chest to each ChestSpawn attachment point on the island
 
+	if not gameController:areIslandChestsEnabled() then
+		return
+	end
+
 	local island = islandData.island
 
 	for _, attachment in utils.getAllDescendantsByName(island, "ChestSpawn") do
