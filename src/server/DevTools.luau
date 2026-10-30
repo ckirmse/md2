@@ -1279,11 +1279,14 @@ end
 function DevTools.dumpIslandEggs(self: DevTools, player: Player)
 	local zones = scatterZoneManager:getAllZones()
 	local islandZones, islandCap, islandEggs, otherZones, otherEggs = 0, 0, 0, 0, 0
+	local capByLootTable: { [string]: number } = {}
 	for _, zone in zones do
 		if zone.isIslandZone then
 			islandZones += 1
 			islandCap += zone:getMaxEggsInZone()
 			islandEggs += zone:getCurrentEggCount()
+			local lootTableName = zone:getLootTableName()
+			capByLootTable[lootTableName] = (capByLootTable[lootTableName] or 0) + zone:getMaxEggsInZone()
 		else
 			otherZones += 1
 			otherEggs += zone:getCurrentEggCount()
@@ -1295,6 +1298,9 @@ function DevTools.dumpIslandEggs(self: DevTools, player: Player)
 		"| island zones", islandZones, "with cap", islandCap, "and eggs on the ground", islandEggs,
 		"| other zones", otherZones, "with eggs", otherEggs
 	)
+	for lootTableName, cap in capByLootTable do
+		print("Island egg zones: loot table", lootTableName, "cap", cap)
+	end
 end
 
 function DevTools.dumpPlotBounds(self: DevTools, player: Player)

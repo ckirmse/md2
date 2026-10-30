@@ -128,7 +128,8 @@ function ScatterZoneManager.registerIslandZone(self: ScatterZoneManager, marker:
 	marker.Transparency = 1
 
 	marker:SetAttribute(Attributes.MAX_EGGS_IN_ZONE, count)
-	if lootTableName then
+	-- a LootTableName authored on the EggZone part wins over the island's distance zone table
+	if lootTableName and marker:GetAttribute(Attributes.LOOT_TABLE_NAME) == nil then
 		marker:SetAttribute(Attributes.LOOT_TABLE_NAME, lootTableName)
 	end
 
