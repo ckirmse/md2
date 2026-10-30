@@ -335,6 +335,10 @@ function DevTools.resetCoins(self: DevTools, player: Player)
 	playerAttributesManager:set(player, PlayerAttributeKeys.COINS, startData.coins)
 end
 
+function DevTools.resetDiamonds(self: DevTools, player: Player)
+	playerAttributesManager:set(player, PlayerAttributeKeys.DIAMONDS, 0)
+end
+
 function DevTools.getCoins(self: DevTools, player: Player, amount: any)
 	if not amount or amount < 1 then
 		print("invalid coin amount to get", amount)
@@ -1162,6 +1166,7 @@ end
 
 function DevTools.resetFullPlayerState(self: DevTools, player: Player)
 	self:resetCoins(player)
+	self:resetDiamonds(player)
 	self:resetPrimaryElementProgress(player)
 	self:resetPurchasedSlotUnlocks(player)
 	self:resetAllItems(player)
