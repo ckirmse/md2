@@ -21,7 +21,13 @@ type ScatterZoneManagerFields = {
 	zoneMap: { [number]: Types.ScatterZone },
 	refreshTimer: Timer.Timer?,
 	nextRefreshTime: number, -- server time of the next global refresh
+	refreshQueue: { Types.ScatterZone }, -- zones still waiting for the running refresh
+	refreshQueueIndex: number,
+	refreshDrainTimer: Timer.Timer?,
 }
+
+local REFRESH_STEP_SEC = 0.5
+local DEFAULT_REFRESH_EGGS_PER_TICK = 60
 
 export type ScatterZoneManager = typeof(setmetatable({} :: ScatterZoneManagerFields, ScatterZoneManager))
 
@@ -183,8 +189,18 @@ function ScatterZoneManager.spawnCosmicEggAt(self: ScatterZoneManager, zoneId: n
 	return zone:spawnEggAt(eggName, position, false)
 end
 
-function ScatterZoneManager.refreshAllZones(self: ScatterZoneManager)
-	for _, zone in self.zoneMap do
+-- refreshes queued zones until about `eggBudget` eggs have been respawned, so a refresh is spread over several ticks
+function ScatterZoneManager.refreshZonesBatch(self: ScatterZoneManager, eggBudget: number)
+	local respawned = 0
+	while self.refreshQueueIndex <= #self.refreshQueue and respawned < eggBudget do
+		local zone = self.refreshQueue[self.refreshQueueIndex]
+		self.refreshQueueIndex += 1
+
+		-- the zone may have been removed with its island since it was queued
+		if self.zoneMap[zone:getObjectId()] ~= zone then
+			continue
+		end
+
 		for _, itemId in zone:getSpawnedEggItemIds() do
 			local item = itemManager:getItemById(itemId)
 			if item then
@@ -193,6 +209,39 @@ function ScatterZoneManager.refreshAllZones(self: ScatterZoneManager)
 			zone:notifyEggTaken(itemId)
 		end
 		zone:topUp()
+		respawned += zone:getMaxEggsInZone()
+	end
+
+	if self.refreshQueueIndex > #self.refreshQueue then
+		self.refreshQueue = {}
+		self.refreshQueueIndex = 1
+	end
+end
+
+function ScatterZoneManager.beginRefreshDrain(self: ScatterZoneManager)
+	self.refreshDrainTimer = Timer.new(REFRESH_STEP_SEC, function()
+		self.refreshDrainTimer = nil
+		local eggsPerTick = eggSpawningData.refreshEggsPerTick
+		if type(eggsPerTick) ~= "number" or eggsPerTick < 1 then
+			eggsPerTick = DEFAULT_REFRESH_EGGS_PER_TICK
+		end
+		self:refreshZonesBatch(eggsPerTick)
+		if #self.refreshQueue > 0 then
+			self:beginRefreshDrain()
+		end
+	end)
+end
+
+function ScatterZoneManager.refreshAllZones(self: ScatterZoneManager)
+	-- queue every zone; a refresh still running from the last interval is simply restarted
+	local queue = {}
+	for _, zone in self.zoneMap do
+		table.insert(queue, zone)
+	end
+	self.refreshQueue = queue
+	self.refreshQueueIndex = 1
+	if #queue > 0 and not self.refreshDrainTimer then
+		self:beginRefreshDrain()
 	end
 
 	for _, item in itemManager:getItemsOnGroundByUserId(Constants.UNOWNED_USER_ID) do
@@ -253,6 +302,9 @@ function ScatterZoneManager.new(): ScatterZoneManager
 		zoneMap = {},
 		refreshTimer = nil,
 		nextRefreshTime = 0,
+		refreshQueue = {},
+		refreshQueueIndex = 1,
+		refreshDrainTimer = nil,
 	} :: ScatterZoneManagerFields, ScatterZoneManager)
 
 	return self

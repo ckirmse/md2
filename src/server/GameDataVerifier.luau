@@ -856,6 +856,11 @@ function GameDataVerifier.verifyEggSpawning(self: GameDataVerifier)
 		warn("GameDataVerifier: EggSpawning.targetTotalEggs must be a whole number >= 0 (0 or missing turns island egg zones off)", target)
 	end
 
+	local eggsPerTick = eggSpawningData.refreshEggsPerTick
+	if eggsPerTick ~= nil and (type(eggsPerTick) ~= "number" or eggsPerTick < 1) then
+		warn("GameDataVerifier: EggSpawning.refreshEggsPerTick must be a number >= 1 (eggs respawned per 0.5 s tick of a global refresh; missing uses 60)", eggsPerTick)
+	end
+
 	local zoneLootTables = eggSpawningData.islandZoneLootTables
 	if zoneLootTables == nil then
 		return

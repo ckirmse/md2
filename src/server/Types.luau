@@ -1279,6 +1279,7 @@ export type IslandManager = {
 
 export type ScatterZoneManager = {
 	beginGlobalRefreshLoop: (self: ScatterZoneManager) -> (),
+	beginRefreshDrain: (self: ScatterZoneManager) -> (),
 	createZoneFromMarker: (self: ScatterZoneManager, marker: Instance, isIslandZone: boolean?) -> ScatterZone?,
 	getAllZones: (self: ScatterZoneManager) -> { ScatterZone },
 	getEggWorldCounts: (self: ScatterZoneManager) -> { any },
@@ -1289,6 +1290,7 @@ export type ScatterZoneManager = {
 	pickCosmicEggSite: (self: ScatterZoneManager) -> (number?, Vector3?),
 	planIslandZoneEggs: (self: ScatterZoneManager, markers: { BasePart }) -> { { marker: BasePart, count: number } },
 	refreshAllZones: (self: ScatterZoneManager) -> (),
+	refreshZonesBatch: (self: ScatterZoneManager, eggBudget: number) -> (),
 	registerIslandZone: (self: ScatterZoneManager, marker: BasePart, count: number, lootTableName: string?) -> (),
 	removeZoneForMarker: (self: ScatterZoneManager, marker: Instance) -> (),
 	spawnCosmicEggAt: (self: ScatterZoneManager, zoneId: number, position: Vector3, eggName: string) -> number?,
