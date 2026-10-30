@@ -14,6 +14,7 @@ local Enums = require("@game/ReplicatedStorage/Shared/Enums")
 local RarityMath = require("@game/ReplicatedStorage/Shared/RarityMath")
 local dailyLoginData = require("@game/ServerScriptService/GameData/Control/DailyLogin")
 local eggLootTablesData = require("@game/ServerScriptService/GameData/Control/EggLootTables")
+local eggSpawningData = require("@game/ServerScriptService/GameData/Control/EggSpawning")
 local dragonProgressionData = require("@game/ServerScriptService/GameData/Control/DragonProgression")
 local playtimeData = require("@game/ServerScriptService/GameData/Control/Playtime")
 local rarityData = require("@game/ServerScriptService/GameData/Control/Rarities")
@@ -848,10 +849,33 @@ function GameDataVerifier.verifySpinWheel(self: GameDataVerifier)
 	end
 end
 
+-- Control/EggSpawning: the optional world egg target and the optional loot table per island distance zone
+function GameDataVerifier.verifyEggSpawning(self: GameDataVerifier)
+	local target = eggSpawningData.targetTotalEggs
+	if target ~= nil and (type(target) ~= "number" or target < 0 or target ~= math.floor(target)) then
+		warn("GameDataVerifier: EggSpawning.targetTotalEggs must be a whole number >= 0 (0 or missing turns island egg zones off)", target)
+	end
+
+	local zoneLootTables = eggSpawningData.islandZoneLootTables
+	if zoneLootTables == nil then
+		return
+	end
+	if type(zoneLootTables) ~= "table" then
+		warn("GameDataVerifier: EggSpawning.islandZoneLootTables must be a table from zone name (zone1 to zone4) to a standard egg loot table name")
+		return
+	end
+	for zoneName, lootTableName in zoneLootTables do
+		if type(lootTableName) ~= "string" or not eggLootTablesData.standardLootTables[lootTableName] then
+			warn("GameDataVerifier: EggSpawning.islandZoneLootTables names an unknown egg loot table", zoneName, lootTableName)
+		end
+	end
+end
+
 function GameDataVerifier.verifyAll(self: GameDataVerifier)
 	self:verifyVanity()
 	self:verifyLootTableItems()
 	self:verifyEggLootTables()
+	self:verifyEggSpawning()
 	self:verifyRarities()
 	self:verifyEggSizes()
 	self:verifyRebirthLevels()

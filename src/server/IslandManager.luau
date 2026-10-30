@@ -12,6 +12,7 @@ local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local objectDataStore = require("./ObjectDataStore")
 local plotsManager = require("./PlotsManager")
+local scatterZoneManager = require("./ScatterZoneManager")
 local Node = require("./Node")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -25,10 +26,16 @@ local utils = require("@game/ReplicatedStorage/Shared/utils")
 local lootTableManager = require("./LootTableManager")
 local Timer = require("./Timer")
 
+local eggSpawningData = require("@game/ServerScriptService/GameData/Control/EggSpawning")
 local nodeData = require("@game/ServerScriptService/GameData/Control/Nodes")
 
 -- 20 minutes per refresh
 local ERA_DURATION_SEC = 20 * 60
+
+-- the part inside an island template that marks where eggs may spawn on it (its X and Z size is the area)
+local EGG_ZONE_NAME = "EggZone"
+-- island egg zones are registered a few at a time, so a refresh does not spawn every egg in one frame
+local EGG_ZONES_PER_TICK = 25
 
 -- island records hold instances, bounds and object-id lists and are built dynamically, so they stay untyped
 type IslandManagerFields = {
@@ -40,6 +47,8 @@ type IslandManagerFields = {
 	critterMap: { [number]: any },
 	pendingDestroyIslandDatas: { any },
 	pendingCreateIslandParameters: { any },
+	pendingEggZones: { { marker: BasePart, locationName: string } }, -- markers of islands placed in this era, not planned yet
+	eggZoneQueue: { { marker: BasePart, count: number, lootTableName: string? } }, -- planned, waiting to be registered
 	attemptCreate: number,
 	failedCreate: number,
 	successfulCreate: number,
@@ -156,6 +165,59 @@ function IslandManager.configureIslandAsCritter(self: IslandManager, islandData:
 	obj.Parent = workspace
 end
 
+-- remembers the EggZone markers of a new island; they are planned together once the era's islands are all placed
+function IslandManager.collectEggZones(self: IslandManager, islandData: any, locationName: string?)
+	local island = islandData.island
+	if not island then
+		return
+	end
+
+	for _, marker in utils.getAllDescendantsByName(island, EGG_ZONE_NAME) do
+		if marker:IsA("BasePart") then
+			table.insert(islandData.eggZoneMarkers, marker)
+			table.insert(self.pendingEggZones, { marker = marker, locationName = locationName or "" })
+		end
+	end
+end
+
+-- splits Control/EggSpawning.targetTotalEggs over the markers of the islands that were placed, by area
+function IslandManager.planPendingEggZones(self: IslandManager)
+	local entries = self.pendingEggZones
+	self.pendingEggZones = {}
+
+	local alive: { { marker: BasePart, locationName: string } } = {}
+	local markers: { BasePart } = {}
+	for _, entry in entries do
+		if entry.marker:IsDescendantOf(workspace) then
+			table.insert(alive, entry)
+			table.insert(markers, entry.marker)
+		end
+	end
+
+	local plan = scatterZoneManager:planIslandZoneEggs(markers)
+	local zoneLootTables: { [string]: string }? = eggSpawningData.islandZoneLootTables
+	for index, planned in plan do
+		if planned.count <= 0 then
+			continue
+		end
+		table.insert(self.eggZoneQueue, {
+			marker = planned.marker,
+			count = planned.count,
+			lootTableName = zoneLootTables and zoneLootTables[alive[index].locationName],
+		})
+	end
+end
+
+function IslandManager.registerEggZonesBatch(self: IslandManager, batchSize: number)
+	local index = 1
+	while #self.eggZoneQueue >= 1 and index <= batchSize do
+		local planned = self.eggZoneQueue[#self.eggZoneQueue]
+		self.eggZoneQueue[#self.eggZoneQueue] = nil
+		scatterZoneManager:registerIslandZone(planned.marker, planned.count, planned.lootTableName)
+		index += 1
+	end
+end
+
 local function doIslandDatasIntersect(a: any, b: any): boolean
 	local extraSpace = Vector3.new(5, 5, 5)
 
@@ -182,6 +244,7 @@ function IslandManager.createIslandDataFromIsland(self: IslandManager, island: a
 		nodeObjectIds = {},
 		chestObjectIds = {},
 		critterObjectIds = {},
+		eggZoneMarkers = {},
 	}
 
 	return islandData
@@ -291,6 +354,7 @@ function IslandManager.tryCreateIsland(self: IslandManager, lootTableName: strin
 		if not lootEntry.result.critterTypeLootName then
 			self:createNodesOnIsland(islandData, lootEntry.result.nodeTypeLootName, random)
 			self:createChestsOnIsland(islandData, lootEntry.result.chestTypeLootName, random)
+			self:collectEggZones(islandData, lootEntry.result.locationName)
 		end
 
 		table.insert(self.islandDatas, islandData)
@@ -537,6 +601,9 @@ function IslandManager.destroyPendingIslandsBatch(self: IslandManager, batchSize
 		local islandData = self.pendingDestroyIslandDatas[#self.pendingDestroyIslandDatas]
 
 		local island = islandData.island
+		for _, marker in islandData.eggZoneMarkers or {} do
+			scatterZoneManager:removeZoneForMarker(marker)
+		end
 		if island then
 			island:Destroy()
 		end
@@ -656,6 +723,14 @@ function IslandManager.createPollTimer(self: IslandManager)
 				end
 			end
 
+			-- eggs go onto the islands only once the era's islands are all placed, so the target can be split by area
+			if #self.pendingCreateIslandParameters == 0 and #self.pendingEggZones > 0 then
+				self:planPendingEggZones()
+			end
+			if #self.eggZoneQueue > 0 then
+				self:registerEggZonesBatch(EGG_ZONES_PER_TICK)
+			end
+
 			self:createPollTimer()
 		end
 	)
@@ -664,6 +739,18 @@ end
 function IslandManager.init(self: IslandManager)
 	if not gameController:areProceduralIslandsEnabled() then
 		return
+	end
+
+	if scatterZoneManager:getTargetTotalEggs() > 0 then
+		local missing = {}
+		for _, template in Islands:GetChildren() do
+			if not utils.findFirstDescendant(template, EGG_ZONE_NAME) then
+				table.insert(missing, template.Name)
+			end
+		end
+		if #missing > 0 then
+			warn("IslandManager: island templates without an " .. EGG_ZONE_NAME .. " part (no eggs spawn on them):", table.concat(missing, ", "))
+		end
 	end
 
 	self:updateIslands()
@@ -689,6 +776,8 @@ function IslandManager.new(): IslandManager
 
 		pendingDestroyIslandDatas = {},
 		pendingCreateIslandParameters = {},
+		pendingEggZones = {},
+		eggZoneQueue = {},
 
 		attemptCreate = 0,
 		failedCreate = 0,

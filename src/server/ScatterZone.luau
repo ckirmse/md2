@@ -62,6 +62,21 @@ function ScatterZone.getSpawnedEggItemIds(self: ScatterZone): { number }
 	return ids
 end
 
+-- an island zone sits at any height, so the surface is found by a ray from the marker's own height,
+-- not from the fixed height the world ground raycast starts at
+local function findIslandSurface(worldPosition: Vector3): Vector3
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Include
+	raycastParams.FilterDescendantsInstances = { workspace:WaitForChild("Level"):WaitForChild("Islands") }
+
+	local hit = workspace:Raycast(worldPosition + Vector3.new(0, 40, 0), Vector3.new(0, -100, 0), raycastParams)
+	if hit then
+		return hit.Position
+	end
+
+	return worldPosition
+end
+
 function ScatterZone.getRandomPositionInBounds(self: ScatterZone): Vector3
 	local part = self:getObj() :: BasePart
 	local halfSize = part.Size / 2
@@ -71,6 +86,10 @@ function ScatterZone.getRandomPositionInBounds(self: ScatterZone): Vector3
 		(math.random() * 2 - 1) * halfSize.Z
 	)
 	local worldPosition = (part.CFrame * CFrame.new(localOffset)).Position
+	if self.isIslandZone then
+		return findIslandSurface(worldPosition)
+	end
+
 	return utils.getGroundPositionForLocation(worldPosition)
 end
 
@@ -160,22 +179,36 @@ function ScatterZone.notifyEggTaken(self: ScatterZone, itemId: number)
 	self.spawnedEggItemIds[itemId] = nil
 end
 
+-- destroys the eggs this zone still has on the ground (eggs already picked up are not tracked any more)
+function ScatterZone.clearEggs(self: ScatterZone)
+	for _, itemId in self:getSpawnedEggItemIds() do
+		local item = itemManager:getItemById(itemId)
+		if item then
+			itemManager:destroyItem(item)
+		end
+		self:notifyEggTaken(itemId)
+	end
+end
+
 function ScatterZone.destroy(self: ScatterZone)
 	-- self.obj is the original Studio-placed marker, never a clone -- it must never be destroyed here
 end
 
-function ScatterZone.new(objectData: any, marker: BasePart, objectId: number): ScatterZone
+function ScatterZone.new(objectData: any, marker: BasePart, objectId: number, isIslandZone: boolean?): ScatterZone
 	local self: ScatterZone = setmetatable({
 		objectName = objectData.name,
 		objectId = objectId,
 		obj = marker,
 		spawnedEggItemIds = {},
+		isIslandZone = isIslandZone == true,
 	} :: ScatterZoneFields, ScatterZone) :: any
 
 	self:getObj():SetAttribute(Attributes.OBJECT_ID, self:getObjectId())
 
 	local rawLootTableName = self:getObj():GetAttribute(Attributes.LOOT_TABLE_NAME) :: string?
-	if not rawLootTableName or not eggLootTablesData.standardLootTables[rawLootTableName] then
+	local isUnrecognized = not rawLootTableName or not eggLootTablesData.standardLootTables[rawLootTableName]
+	-- an island zone without a loot table of its own simply uses the default one
+	if isUnrecognized and (not isIslandZone or rawLootTableName ~= nil) then
 		warn(
 			"scatter zone has no recognized LootTableName attribute, falling back to default loot table",
 			self:getObjectName(),

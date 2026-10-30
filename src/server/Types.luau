@@ -655,11 +655,13 @@ export type Node = BaseObject & {
 
 export type ScatterZoneFields = BaseObjectFields & {
 	spawnedEggItemIds: { [number]: boolean },
+	isIslandZone: boolean,
 }
 
 -- inherited and overridden members come from BaseObject; only members new to ScatterZone are listed here
 export type ScatterZone = BaseObject & {
 	spawnedEggItemIds: { [number]: boolean },
+	isIslandZone: boolean,
 
 	findSpawnPosition: (self: ScatterZone) -> Vector3,
 	getCurrentEggCount: (self: ScatterZone) -> number,
@@ -669,6 +671,7 @@ export type ScatterZone = BaseObject & {
 	getMinEggSpacing: (self: ScatterZone) -> number,
 	getRandomPositionInBounds: (self: ScatterZone) -> Vector3,
 	getSpawnedEggItemIds: (self: ScatterZone) -> { number },
+	clearEggs: (self: ScatterZone) -> (),
 	notifyEggTaken: (self: ScatterZone, itemId: number) -> (),
 	spawnEggAt: (self: ScatterZone, eggItemName: string, surfacePosition: Vector3, isTracked: boolean) -> number?,
 	topUp: (self: ScatterZone) -> boolean,
@@ -1242,6 +1245,7 @@ export type IndexManager = {
 
 export type IslandManager = {
 	beginFadeOutPendingIslandsBatch: (self: IslandManager, batchSize: number, fadeDurationSec: number) -> (),
+	collectEggZones: (self: IslandManager, islandData: any, locationName: string?) -> (),
 	configureIslandAsCritter: (self: IslandManager, islandData: any, objectName: string, position: Vector3) -> (),
 	createChestsOnIsland: (self: IslandManager, islandData: any, chestTypeLootName: string?, random: Random) -> (),
 	createFixedIslands: (self: IslandManager, islandName: string) -> (),
@@ -1260,8 +1264,10 @@ export type IslandManager = {
 	isCritterObjectId: (self: IslandManager, objectId: number) -> boolean,
 	isNodeObjectId: (self: IslandManager, objectId: number) -> boolean,
 	markToDestroyIslands: (self: IslandManager) -> (),
+	planPendingEggZones: (self: IslandManager) -> (),
 	queueCreateIslandsParameters: (self: IslandManager) -> (),
 	refillNodes: (self: IslandManager) -> (),
+	registerEggZonesBatch: (self: IslandManager, batchSize: number) -> (),
 	restockFixedIslands: (self: IslandManager, islandName: string) -> (),
 	restockIslands: (self: IslandManager) -> (),
 	setTimerForNextEra: (self: IslandManager) -> (),
@@ -1272,14 +1278,18 @@ export type IslandManager = {
 
 export type ScatterZoneManager = {
 	beginGlobalRefreshLoop: (self: ScatterZoneManager) -> (),
-	createZoneFromMarker: (self: ScatterZoneManager, marker: Instance) -> (),
+	createZoneFromMarker: (self: ScatterZoneManager, marker: Instance, isIslandZone: boolean?) -> ScatterZone?,
 	getAllZones: (self: ScatterZoneManager) -> { ScatterZone },
 	getEggWorldCounts: (self: ScatterZoneManager) -> { any },
 	getNextRefreshTime: (self: ScatterZoneManager) -> number,
+	getTargetTotalEggs: (self: ScatterZoneManager) -> number,
 	getZoneByObjectId: (self: ScatterZoneManager, objectId: number) -> ScatterZone?,
 	init: (self: ScatterZoneManager) -> (),
 	pickCosmicEggSite: (self: ScatterZoneManager) -> (number?, Vector3?),
+	planIslandZoneEggs: (self: ScatterZoneManager, markers: { BasePart }) -> { { marker: BasePart, count: number } },
 	refreshAllZones: (self: ScatterZoneManager) -> (),
+	registerIslandZone: (self: ScatterZoneManager, marker: BasePart, count: number, lootTableName: string?) -> (),
+	removeZoneForMarker: (self: ScatterZoneManager, marker: Instance) -> (),
 	spawnCosmicEggAt: (self: ScatterZoneManager, zoneId: number, position: Vector3, eggName: string) -> number?,
 	stampNextRefreshTime: (self: ScatterZoneManager) -> (),
 }

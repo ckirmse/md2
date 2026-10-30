@@ -1285,6 +1285,9 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			if Iris.Button({ "Dump Plot Bounds" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("dumpPlotBounds")
 			end
+			if Iris.Button({ "Dump Island Egg Zones" }).clicked() then
+				RemoteEvents.TryDevTool:FireServer("dumpIslandEggs")
+			end
 			Iris.SameLine()
 			Iris.Text({ "Go To Plot" })
 			for i = 1, 6 do

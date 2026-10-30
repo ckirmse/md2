@@ -1271,6 +1271,27 @@ function DevTools.setEatFast(self: DevTools, player: Player, doEatFast: any)
 	playerData:setDevToolSetting("eatFast", doEatFast)
 end
 
+function DevTools.dumpIslandEggs(self: DevTools, player: Player)
+	local zones = scatterZoneManager:getAllZones()
+	local islandZones, islandCap, islandEggs, otherZones, otherEggs = 0, 0, 0, 0, 0
+	for _, zone in zones do
+		if zone.isIslandZone then
+			islandZones += 1
+			islandCap += zone:getMaxEggsInZone()
+			islandEggs += zone:getCurrentEggCount()
+		else
+			otherZones += 1
+			otherEggs += zone:getCurrentEggCount()
+		end
+	end
+
+	print(
+		"Island egg zones: target", scatterZoneManager:getTargetTotalEggs(),
+		"| island zones", islandZones, "with cap", islandCap, "and eggs on the ground", islandEggs,
+		"| other zones", otherZones, "with eggs", otherEggs
+	)
+end
+
 function DevTools.dumpPlotBounds(self: DevTools, player: Player)
 	local bounds = plotsManager:getMainPlotBounds()
 	print("Main plot bounds in plot space: x", bounds.minX, bounds.maxX, "z", bounds.minZ, bounds.maxZ)

@@ -33,10 +33,10 @@ local function pickRandomScatterZoneName(): string?
 	return zoneNames[math.random(1, #zoneNames)]
 end
 
-function ScatterZoneManager.createZoneFromMarker(self: ScatterZoneManager, marker: Instance)
+function ScatterZoneManager.createZoneFromMarker(self: ScatterZoneManager, marker: Instance, isIslandZone: boolean?): Types.ScatterZone?
 	if not marker:IsA("BasePart") then
 		warn("egg scatter zone marker must be a BasePart, its Size defines the zone bounds", marker)
-		return
+		return nil
 	end
 
 	local zoneName = marker:GetAttribute(Attributes.SCATTER_ZONE_NAME) :: string?
@@ -46,18 +46,98 @@ function ScatterZoneManager.createZoneFromMarker(self: ScatterZoneManager, marke
 	end
 	if not zoneName then
 		warn("egg scatter zone marker has no ScatterZoneName override and no zone types are registered", marker)
-		return
+		return nil
 	end
 
 	local objectData = objectDataStore:getObjectDataByName(zoneName)
 	if not objectData then
 		warn("egg scatter zone marker references unknown zone type", zoneName, marker)
-		return
+		return nil
 	end
 
 	local objectId = gameController:getNextObjectId()
-	local zone = ScatterZone.new(objectData, marker :: BasePart, objectId)
+	local zone = ScatterZone.new(objectData, marker :: BasePart, objectId, isIslandZone)
 	self.zoneMap[objectId] = zone
+	return zone
+end
+
+-- the number of eggs the whole world should hold, from Control/EggSpawning; 0 means island zones are off
+function ScatterZoneManager.getTargetTotalEggs(self: ScatterZoneManager): number
+	local target = eggSpawningData.targetTotalEggs
+	if type(target) ~= "number" or target <= 0 then
+		return 0
+	end
+	return math.floor(target)
+end
+
+-- splits the egg target over the island markers by area; the largest remainders get the leftover eggs,
+-- so the total is exactly the target (a marker may get 0)
+function ScatterZoneManager.planIslandZoneEggs(self: ScatterZoneManager, markers: { BasePart }): { { marker: BasePart, count: number } }
+	local target = self:getTargetTotalEggs()
+	local plan: { { marker: BasePart, count: number } } = {}
+	if target <= 0 or #markers == 0 then
+		return plan
+	end
+
+	local totalArea = 0
+	for _, marker in markers do
+		totalArea += marker.Size.X * marker.Size.Z
+	end
+	if totalArea <= 0 then
+		return plan
+	end
+
+	local fractions: { { index: number, fraction: number } } = {}
+	local assigned = 0
+	for index, marker in markers do
+		local exact = target * (marker.Size.X * marker.Size.Z) / totalArea
+		local whole = math.floor(exact)
+		plan[index] = { marker = marker, count = whole }
+		assigned += whole
+		table.insert(fractions, { index = index, fraction = exact - whole })
+	end
+
+	table.sort(fractions, function(a, b)
+		return a.fraction > b.fraction
+	end)
+	for rank = 1, math.min(target - assigned, #fractions) do
+		local entry = plan[fractions[rank].index]
+		entry.count += 1
+	end
+
+	return plan
+end
+
+-- turns an island's EggZone marker into a scatter zone holding `count` eggs
+function ScatterZoneManager.registerIslandZone(self: ScatterZoneManager, marker: BasePart, count: number, lootTableName: string?)
+	if count <= 0 or not marker:IsDescendantOf(workspace) then
+		return
+	end
+
+	-- the marker is only an area: keep it out of the ground raycasts and out of the way
+	marker.Anchored = true
+	marker.CanCollide = false
+	marker.CanQuery = false
+	marker.CanTouch = false
+	marker.Transparency = 1
+
+	marker:SetAttribute(Attributes.MAX_EGGS_IN_ZONE, count)
+	if lootTableName then
+		marker:SetAttribute(Attributes.LOOT_TABLE_NAME, lootTableName)
+	end
+
+	self:createZoneFromMarker(marker, true)
+end
+
+-- removes the zone built on this marker, with the eggs it still holds
+function ScatterZoneManager.removeZoneForMarker(self: ScatterZoneManager, marker: Instance)
+	for objectId, zone in self.zoneMap do
+		if zone:getObj() == marker then
+			zone:clearEggs()
+			self.zoneMap[objectId] = nil
+			return
+		end
+	end
 end
 
 function ScatterZoneManager.getZoneByObjectId(self: ScatterZoneManager, objectId: number): Types.ScatterZone?
