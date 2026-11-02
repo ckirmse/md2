@@ -78,13 +78,36 @@ Consequences:
 
 ## Plot Layout
 
-A plot's position is data: an `Origin` attachment (tag `Origin`, attribute `Index`) per plot in the level, read by `PlotHelpers.getPlotCFrame`. The template for every plot is
-`Level.PerPlotElements`, authored at plot 1's real position; `PlotsManager` re-poses it for plot N with `origin_N * origin_1:Inverse() * template`, so a plot may be moved and rotated
-(yaw only) by moving its attachment, and anything authored at plot 1 (template, `Origin 1`, egg slot markers, signs, weather templates) must move together as one group.
-The six origins sit on one circle of radius 157.72 around the hub centre, 60 degrees apart (plot 1 at 180 degrees, then 120, 60, 0, -60, -120; yaw 90, 150, -150, -90, -30, 30), all at Y -0.79 (2026-10-30). The plots cannot move closer: each plot's vanity land (about 61 studs either side of its axis) and expansion area (-97 to +107) are cut for this ring, and inside a ring radius of about 90 (land) or 165 (expansions) neighbouring plots overlap. The hub (`Level.Main.HubPlatform`, radius 125, top at y -0.4, rebuilt 2026-10-30) is a voxel disc: `HubCore` is a copy of the plot's land mesh (`MAIN_PLOT_INNER`'s `InnerPart`) with the lane's `TextureID` (`rbxassetid://108621965206010`, which turns the green mesh turquoise), scaled to 1.31 of the enlarged size and shifted so its footprint centroid is on the hub centre; `HubRim` is one union of row boxes in 10.2-stud cells that fills the circle out to radius 125 (cells whose far corner would pass the pad face at radius 130 are dropped, so nothing sticks out past the pads, and no corner cells are added: an earlier corner fill pushed cells out to radius 135 beside the pads at the diagonal plots and made a lopsided V edge that overlapped the bridge; top 0.1 below the core so the core always wins where they overlap) plus six landing pads, one per plot axis: slabs 3 cells (30 studs) wide whose straight outer face is at radius 130 (they exist because the stair edge of a voxel circle is a sawtooth at the 60-degree plots and showed holes either side of the bridge end); `HubRimUnder` is the brown underside (no collision). It was 158 (8 lane-mesh steps), then 79, 99, 114 and 125 by the user's requests; the older 8-step hub and its docks are kept in `ServerStorage.HubBackup`. Rejected for the hub: a plain cylinder (not voxel), tiling the plot mesh (it is not tileable), the AI mesh generator (smooth, wrong size and colour), tiling the lane mesh (bumpy seams), a plot ring radius below about 158. The voxel meshes' bounding boxes are taller than their walkable surface because of surface tufts, so measure heights with a raycast, not with `Position.Y + Size.Y / 2` (the plot mesh's top is flat). Each bridge is the template `Level.MergePlot.Bridge`, rebuilt 2026-10-30 as one continuous sagging rope bridge from the land edge (local z -29) to the landing pad (local z +34.4, about 62 studs against the original 31): 17 cross planks along a parabola (sag 7, end slope about 28 degrees, each plank tilted to the tangent), 2 flat landing planks whose outer end touches the pad's face, and post pairs at the land end, the middle and the pad face (local z 26.2, never on the pad itself). The first extension (flat planks after the original short bridge) was rejected by the user as ugly, and the bridge cannot be shorter than the gap from the plot ring (157.72, fixed by the plots' size) to the hub pad (130). Plank top at the landing is -0.55 (0.05 under the rim, 0.15 under the core) and each plot's land is about level with the hub (origin Y -0.79 puts the land at -0.37). The origins' earlier hand-tuned heights (1.61 and -0.39 and so on) were replaced by this one value because the new hub is flat. If the hub is resized, rebuild the pads and the bridge to the new edge (the bridge's length is `RHO - (padFace + 0.3 - 7)` from its first plank). The player name sign (`PerPlotElements.PlayerName_Sign`) stands on the pad beside the bridge's hub end (plot-local x 10, z 31, bottom on the pad top). A 2D check of the plot, vanity-land and expansion boxes found the expansion areas of neighbouring plots overlap below a ring radius of about 155, so the ring cannot close in to shorten the bridge; a larger hub is the way to shorten it. Never leave preview copies of the bridge in `Level`: `PlotsManager.init` clones plot 1's bridge for every other plot at startup. When moving part of the plot kit in Studio by script, use `PivotTo`, not `CFrame =`: setting `CFrame` moves only that part and leaves child parts behind (the Affinity displays' `IconPart` and `IconPartBack` were left about 209 studs away that way); the runtime clones are placed with `PivotTo`, which moves descendants. Procedural islands (`IslandManager`: islands with crystal nodes, chests and critters, refreshed every 20 minutes) run when `proceduralIslandsEnabled` is true in `GameController.defaultGameConfigSnapshot` (on since 2026-10-29, read at startup, not in the remote config). The same table holds `crystalNodesEnabled` and `crittersEnabled`, both false: with them off the islands and their chests still appear, but no crystal nodes are put on them and critter rows are skipped (the loot roll is retried). They are placed in plot space behind each plot (`Control/Nodes.islandLocationsPlot`, zones starting 200 studs out) from the loot tables under `LootTables/Islands`, and are only checked against each other, not against plots or the hub. The old temporary egg ground (`Level.TempEggGround`) and its 10 static scatter zones were removed on 2026-11-02, so every egg now comes from the island zones. **Eggs on the islands:** a part named `EggZone` inside an island template in `GameAssets.Islands` (its X and Z size is the spawn area; name it, do not tag it `EggScatterZone`) makes that island hold eggs. When `Control/EggSpawning.targetTotalEggs` is a positive number, `IslandManager` collects the markers of the islands placed in an era and, once the whole queue is placed, `ScatterZoneManager.planIslandZoneEggs` splits the target over them by area (largest remainder, so the total is exactly the target); `registerIslandZone` then turns each marker into a scatter zone with that cap, 25 zones per poll tick. The zone is removed with its eggs when the island is destroyed (`removeZoneForMarker`). The global egg refresh (`Control/EggSpawning.globalRefreshSec`) is batched: `refreshAllZones` queues every zone and `refreshZonesBatch` destroys and respawns zones every 0.5 s until about `Control/EggSpawning.refreshEggsPerTick` eggs have been respawned (default 60 when missing or invalid; the verifier warns), instead of all in one frame. An island zone raycasts from its own height onto `Level.Islands` (the world ground ray starts at y = 80 and would miss high islands). Optional `Control/EggSpawning.islandZoneLootTables = { zone1 = "<standard egg loot table>", ... }` picks the loot table by the island's distance zone; a `LootTableName` attribute set on an `EggZone` part in the template wins over it, so one zone of one island type can have its own table (an empty attribute counts as unset; a misspelt name warns and uses `DefaultStandardLoot`). Missing or 0 target: no island zones. Dev tool `dumpIslandEggs` (client button "Dump Island Egg Zones"). The hub's centre is the invisible part `Level.Main.HubPlatform.Center` (`PlotsManager.getHubCenter`, read at startup; the middle of the plot origins stands in with a warning if it is missing). The egg carry time limit (pickup point) and the hatch time (the egg's spawn point, `Attributes.SOURCE_POSITION`) are both measured from it, flat (x, z), so neither depends on the player's plot. The world shops (BuyStore, SellStore, DragonSellStore, JunkStore, the DragonMaster, Premium, Vanity and Mutation stores) are templates under `ReplicatedStorage.GameAssets.MainElements`: each client store module clones its template into `workspace` in `initWorldInterface` and leaves it where it was authored, so their positions are Studio data only (the greeting and auto-open distances read the clone's own position). They are arranged around the hub centre, 43 to 84 studs from it (inside the radius-125 hub). Templates outside the level are authored in plot 1's world space too and are converted through `Origin1`, so they move with it: `GameAssets.Land.Plot` and `Land.Expansions` (vanity land, fences, expansions and the expansion bounds measured at startup), `ReplicatedStorage.Weather.<event>.MergePlot` (puddles and clouds per plot) and `GameAssets.Fixtures.LuckBillboard`. World-level pieces (`Weather.<event>.Main`, the egg slot template, the dragon balloon) are not converted this way.
-Inside-the-plot tests use a box measured once in plot space (`PlotsManager.mainBounds` / `expansionBounds`): a world point is moved into the plot's space first, so rotation is safe.
-Tagged level objects (`Origin`, `EndCap`, `EggScatterZone`) are looked up with `utils.getTaggedInWorkspace`, because `CollectionService:GetTagged` covers the whole game and a backup copy of `Level` kept in `ServerStorage` would otherwise be found too (it made plots 1 to 3 use the backup's origins). Startup warns if an origin is tilted. Dev tool `dumpPlotBounds` (client button next to "Go To Plot") prints each plot's origin, yaw and world corners. Ground raycasts only hit
-`workspace.Level`, so walkable platforms must live under it.
+A plot's position is data: an `Origin` attachment (tag `Origin`, attribute `Index`) per plot, read by `PlotHelpers.getPlotCFrame`. The template for every plot is `Level.PerPlotElements`, authored at plot 1's real position; `PlotsManager` re-poses it for plot N with `origin_N * origin_1:Inverse() * template`. A plot moves and rotates (yaw only) with its attachment, and everything authored at plot 1 (template, `Origin 1`, egg slot markers, signs, weather templates) must move together as one group.
+
+- **Ring:** the six origins sit on one circle around the hub centre, 60 degrees apart, at the same Y. The ring cannot close in: expansion areas of neighbouring plots overlap below a radius of about 155 (land below about 90). A larger hub is the way to shorten the walk.
+- **Templates converted through `Origin1`:** `GameAssets.Land.Plot` and `Land.Expansions`, `ReplicatedStorage.Weather.<event>.MergePlot`, `GameAssets.Fixtures.LuckBillboard`. World-level pieces (`Weather.<event>.Main`, the egg slot template, the dragon balloon) are not.
+- **Bounds:** inside-the-plot tests use a box measured once in plot space (`PlotsManager.mainBounds`/`expansionBounds`); a world point is moved into plot space first, so rotation is safe.
+- **Tagged level objects** (`Origin`, `EndCap`, `EggScatterZone`) are found with `utils.getTaggedInWorkspace`, because `CollectionService:GetTagged` also returns a backup copy of `Level` kept in `ServerStorage`. Startup warns about a tilted origin. Dev tool `dumpPlotBounds` (client button next to "Go To Plot") prints each plot's origin, yaw and world corners. Ground raycasts only hit `workspace.Level`, so walkable platforms must live under it.
+- **Hub centre:** the invisible part `Level.Main.HubPlatform.Center` (`PlotsManager.getHubCenter`; the middle of the origins stands in with a warning if missing). The egg carry limit (pickup point) and hatch time (the egg's `Attributes.SOURCE_POSITION`) are measured from it, flat (x, z), so neither depends on the player's plot.
+- **World shops** (BuyStore, SellStore, DragonSellStore, JunkStore, DragonMaster, Premium, Vanity, Mutation) are templates under `ReplicatedStorage.GameAssets.MainElements`. Each client store module clones its template into `workspace` in `initWorldInterface` and leaves it where it was authored, so positions are Studio data only.
+- **Moving plot parts by script:** use `PivotTo`, not `CFrame =` (setting `CFrame` leaves child parts behind).
+
+## Hub and Bridges
+
+`Level.Main.HubPlatform` is a voxel disc: `HubCore` (the plot land mesh with the lane texture), `HubRim` (a union of row boxes) with six landing pads, one per plot axis, and `HubRimUnder` (underside, no collision). Each bridge is the template `Level.MergePlot.Bridge`, a sagging rope bridge from the plot's land edge to the pad. `PlotsManager.init` clones plot 1's bridge for every other plot, so never leave preview copies of it in `Level`. A bridge cannot be shorter than the gap from the ring to the pads; if the hub is resized, rebuild the pads and bridge to the new edge. `PerPlotElements.PlayerName_Sign` stands on the pad beside the bridge. The voxel meshes' bounding boxes are taller than their walkable surface (surface tufts), so measure heights by raycast. The older hub is in `ServerStorage.HubBackup`.
+
+## Procedural Islands and Eggs
+
+**Islands:** `IslandManager` builds islands behind each plot (plot space, `Control/Nodes.islandLocationsPlot`) from `LootTables/Islands` and replaces all of them every 20 minutes. They are only checked against each other. Switches live in `GameController.defaultGameConfigSnapshot` (code defaults, read at startup, not remote config): `proceduralIslandsEnabled` (true); `crystalNodesEnabled`, `crittersEnabled` (false: no crystal nodes, critter rows skipped and the roll retried); `islandChestsEnabled` (false: chest islands still spawn but `createChestsOnIsland` creates no chests); `islandVanityEggsEnabled` (true); `chestIslandsEnabled` (true: the vanity gnome, see Dev and Support Tooling).
+
+**Island eggs:** a part named `EggZone` (not tagged `EggScatterZone`) inside an island template in `GameAssets.Islands` makes that island hold eggs; its X and Z size is the spawn area. With `Control/EggSpawning.targetTotalEggs` > 0, `IslandManager` collects the era's markers and, once all islands are placed, `ScatterZoneManager.planIslandZoneEggs` splits the target over them by area (largest remainder, exact total); `registerIslandZone` turns each into a scatter zone with that cap, 25 per poll tick. A zone is removed with its eggs when its island is destroyed. Zones raycast from their own height onto `Level.Islands`. Static `EggScatterZone` markers in `Level` are still supported (none exist now). Missing or 0 target: no island zones.
+- **Refresh:** `Control/EggSpawning.globalRefreshSec` triggers a batched refresh: `refreshAllZones` queues all zones and `refreshZonesBatch` respawns them every 0.5 s until about `refreshEggsPerTick` eggs are done (default 60; the verifier warns on a bad value).
+- **Loot tables:** `Control/EggSpawning.islandZoneLootTables = { zone1 = "<standard egg loot table>", ... }` picks a table by the island's distance zone. A `LootTableName` attribute on an `EggZone` part wins (empty counts as unset; a misspelt name warns and uses `DefaultStandardLoot`).
+- **Part attributes:** `ScatterZoneName` picks the scatter zone object (random if unset; both existing ones use spacing 12); `MinEggSpacing` overrides the spacing.
+- **Dev tool** `dumpIslandEggs` (client button "Dump Island Egg Zones").
+
+**Vanity eggs** (switch `islandVanityEggsEnabled`) are eggs that hatch into items. A dragon egg object with `vanityLootTableName` (and no `hatchLootTableName`) is one.
+- **Placement:** a chest-island row in `LootTables/Islands` may carry `vanityEggTypeLootName` beside `chestTypeLootName`. `IslandManager.createVanityEggsOnIsland` rolls that table (results are vanity egg object names) for each `ChestSpawn` attachment and places an unowned world egg there, spawn point stamped, so carry and hatch times work as for any island egg. No keys.
+- **Pickup prompt:** the egg carries `Attributes.SOURCE_ISLAND_EGG`, which `ClientScatterZoneManager` accepts as an eligible source. It is not `FREE_FOR_PICKUP`, because the global refresh destroys those.
+- **Lifetime:** destroyed with its island if still on the ground, unowned and not carried.
+- **Hatching** (`DragonEgg.finishVanityHatching`) rolls `vanityLootTableName` (no luck bias, mutation, traits or size) and sends the items to the backpack like an opened chest.
+- **Excluded from** the Index entries and discovery, the radar and the Eggs In World panel.
 
 ## Rojo Layout
 
@@ -299,7 +322,7 @@ migration path from the pre-ProfileStore format in `GameController` player-join.
   starting with `_` and `init`/`initClass`, then dispatches to `devTools[command]`. Adding a dev
   command is just adding a method to `DevTools`.
 - The vanity gnome (the box shown while vanity is locked, the gnome once it is unlocked, placed at `Level.Main.VanityGnome<N>`) is only created when the config flag
-  `chestIslandsEnabled` is true (default true since 2026-10-30 in `GameController.defaultGameConfigSnapshot`, because vanity is live). The chest-themed island rows in `LootTables/Islands` are no longer gated by it, so those islands spawn, but `islandChestsEnabled` (false in the same table, read by `IslandManager.createChestsOnIsland`) keeps their chests from being created. **Vanity eggs** are the egg version of those chests, behind the code switch `islandVanityEggsEnabled` (true since 2026-11-02 in the same table, `areIslandVanityEggsEnabled`): a dragon egg object with `vanityLootTableName` set (and no `hatchLootTableName`) is a vanity egg. A chest-island row in `LootTables/Islands` may carry `vanityEggTypeLootName` beside `chestTypeLootName`; `IslandManager.createVanityEggsOnIsland` rolls that table (its results are vanity egg object names) for each `ChestSpawn` attachment and puts the egg there as a plain unowned world egg (spawn point stamped, so carry and hatch times work as for any island egg; keys are not used). It is stamped `Attributes.SOURCE_ISLAND_EGG`, which `ClientScatterZoneManager` accepts like a scatter-zone source when it decides whether the "Pick Up Egg" prompt is enabled (without it the egg had no prompt); it is deliberately not `FREE_FOR_PICKUP`, because the global egg refresh destroys those. It is tracked per island and destroyed with the island if it is still on the ground, unowned and not being carried. Hatching it (`DragonEgg.finishVanityHatching`) rolls `vanityLootTableName` (no luck bias, no mutation, traits or size) and sends the items to the backpack like an opened chest. Vanity eggs are left out of the Index entries and discovery, the radar and the Eggs In World panel. The client dev panel checkbox "Show Vanity Gnome" (`DevTools.setShowVanityGnome`,
+  `chestIslandsEnabled` is true (see "Procedural Islands and Eggs" for the island switches). The client dev panel checkbox "Show Vanity Gnome" (`DevTools.setShowVanityGnome`,
   a per-player dev setting) shows it anyway and refreshes it at once; unchecking removes it.
 - `CustomerTools` / `ClientCustomerTools` — same shape over `TryCustomerTool`, for CS operations.
 - `ClientNetopsTools` — network metrics readout.
@@ -343,399 +366,129 @@ to the client:
 
 ## Deal Shop
 
-A config-driven shop of **deals** (bundles and single items) sold for coins or Robux, grouped into
-sections shown as tabs. It is separate from the coin `BuyStore` (era-restocked, driven by `buy` tables on
-item GameData) and from `ClientPremiumStore`/`StarterOffer` (the one-off starter-bundle chest). Files:
-`shared/DealShopCatalog.luau` (types and pure validation), `server/DealShopManager.luau`,
-`client/ClientDealShopManager.luau`, `client/ClientGiftingManager.luau`.
+Config-driven shop of deals (bundles, single items, gacha packs) sold for coins, Diamonds or Robux, grouped into section tabs. Separate from the coin `BuyStore` and from `ClientPremiumStore`/`StarterOffer`. Files: `shared/DealShopCatalog.luau` (types, pure validation), `server/DealShopManager.luau`, `client/ClientDealShopManager.luau`, `client/ClientGiftingManager.luau`.
 
-- **Config** lives in the Studio-only `ServerScriptService.GameData.Control.DealShop`
-  (`SECTIONS → deals → tiers → contents`); the field reference is a comment block at the top of that
-  script. A deal has 1–2 tiers, each priced in exactly one of coins (`coinCost`), Diamonds (`diamondCost`) or Robux (`productId`); contents are
-  `ITEM` (`objectName`, `count`), `COINS` (`amount`) or `DIAMONDS` (`amount`). Optional per-deal `giftable = false`,
-  `oneTimeOnly = true` (saved in `PlayerData.purchasedDealKeys`; never giftable), and
-  `startDate`/`endDate` (ISO 8601 UTC).
-- **Gacha deals** (`cardStyle = Enums.ShopCardStyle.GACHA`) sell packs of one premium dragon egg: 1–3 tiers,
-  each a single `ITEM` for the same egg with a growing `count`, all in one currency. The egg's GameData sets
-  `instantHatch = true` (it is ready the moment it is placed, then hatched with the usual hold-E) and a
-  `hatchLootTableName`; the card shows a grid of every dragon in that loot table with its odds. The odds shown
-  are the table's base odds, before plot and rebirth luck. Startup errors if the item is not a dragon egg with
-  a non-empty hatch loot table.
-- **Startup:** `DealShopManager:init` validates the config and errors (stopping the server) on a bad one:
-  catalog rules, every `objectName` exists and is deliverable, and no `productId` is already delivered by
-  another system (`GameController:isProductIdReserved` mirrors `tryGrantPlayerRobuxProductId` and must
-  stay in sync with it). A field name the shop does not know (for example `slashPrice`, which is `slashRobux`) only logs a warning naming the deal and the
-  known fields (`DealShopCatalog.findUnknownFields`; add a newly supported field to its `AUTHORED_*_FIELDS` list). The display copy for clients is built once and sent in `NotifyInit` as
-  `dealShopConfig` (with `purchasedDealKeys`); nothing is stored on workspace.
-- **Buying:** a coin or Diamond tier fires `TryBuyDeal(dealKey, tierIndex)`; the server checks availability and
-  balance, subtracts (Diamonds through `CurrencyGranter.trySpendDiamonds`), grants, refunds on total failure, and replies `NotifyDealPurchaseResult`. A Robux
-  tier prompts the dev product and the receipt flows
-  `ProcessReceipt → GameController:tryGrantPlayerRobuxProductId → DealShopManager:tryDeliverToPlayer`. A
-  gift (Robux tiers only) records a pending gift with `TryBeginGift`, the receipt grants the recipient,
-  and `TryClearGift` cancels it.
-- **Grant policy:** every content entry is attempted and one landing counts as granted, because retrying a
-  partial failure would duplicate items; items go through
-  `GameController:tryDeliverPurchasedItemToPlayer`. A Robux receipt for an unavailable deal is still
-  granted (the player already paid).
-- **Adding something to sell needs no code:** add a deal with `coinCost`, or create a developer product
-  and use its `productId`. A new content kind means editing `Enums.ShopContentKind`,
-  `DealShopCatalog.validateContent`, `DealShopManager.grantTier` (and `validateTierContents` /
-  `buildClientConfig` if it needs display data), and `ClientDealShopManager.fillContents`.
-- **Studio prerequisites:** RemoteEvents `TryBuyDeal`, `TryBeginGift`, `TryClearGift`,
-  `NotifyDealPurchaseResult`, `NotifyGiftReceived`; the config module; the `DealShop` and `Gifting`
-  ScreenGuis; and `DealShopFrame` → `DealShopButton` in the HUD ScreenGui (hidden during the FTUE). A
-  missing GUI only logs a warning and disables that part; a missing RemoteEvent or config module stops boot.
-- **GUI names the client finds** (a lookup that fails names the missing piece in the output):
-  `DealShop > Main > Title > Exit`; `Main > Scroll > BundleDealCardTemplate / SingleItemDealCardTemplate`
-  (an authored `GachaDealCardTemplate` is kept hidden for future gacha deals); optional
-  `Main > SectionTabs > SectionTabTemplate` (a TextButton; its Border-mode `UIStroke` marks the active
-  tab); `Main > ToolTip > ToolTipInfo`. Each card has `TitleTimer > DealTitle, TimeLimit`,
-  `Contents > Icon` (the tile template, with `NameText` and an optional `CountText`), and
-  `BuyTier1`/`BuyTier2` > `Purchase` (the button) > optional `Amount`, `Cost` (frame) > `RBX`, `Coin`, optional `Diamond` (a Diamond tier without one reuses `Coin` with its `DiamondImage` string attribute as the picture),
-  `Cost` (label), optional `PriceSlash`, plus a `Gift` button. A gacha card (`GachaDealCardTemplate`) holds its
-  buy buttons in `PurchaseTiers > BuyTier1..3`, shows the egg in `Gacha > Title / GachaAssetFrame`, and its
-  `Contents` row holds one authored `Frame` per rarity, named after the rarity (they are used as prize tile
-  templates; frames for rarities this project does not have are discarded).
-  `Gifting > Main > Title > Exit` and
-  `Main > Scroll > PlayerTemplate > PlayerName, PlayerAvatar, Select`.
-- **Stock and restock** (ported from the old buy store's era system): a deal can set `stock = { { count, percent }, ... }`; at each
-  restock the server rolls it (`count` rolls, each succeeding with `percent`%, seeded by the era and the deal key) into the units
-  **each player** can buy that restock (the roll is global, purchases are per player and saved as `PlayerData.dealShopPurchases = { era, counts }`,
-  discarded when the era changes). The config root needs `RESTOCK_SEC` (seconds between restocks) when any deal has stock; startup errors
-  otherwise. A coin purchase refuses ("That deal is out of stock") and rolls back if the grant fails; a gift is refused when out of stock and
-  counts against the buyer; a Robux receipt for a deal that is out of stock is still granted and still counts. `initData.dealShopStock` and
-  the RemoteEvent `NotifyDealShopStock` (created in Studio only when a deal has stock) carry `{ stock, purchases, nextRestockTime }`: to one
-  player after each purchase of a stock deal, to everyone at a restock (purchases empty). Clients never receive the `stock` list itself, only
-  `hasStock`. Cards optionally hold a `StockAmount` label (inside `TitleTimer`), `Main` an optional `RestockTimer` label; an out-of-stock tier shows "Sold out".
-  Dev tool `restockDealShop` (client section "Deal Shop") restocks now with a random roll. Not allowed on featured deals.
-- **Two-tier cards** (non-gacha) keep `BuyTier1` and `BuyTier2` authored at the same spot: the client slides `BuyTier1` left by its own width plus `TIER_GAP`
-  (`ClientDealShopManager.placeTiersSideBySide`), so the in-game price sits beside the Robux price; it warns when the first tier has more than
-  `MAX_CONTENTS_BESIDE_TIERS` (3) content tiles, which may then overlap the left button. One-tier cards are untouched.
-- **Current limits:** bundles are Robux-only by convention (not enforced); a two-tier single item must sell
-  the same item in both tiers but may differ in count, a two-tier bundle must grant identical contents; there
-  is no play-time window yet, and a purchased gacha egg is opened by placing and hatching it (no reveal screen).
+- **Config:** Studio-only `GameData.Control.DealShop` (`SECTIONS → deals → tiers → contents`; the field reference is a comment block at its top). A deal has 1–2 tiers, each priced in exactly one of `coinCost`, `diamondCost` or `productId` (Robux). Contents: `ITEM` (`objectName`, `count`), `COINS` (`amount`), `DIAMONDS` (`amount`). Optional per deal: `giftable = false`, `oneTimeOnly = true` (saved in `PlayerData.purchasedDealKeys`, never giftable), `startDate`/`endDate` (ISO 8601 UTC), `stock`.
+- **Card styles** (`Enums.ShopCardStyle`): BUNDLE, SINGLE_ITEM, GACHA. A two-tier single item sells the same item in both tiers (the count may differ); a two-tier bundle has identical contents; a two-tier deal is one Robux tier plus one coin or Diamond tier. Bundles are Robux-only by convention (not enforced).
+- **Gacha:** 1–3 tiers, each a single `ITEM` of the same egg with a growing `count`, all in one currency. The egg object sets `instantHatch = true` (ready when placed) and a `hatchLootTableName`; the card lists every dragon in that table with its base odds (before plot and rebirth luck). Startup errors if the item is not a dragon egg with a non-empty hatch loot table.
+- **Startup:** `DealShopManager:init` validates the config and errors on a bad one: catalog rules, every `objectName` exists and is deliverable, no `productId` already delivered by another system (`GameController:isProductIdReserved` mirrors `tryGrantPlayerRobuxProductId` and must stay in sync). Unknown field names only warn (`DealShopCatalog.findUnknownFields`; add new fields to its `AUTHORED_*_FIELDS`). The client copy is sent in `NotifyInit` as `dealShopConfig` with `purchasedDealKeys`.
+- **Buying:** a coin or Diamond tier fires `TryBuyDeal(dealKey, tierIndex)`. The server checks availability and balance, spends (Diamonds through `CurrencyGranter.trySpendDiamonds`), grants, refunds on total failure and replies `NotifyDealPurchaseResult`. A Robux tier prompts the dev product and the receipt flows `ProcessReceipt → GameController:tryGrantPlayerRobuxProductId → DealShopManager:tryDeliverToPlayer`. A gift (Robux tiers only) is recorded by `TryBeginGift`, granted to the recipient by the receipt and cancelled by `TryClearGift`.
+- **Grant policy:** every content entry is attempted and one landing counts as granted (retrying a partial failure would duplicate items). Items go through `GameController:tryDeliverPurchasedItemToPlayer`. A Robux receipt for an unavailable or out-of-stock deal is still granted.
+- **Stock and restock:** `stock = { { count, percent }, ... }` is rolled at each restock (`count` rolls at `percent`%, seeded by the era and the deal key) into units each player can buy. Purchases are per player (`PlayerData.dealShopPurchases = { era, counts }`, discarded on a new era). The config root needs `RESTOCK_SEC` when any deal has stock. An out-of-stock coin purchase is refused, a gift is refused, a tier shows "Sold out". `initData.dealShopStock` and `NotifyDealShopStock` carry `{ stock, purchases, nextRestockTime }` (clients get only `hasStock`, never the list). Dev tool `restockDealShop`. Not allowed on featured deals.
+- **Adding something to sell** needs no code: a deal with `coinCost`, or a dev product and its `productId`. A new content kind means editing `Enums.ShopContentKind`, `DealShopCatalog.validateContent`, `DealShopManager.grantTier` (plus `validateTierContents`/`buildClientConfig` if it needs display data) and `ClientDealShopManager.fillContents`.
+- **Studio prerequisites:** RemoteEvents `TryBuyDeal`, `TryBeginGift`, `TryClearGift`, `NotifyDealPurchaseResult`, `NotifyGiftReceived` (and `NotifyDealShopStock` when a deal has stock); the config module; ScreenGuis `DealShop` and `Gifting`; HUD `DealShopFrame` → `DealShopButton` (hidden in the FTUE). A missing GUI only warns; a missing RemoteEvent or config stops boot.
+- **GUI notes:** the ScreenGui is `DealShop` and the card templates are `BundleDealCardTemplate`, `SingleItemDealCardTemplate` and `GachaDealCardTemplate` (`DealShop > Main > Scroll`); a failed lookup names the missing piece in the output. A Diamond tier without a `Diamond` icon reuses `Coin` with its `DiamondImage` attribute. The gacha card holds one `Frame` per rarity in `Contents` as prize tile templates (frames for rarities this project lacks are discarded).
+- **Two-tier cards** (non-gacha) author `BuyTier1` and `BuyTier2` at the same spot; the client slides `BuyTier1` left by its width plus `TIER_GAP` (`placeTiersSideBySide`) and warns above `MAX_CONTENTS_BESIDE_TIERS` (3) content tiles.
+- **Limits:** a purchased gacha egg is opened by placing and hatching it (no reveal screen); there is no play-time window.
 
 ### Featured deal (HUD promo button)
 
-A HUD button promotes **one Robux deal at a time** from a designer-authored list, rotating on a timer. Ported from an imported
-package and kept faithful to it. Files: `shared/FeaturedDealCatalog.luau` (validation and the rotation math, pure),
-`DealShopManager.validateFeaturedDeals` / `getFeaturedConfig`, `client/ClientFeaturedDealManager.luau`, `client/ClientProductInfo.luau`
-(cached, shared Robux price lookup), `client/RainbowSweep.luau`. No save data, no remotes of its own.
+One Robux deal is promoted at a time on a HUD button, rotating. Files: `shared/FeaturedDealCatalog.luau` (validation, rotation math), `DealShopManager.validateFeaturedDeals`/`getFeaturedConfig`, `client/ClientFeaturedDealManager.luau`, `client/ClientProductInfo.luau` (cached Robux price lookup), `client/RainbowSweep.luau`.
 
-- **Config** is the Studio-only `GameData.Control.FeaturedDeals`: `rotationSec` (> 0) and `deals`, an ordered array of deals, each
-  with a `dealKey` (unique, and different from every Deal Shop `dealKey`), `title`, a non-empty `icon`, optional ISO `startDate` /
-  `endDate`, and exactly one Robux tier `{ productId, contents }` (contents as in the shop: `ITEM` or `COINS`). A featured deal cannot
-  set `oneTimeOnly`, `giftable`, `coinCost` or `cardStyle`. `deals = {}` is valid and hides the button. `DealShopManager.validateConfig`
-  errors at startup naming the deal; the server will not boot without the table or with a placeholder product id (0 is invalid).
-- **Rotation is a pure function of server time:** the slot is `floor(now / rotationSec) % #activeDeals`, over the deals whose window is
-  open, in list order (removing a deal shifts every later slot). Every player sees the same deal; there is no server state and no
-  per-player filter (`getActiveDeals` keeps the source's optional `isEligible` parameter, but nothing uses it: the source's only
-  filter was a coin-multiplier chain this game lacks). The client re-evaluates on a 1 s ticker.
-- **Delivery reuses the Deal Shop's receipt path:** each featured product id is registered in `tiersByProductId`, so
-  `ProcessReceipt` -> `tryGrantPlayerRobuxProductId` -> `DealShopManager:tryDeliverToPlayer` grants the contents and sends the
-  "purchased!" message. A featured deal may reuse a shop product id only when its contents are identical (compared field by field);
-  then the shop's own deal delivers it. Featured-only products are registered non-giftable, so `TryBeginGift` refuses them.
-  `GameController.isProductIdReserved` is checked for clashes with the other systems' ids.
-- **Flow:** the config (ISO dates turned into `startTime` / `endTime`) travels in `initData.featuredDeals`. Tapping fires
-  `TryClearGift` (an abandoned gift selection must not hijack the purchase) and prompts the product; there is no dialog.
-- **Button:** shows the icon (twitches every 2.5 s), the title with a rainbow sweep, and the live Robux price ("..." while loading,
-  "N/A" if not for sale; the button stays inactive until the price resolves). Price lookups for a rotation that moved on are discarded.
-- **GUI names the client finds:** HUD ScreenGui `ScreenGui` > `FeaturedDealFrame` (hidden during the FTUE) > `FeaturedDeal` (a
-  TextButton, hidden until a deal is active) with optional `Icon` (ImageLabel), `Title` (TextLabel), `Price` > `Cost` (TextLabel) and
-  `Shine` (any GuiObject, spun once every 8 s). Keep a UIListLayout out of the button's container or the icon twitch is invisible.
-- **Dev tool:** `dumpFeaturedDeals` prints the config the server sends and whether each product id is registered (client dev panel
-  section "Featured Deals"). Singleton managers cannot be required from the command bar (it builds a second copy), so use dev tools.
-- **Not tested:** a shared product id with a Robux store deal (the sample store deal is coin-priced) and a purchase with a real dev product.
+- **Config:** Studio-only `GameData.Control.FeaturedDeals`: `rotationSec` (> 0) and `deals`, an ordered array of `{ dealKey, title, icon, startDate?, endDate?, tier }`. `dealKey` is unique and differs from every shop `dealKey`; `icon` is non-empty; the tier is exactly one Robux tier `{ productId, contents }` (`ITEM` or `COINS`). A featured deal cannot set `oneTimeOnly`, `giftable`, `coinCost`, `cardStyle` or `stock`. `deals = {}` hides the button. A bad table or a product id of 0 stops boot.
+- **Rotation** is a pure function of server time: slot `floor(now / rotationSec) % #activeDeals` over the deals whose window is open, in list order. No server state, no per-player filter. The client re-evaluates every second.
+- **Delivery** reuses the shop's receipt path: each featured product id is registered in `tiersByProductId`. A featured deal may reuse a shop product id only with identical contents; featured-only products are non-giftable. The config travels in `initData.featuredDeals`. Tapping fires `TryClearGift` and prompts the product.
+- **Button:** icon (twitches every 2.5 s), title with a rainbow sweep, live Robux price ("..." while loading, "N/A" if not for sale; inactive until it resolves).
+- **GUI notes:** HUD `FeaturedDealFrame > FeaturedDeal` (a TextButton, hidden in the FTUE). Keep a UIListLayout out of the button's container or the twitch is invisible.
+- **Dev tool** `dumpFeaturedDeals` (client section "Featured Deals"). Singleton managers cannot be required from the command bar (it builds a second copy), so use dev tools.
 
 ## Egg Slots and the Dragon Limit
 
-Eggs incubate only in **egg slots** on the player's plot; dragons roam the open plot. Files:
-`server/EggSlotManager.luau`, `client/ClientEggSlotsManager.luau`, `shared/EggSlotConfig.luau`.
+Eggs incubate only in egg slots on the player's plot; dragons roam the open plot. Files: `server/EggSlotManager.luau`, `client/ClientEggSlotsManager.luau`, `shared/EggSlotConfig.luau`.
 
-- **Counts** come from `Control/Rebirth` per level: `eggSlots` (how many slots) and `dragonLimit` (how many
-  placed dragons). Level 0 uses `EggSlotConfig.EGG_SLOT_COUNT` / `DRAGON_LIMIT`; a missing value falls back to the
-  previous level's. `GameDataVerifier.verifyRebirthLevels` warns if either is missing or decreases. They reach the
-  client as the player attributes `EGG_SLOT_COUNT` / `DRAGON_LIMIT`.
-- **Slot models are spawned per plot**, only up to the owner's `eggSlots`, from the template
-  `GameAssets.Land.EggSlotTemplate` (needs a direct `Anchor` child; an optional `Hologram` part is toggled by the
-  client) at the hand-placed `EggSlotMarker<N>` parts in `Level.PerPlotElements` (plot 1's coordinates; the markers
-  are read and destroyed at startup). `EggSlotManager:syncEggSlotModels` runs whenever the count is published
-  (join, rebirth, data reset) and `PlayerData.loadSaveData` calls it before items load so a saved egg can be parked.
-- **Placing an egg** is only possible through the slot prompt: `TryPlaceEgg(itemId, slotIndex)` takes the egg the
-  player holds or the one in the ridden dragon's basket; `TryRemoveEgg(slotIndex)` returns an incubating egg to the
-  backpack (refused once it is ready to hatch). Tapping with a held egg is refused (`DragonEgg.getToolActivationItem`).
-  A slotted egg is tagged `Tags.SLOTTED_EGG` with `Attributes.EGG_SLOT_INDEX`, saved as `eggSlotIndex`, and
-  `PlayerData.eggSlots` maps slot to egg id (not saved; rebuilt on load).
-- **The dragon limit** counts dragons out of the backpack except the one being ridden. Releasing a dragon (which is
-  how you mount it) is never blocked; the limit is enforced on dismount (`RideMixin.notifyPlayerEndRideDragon`: a jump-off
-  inside the plot leaves the dragon there only if there is room, otherwise it goes to the backpack; put-away always goes
-  to the backpack) and on hatching (a hatched dragon goes to the backpack when full). Income and passive XP skip the
-  ridden dragon (it earns ride XP); `PlayerData.recomputeTotalDragonIncome` is refreshed when a dragon enters or leaves
-  the world or starts or stops being ridden.
-- **Studio prerequisites:** RemoteEvents `TryPlaceEgg`, `TryRemoveEgg`, `NotifyEggSlotsChanged`; the template and
-  markers above; `eggSlots` and `dragonLimit` on every `Control/Rebirth` level.
+- **Counts** come from `Control/Rebirth` per level: `eggSlots` and `dragonLimit`. Level 0 uses `EggSlotConfig.EGG_SLOT_COUNT`/`DRAGON_LIMIT`; a missing value falls back to the previous level's. `GameDataVerifier.verifyRebirthLevels` warns if either is missing or decreases. The client reads them as player attributes `EGG_SLOT_COUNT`/`DRAGON_LIMIT`.
+- **Slot models** are spawned per plot, up to the owner's `eggSlots`, from `GameAssets.Land.EggSlotTemplate` (needs a direct `Anchor` child; an optional `Hologram` part is toggled by the client) at the `EggSlotMarker<N>` parts in `Level.PerPlotElements` (plot 1's coordinates; read and destroyed at startup). `EggSlotManager:syncEggSlotModels` runs whenever the count is published; `PlayerData.loadSaveData` calls it before items load.
+- **Placing an egg** only works through the slot prompt: `TryPlaceEgg(itemId, slotIndex)` takes the held egg or the one in the ridden dragon's basket; `TryRemoveEgg(slotIndex)` returns an incubating egg to the backpack (refused once ready to hatch). Tapping with a held egg is refused. A slotted egg is tagged `Tags.SLOTTED_EGG` with `Attributes.EGG_SLOT_INDEX`, saved as `eggSlotIndex`; `PlayerData.eggSlots` (slot → egg id) is rebuilt on load.
+- **The dragon limit** counts dragons out of the backpack except the ridden one. Releasing (mounting) is never blocked; the limit applies on dismount (`RideMixin.notifyPlayerEndRideDragon`: a jump-off inside the plot leaves the dragon only if there is room, otherwise it goes to the backpack; put-away always goes to the backpack) and on hatching (a hatched dragon goes to the backpack when full). Income and passive XP skip the ridden dragon (it earns ride XP); `PlayerData.recomputeTotalDragonIncome` refreshes when a dragon enters or leaves the world or starts or stops being ridden.
+- **Studio prerequisites:** RemoteEvents `TryPlaceEgg`, `TryRemoveEgg`, `NotifyEggSlotsChanged`; the template and markers; `eggSlots` and `dragonLimit` on every `Control/Rebirth` level.
 
 ## Day and Night
 
-Day and night alternate on the server clock: a day of `dayDurationSec`, then a night of `nightDurationSec`, repeating. The phase is a pure function
-of `workspace:GetServerTimeNow()` (`shared/DayNightMath.luau`), so the server and every client agree with no state or remote, and every
-server shares the same phase. Files: `shared/DayNightMath.luau`, `server/DayNightManager.luau`, `client/ClientDayNightManager.luau`.
+A day of `dayDurationSec`, then a night of `nightDurationSec`, repeating. The phase is a pure function of `workspace:GetServerTimeNow()` (`shared/DayNightMath.luau`), so every server and client agree with no state or remote. Files: `shared/DayNightMath.luau`, `server/DayNightManager.luau`, `client/ClientDayNightManager.luau`.
 
-- **Config** is the Studio-only `GameData.Control.DayNight`: `isEnabled` (master switch: false keeps it day with the day look and no egg lights, for testing), `dayDurationSec` and `nightDurationSec` (each > 0, separate timers), `fadeSec` (>= 0, 0 = instant), `day` and `night` looks
-  (`clockTime` 0 to 24, `brightness`, `outdoorAmbient` Color3) and `eggLight` (`brightness`, `range`, `color`). `DayNightManager:init` errors (stops
-  the server) on a bad table; it travels in `initData.dayNight`.
-- **Client:** a 0.25 s `ClientTicker` computes the phase; at each flip it tweens `Lighting` (ClockTime, Brightness, OutdoorAmbient) over `fadeSec`
-  (the first call after join is instant). ClockTime tweens the short numeric way, so pick day/night values that look right going that way.
-  Eggs in the world (`Tags.DRAGON_EGG` under workspace) get a `NightUnderlight` PointLight at night; none in a backpack.
-- **HUD timer:** HUD ScreenGui `ScreenGui` > `DayNightFrame` (hidden when the cycle is disabled) with `TimerLabel` (time left in the current
-  phase, `m:ss`), optional `PhaseLabel` ("Day" / "Night") and optional `DayIcon` / `NightIcon` (one is visible at a time). A missing frame only warns.
-- **Server:** `dayNightManager:isNight()` is the gameplay check (the Starlight and Starlit rules will use it).
-- **Dev tools:** `setDayNightPhase("day"|"night")` and `resetDayNight` (client section "Day / Night") shift a dev-only offset kept in the
-  workspace attribute `Attributes.DAY_NIGHT_OFFSET_SEC`, which both sides read.
-- Weather lighting and the Starlight night lock are described under "Weather".
+- **Config:** Studio-only `GameData.Control.DayNight`: `isEnabled` (false keeps it day with no egg lights), `dayDurationSec`, `nightDurationSec` (each > 0), `fadeSec` (>= 0), `day` and `night` looks (`clockTime` 0–24, `brightness`, `outdoorAmbient`), `eggLight` (`brightness`, `range`, `color`). A bad table stops boot; it travels in `initData.dayNight`.
+- **Client:** a 0.25 s `ClientTicker` computes the phase; at each flip it tweens `Lighting` (ClockTime, Brightness, OutdoorAmbient) over `fadeSec` (instant on join). ClockTime tweens the short numeric way, so pick values that look right going that way. World eggs (`Tags.DRAGON_EGG` under workspace) get a `NightUnderlight` PointLight at night.
+- **HUD:** `ScreenGui > DayNightFrame` (hidden when disabled) with `TimerLabel` (`m:ss` left in the phase), optional `PhaseLabel`, `DayIcon`, `NightIcon`. A missing frame only warns.
+- **Server:** `dayNightManager:isNight()` is the gameplay check.
+- **Dev tools** (client section "Day / Night"): `setDayNightPhase("day"|"night")`, `resetDayNight`; they shift an offset kept in the workspace attribute `Attributes.DAY_NIGHT_OFFSET_SEC`, which both sides read.
 
 ## Weather
 
-Two weather systems exist; `Control/Weather.useLegacyWeather` picks one (read at startup, so changing it needs a restart).
+`Control/Weather.useLegacyWeather` picks one of two systems (read at startup).
 
-- **Legacy (`useLegacyWeather = true`):** `WeatherManager`, `WeatherDataStore` (a Lua table of Rain/Bloom/Wind/Heat), `ClientWeatherManager`. Several
-  events can run at once, rolled each 5-minute era; the effect on crops is switched off (commented out). Kept so the change can be reverted.
-- **v1.0 system (`useLegacyWeather = false`):** `shared/WeatherMath.luau` (pure: config validation and the era roll), `server/WeatherEventManager.luau`,
-  `client/ClientWeatherEventManager.luau`. **One weather at a time.** At each era boundary (`rollIntervalSec`) the events are rolled in list order, seeded by
-  the era, and the first success wins (`startChance` percent). An event with a start condition (`DAY`, `NIGHT`) that is not met at the boundary starts at the
-  next day/night flip inside the era, or is skipped. Its length is a random value between `durationMin` and `durationMax`. A server that boots mid-era joins
-  the weather in progress with the same end time.
-- **Config** is the Studio-only `GameData.Control.Weather`: `useLegacyWeather`, `rollIntervalSec` and `weatherEvents`, an array of `weather` (`Enums.Weather`),
-  `displayName`, `description`, `iconAssetId` (a string, empty for none), `startChance`, `durationMin`, `durationMax`, `startCondition`
-  (`Enums.WeatherStartCondition`), `trait` (`Enums.Trait`), `traitChance`, and optional `templatePath` (under `ReplicatedStorage.Weather`, with `Main` and
-  `MergePlot` folders like the legacy templates), `lighting = { brightness?, outdoorAmbient? }`, `lockNight`, `startMessage`, `strikeSpreadSec`, `cosmicEgg`.
-  `WeatherEventManager:init` errors (stops the server) on a bad table; the events and the running weather travel in `initData.weather` (nil in legacy mode)
-  and `NotifyWeatherUpdate` carries `{ isWeatherEvents = true, active = { weather, startTime, endTime } }`.
-- **Lighting and night lock:** the client never sets lighting itself. The running weather's `lighting` is laid over the day/night look by
-  `ClientDayNightManager:setWeatherLighting`, and `lockNight` (Starlight) holds the sky at night until the weather ends (`setNightLock` on the client,
-  `DayNightManager:setNightLocked` on the server, so `isNight()` is true meanwhile).
-- **HUD:** HUD ScreenGui `ScreenGui` > `WeatherFrame` (hidden when no weather) > `TemplateWeather` (kept hidden and cloned as `ActiveWeather`) with
-  `Icon` (ImageLabel), optional `Timer` (TextLabel, `m:ss`) and optional `Tooltip` (TextLabel, hover or tap). A missing piece only warns.
-- **Dev tools:** `startWeatherEvent(weather)` (ignores the roll and start condition) and `endWeatherEvent` (client section "Weather", above the legacy "Weather Control" checkboxes). The old
-  `activateWeather` / `deactivateWeather` only work in legacy mode.
-- **Traits:** each event gives its `trait` (`Enums.Trait`) to dragons and eggs. `MItem.traits` (a list, saved as `traits`, replicated as the JSON attribute
-  `Attributes.TRAITS`) is part of stack identity, shows in the visible name as `{Charged}` and is copied by clones. At event start every dragon and egg in the
-  world (placed, ridden, slotted, wild; not backpacks) rolls once at `traitChance`; each owner gets one message with the count. A wild egg that spawns while the
-  weather runs rolls too (`WeatherEventManager:notifyEggSpawned`, called by `ScatterZone`); a hatched dragon inherits the egg's traits. Nothing reads the traits
-  yet (the speed multiplier waits for the map). `ClientTraitGlowManager` puts a plain colour `Highlight` on traited dragons and eggs until there is trait art.
-- **Strike events (Thunderstorm and Starlight):** an event with `strikeSpreadSec` (shorter than `durationMin`; only valid for those two weathers) does
-  not grant its trait at once. Each winner of the start roll is struck at a random moment in the first `strikeSpreadSec` seconds: the server
-  (`WeatherEventManager:strike`) tags the replicated object `Tags.WEATHER_STRIKE_TARGET` and stamps `Attributes.WEATHER_STRUCK_AT` / `WEATHER_STRUCK_WEATHER`
-  (cleared after `WeatherStrike.CLEAR_SEC`), and grants the trait `WeatherStrike.TRAIT_DELAY_SEC[weather]` later (when the bolt hits) with the message
-  "Your <name> became <Trait>"; a target that left the world still gets the trait if the item exists. `ClientWeatherStrikeManager` plays the weather's
-  cinematic over the dragon's ghost model or the egg (stamps older than 2 s are ignored). Wild eggs spawned during the weather get the trait instantly.
-  `ClientThunderstormEffects` holds the Thunderstorm ambient effects (beams, particles, two spinning cloud rings, music loop) and the cloud-and-bolt strike,
-  ported from the imported package; the art is Studio-only under `ReplicatedStorage.GameAssets` (`Weather/Thunderstorm/...`, `ParticleEffects/ThunderstormLightning`
-  and `ThunderstormSparks`; a missing piece only warns and the trait still lands). `ClientWeatherSounds` plays the sounds (loops follow the background-music
-  option, one-shots the main sound-effects option). Dev tool `strikeMyDragon` (client section "Weather").
-  `ClientStarlightEffects` is the Starlight twin: beams, particles and a music loop while it runs, and a falling star (`ShootingStar`, aligned by the attachment in
-  its `Ball` part) that drops from `STAR_START_HEIGHT` above the target over the trait delay, then a `StarImpact` burst. Its art is all under
-  `GameAssets/Weather/ShootingStars` (the Thunderstorm lightning and sparks sit in the project's `GameAssets/ParticleEffects` instead).
-- **Cosmic eggs (Starlight only):** `cosmicEgg = { eggName, rollIntervalSec, chance, announcement? }` on the Starlight event (`eggName` is a dragon egg object, its
-  luck and size range are authored on that object). While Starlight runs, every `rollIntervalSec` one roll at `chance` percent, skipped while a Cosmic egg
-  from an earlier drop is still unclaimed. A drop picks a random scatter zone (weighted by area) and a point in it (`ScatterZoneManager:pickCosmicEggSite`), tells
-  every player, and puts an invisible marker part there tagged like a struck dragon, so the clients play the falling star with no new remote; the egg appears
-  `WeatherStrike.TRAIT_DELAY_SEC` later (`ScatterZone:spawnEggAt` with `isTracked = false`). It is not counted by the zone and the global egg refresh leaves it alone,
-  so it stays until someone picks it up (it still rolls Starlit like any wild egg). `WeatherEventManager` gets `scatterZoneManager` through `initClass`
-  (`ScatterZone` requires `WeatherEventManager`). Dev tool `dropCosmicEgg` (client section "Weather").
-- **Cosmic radar:** the egg object sets `isCosmic = true`; a radar object sets `targetsCosmic = true` (its `targetRarity` still sets the item's colour). Radars for a
-  rarity skip Cosmic eggs; the Cosmic radar finds only them, and refuses outside Starlight ("only works during Starlight", not consumed). Radar guidance is keyed
-  by a **radar kind** (`shared/RadarKind.luau`: the rarity, or `RadarKind.COSMIC` = 0) on the server, in `NotifyRadarTarget` and on the client; a held radar tool
-  carries `Attributes.RADAR_COSMIC`. Guidance runs to its duration even if Starlight ends.
-- **Temporary luck (placeholder):** `DragonEgg.computeLuckMultiplier` multiplies by a named local `temporaryLuckMultiplier`, fixed at 1 until luck faeries and boosts exist
-  (not a launch feature); the spec's hatch luck is Egg x Plot x Temporary, and this project still multiplies the Rebirth luck as well.
-- **Not built yet:** the Cosmic night bonus on speed, the skybox swap, and the temporary luck sources (luck faeries, boosts).
+- **Legacy (`true`):** `WeatherManager`, `WeatherDataStore`, `ClientWeatherManager`. Several events can run at once, rolled each 5-minute era; the crop effect is commented out. Kept for reverting.
+- **v1.0 (`false`):** `shared/WeatherMath.luau` (pure validation and era roll), `server/WeatherEventManager.luau`, `client/ClientWeatherEventManager.luau`. One weather at a time. At each era boundary (`rollIntervalSec`) events roll in list order, seeded by the era, and the first success (`startChance` percent) wins. An event with a start condition (`DAY`, `NIGHT`) not met at the boundary starts at the next flip inside the era, or is skipped. Length is random between `durationMin` and `durationMax`. A server booting mid-era joins the running weather.
+- **Config:** Studio-only `GameData.Control.Weather`: `useLegacyWeather`, `rollIntervalSec`, `weatherEvents` (array of `weather` (`Enums.Weather`), `displayName`, `description`, `iconAssetId`, `startChance`, `durationMin`, `durationMax`, `startCondition` (`Enums.WeatherStartCondition`), `trait` (`Enums.Trait`), `traitChance`, optional `templatePath` (under `ReplicatedStorage.Weather`, with `Main` and `MergePlot` folders), `lighting = { brightness?, outdoorAmbient? }`, `lockNight`, `startMessage`, `strikeSpreadSec`, `cosmicEgg`). A bad table stops boot. The events and the running weather travel in `initData.weather` (nil in legacy mode); `NotifyWeatherUpdate` carries `{ isWeatherEvents = true, active = { weather, startTime, endTime } }`.
+- **Lighting:** the client never sets lighting itself. The running weather's `lighting` is laid over the day/night look by `ClientDayNightManager:setWeatherLighting`; `lockNight` (Starlight) holds the sky at night until the weather ends (`setNightLock` on the client, `DayNightManager:setNightLocked` on the server, so `isNight()` is true).
+- **HUD:** `WeatherFrame` (hidden when no weather) > `TemplateWeather` (kept hidden, cloned as `ActiveWeather`) with `Icon`, optional `Timer` (`m:ss`) and `Tooltip`. A missing piece only warns.
+- **Dev tools** (client section "Weather"): `startWeatherEvent(weather)` (ignores the roll and condition), `endWeatherEvent`, `strikeMyDragon`, `dropCosmicEgg`. The old `activateWeather`/`deactivateWeather` only work in legacy mode.
+- **Traits:** `MItem.traits` (a list, saved as `traits`, replicated as the JSON attribute `Attributes.TRAITS`) is part of stack identity, shows as `{Charged}` in the name and is copied by clones. At event start every dragon and egg in the world (placed, ridden, slotted, wild; not backpacks) rolls once at `traitChance` and each owner gets one message. A wild egg that spawns during the weather rolls too (`WeatherEventManager:notifyEggSpawned`, called by `ScatterZone`); a hatched dragon inherits the egg's traits. Nothing reads traits yet. `ClientTraitGlowManager` puts a plain colour `Highlight` on traited dragons and eggs.
+- **Strike events (Thunderstorm, Starlight):** `strikeSpreadSec` (shorter than `durationMin`, only for these two) delays the trait. Each winner is struck at a random moment in the first `strikeSpreadSec` seconds: `WeatherEventManager:strike` tags the object `Tags.WEATHER_STRIKE_TARGET`, stamps `Attributes.WEATHER_STRUCK_AT`/`WEATHER_STRUCK_WEATHER` (cleared after `WeatherStrike.CLEAR_SEC`) and grants the trait `WeatherStrike.TRAIT_DELAY_SEC[weather]` later ("Your <name> became <Trait>"), also if the target left the world but the item exists. Wild eggs spawned during the weather get the trait at once.
+- **Strike client:** `ClientWeatherStrikeManager` plays the cinematic (stamps older than 2 s are ignored): `ClientThunderstormEffects` (ambient beams, particles, cloud rings, music loop, the cloud-and-bolt strike) and `ClientStarlightEffects` (beams, particles, music loop, a falling `ShootingStar` dropping from `STAR_START_HEIGHT` over the trait delay, then `StarImpact`). `ClientWeatherSounds` plays the sounds (loops follow the music option, one-shots the sound-effects option). The art is Studio-only under `ReplicatedStorage.GameAssets`: `Weather/Thunderstorm/...`, `Weather/ShootingStars/...`, `ParticleEffects/ThunderstormLightning` and `ThunderstormSparks`; a missing piece only warns and the trait still lands.
+- **Cosmic eggs (Starlight only):** `cosmicEgg = { eggName, rollIntervalSec, chance, announcement? }` (`eggName` is a dragon egg object). While Starlight runs, one roll per `rollIntervalSec`, skipped while an earlier Cosmic egg is unclaimed. A drop picks a random scatter zone (by area) and a point in it (`ScatterZoneManager:pickCosmicEggSite`), tells every player and places an invisible marker tagged like a struck dragon so clients play the falling star; the egg appears `WeatherStrike.TRAIT_DELAY_SEC` later (`ScatterZone:spawnEggAt` with `isTracked = false`, so the global refresh leaves it; it stays until picked up and can still roll Starlit). `WeatherEventManager` gets `scatterZoneManager` through `initClass`.
+- **Cosmic radar:** the egg object sets `isCosmic = true`; a radar object sets `targetsCosmic = true` (`targetRarity` still sets its colour). Rarity radars skip Cosmic eggs; the Cosmic radar finds only them and refuses outside Starlight (not consumed). Guidance is keyed by a radar kind (`shared/RadarKind.luau`: the rarity, or `RadarKind.COSMIC` = 0) on the server, in `NotifyRadarTarget` and on the client; a held radar tool carries `Attributes.RADAR_COSMIC`. Guidance runs to its duration even if Starlight ends.
+- **Temporary luck:** `DragonEgg.computeLuckMultiplier` multiplies by a named local `temporaryLuckMultiplier`, fixed at 1 (luck faeries and boosts are not built). Not built: the Cosmic night speed bonus and the skybox swap.
 
 ## Playtime Rewards
 
-Session-scoped rewards: each unlocks after a set number of seconds of the current session, and nothing is saved (unclaimed
-rewards are lost when the player leaves; the next session starts a fresh set). Files: `server/PlaytimeRewardManager.luau`,
-`shared/PlaytimeRewardMath.luau`, `client/ClientPlaytimeRewardManager.luau`, `client/RewardTileUi.luau`, plus the generic
-helpers `client/ButtonTwitcher.luau`, `client/Confetti.luau`, `client/ClientTicker.luau`.
+Session-scoped rewards: each unlocks after a set number of seconds of the current session; nothing is saved (unclaimed rewards are lost on leaving). Files: `server/PlaytimeRewardManager.luau`, `shared/PlaytimeRewardMath.luau`, `client/ClientPlaytimeRewardManager.luau`, `client/RewardTileUi.luau`, and the generic helpers `client/ButtonTwitcher.luau`, `client/Confetti.luau`, `client/ClientTicker.luau`.
 
-- **Config** is the Studio-only `GameData.Control.Playtime`: `rewards`, an array whose position is the reward's stable `index`.
-  Every entry has `kind` (`Enums.PlaytimeRewardKind`) and `unlockSec`, plus per kind: `COINS` `hourlyPercent`, `minCoins`,
-  `maxCoins` (percent of hourly income from `IncomeManager:getIncomePerSec`, clamped, rounded to 3 significant figures); `TIME_SKIP`
-  `skipSec` (coins = income per second x seconds); `FIXED_ITEM` `itemName` (an object name from `GameData/Objects`, not a loot
-  table); `RANDOM_BY_RARITY` `itemType` (`Enums.ItemType`, whose `ObjectTypes` map to the object `type` string) and `rarity`;
-  `LOOT_TABLE` `lootTableName` (every result must be `{ itemName = string }`). `GameDataVerifier.verifyPlaytimeRewards` warns about
-  bad entries at startup, and the server will not boot without the table.
-- **Rolling at claim time, on purpose.** `RANDOM_BY_RARITY` and `LOOT_TABLE` items and `TIME_SKIP` amounts are decided when the
-  player claims, not at join. The set is sent at join and a rejoin is free, so anything shown in advance could be rerolled by
-  relogging. Until claimed, those tiles show a generated label ("Random Rare Dragon Egg", "Mystery Prize") and the client
-  never learns the item; the claimed tile shows what was received. `COINS` amounts are fixed at session start. A time skip that
-  would pay 0 (no income yet) is refused and stays claimable. `claimed` is set only after a successful grant. Random picks come from
-  every object of that type and rarity, so use `LOOT_TABLE` to curate a pool (premium eggs, one dragon level).
-- **Flow:** `GameController` calls `playtimeRewardManager:notifyAddPlayer` before building `initData` (which carries
-  `playtimeRewards`) and `notifyRemovePlayer` on leave. `TryClaimPlaytimeReward(index)` is validated as a positive integer, and
-  the server checks `workspace:GetServerTimeNow() - sessionStartTime >= unlockSec` itself. The manager keeps its own session
-  clock. Every claim answers `NotifyPlaytimeRewardResult(index, isSuccess)` (refusals too, so the client never waits) and a claim
-  or dev reset also sends the whole set in `NotifyPlaytimeRewards`. Items go through `tryDeliverPurchasedItemToPlayer`.
-- **Dev tools:** `fastForwardPlaytime(seconds)` and `resetPlaytimeRewards` (client section "Playtime Rewards").
-- **Studio prerequisites:** RemoteEvents `TryClaimPlaytimeReward`, `NotifyPlaytimeRewards`, `NotifyPlaytimeRewardResult`; the config
-  module. A missing GUI only logs a warning and disables that part.
-- **GUI names the client finds:** HUD ScreenGui `PlaytimeRewardsFrame` > `PlaytimeRewardsButton` > optional `Timer`, `Icon`, `Alert`
-  (no UIListLayout around it or the twitch is invisible); ScreenGui `PlaytimeRewards` > `Dialog` > `Title` > `Exit`, and
-  `Dialog` > `TileGrid` holding the hidden templates `TileTemplate` (locked, with `Timer`), `TileTemplateReady` (with a `Claim`
-  TextButton) and `TileTemplateClaimed`, each with optional `Title`, `Preview`, `Icon`. Attributes on a template's `Icon`
-  (`rbxassetid://` strings): `CoinImage`, `ClockImage`, `MysteryImage` (the picture for a still-hidden random reward).
-  Item pictures come from `ItemIcons` by exact object name; an item missing there keeps the tile's authored `Icon`. The claim
-  sound is a constant in `ClientPlaytimeRewardManager`, and respects the main sound-effects option.
-- **Tuning (from the reference game's notes):** keep reward value per wall-second non-decreasing and avoid long reward-free gaps,
-  otherwise quitting and rejoining pays better than staying; keep `skipSec` in whole minutes (the title shows minutes).
+- **Config:** Studio-only `GameData.Control.Playtime`: `rewards`, an array whose position is the stable `index`. Every entry has `kind` (`Enums.PlaytimeRewardKind`) and `unlockSec`, plus per kind: `COINS` `hourlyPercent`, `minCoins`, `maxCoins` (percent of hourly income from `IncomeManager:getIncomePerSec`, clamped, rounded to 3 significant figures); `TIME_SKIP` `skipSec` (coins = income per second x seconds); `FIXED_ITEM` `itemName`; `RANDOM_BY_RARITY` `itemType` (`Enums.ItemType`) and `rarity`; `LOOT_TABLE` `lootTableName` (every result must be `{ itemName = string }`); `DIAMONDS` `diamondAmount`. `GameDataVerifier.verifyPlaytimeRewards` warns about bad entries; the server will not boot without the table.
+- **Rolled at claim time, on purpose:** `RANDOM_BY_RARITY`, `LOOT_TABLE` and `TIME_SKIP` are decided when the player claims, not at join, because a rejoin is free and anything shown in advance could be rerolled. Until claimed, those tiles show a generated label and the client never learns the item. `COINS` amounts are fixed at session start. A time skip that would pay 0 is refused and stays claimable. `claimed` is set only after a successful grant. Random picks come from every object of that type and rarity; use `LOOT_TABLE` to curate a pool.
+- **Flow:** `GameController` calls `playtimeRewardManager:notifyAddPlayer` before building `initData` (which carries `playtimeRewards`) and `notifyRemovePlayer` on leave. `TryClaimPlaytimeReward(index)` is validated as a positive integer and the server checks `GetServerTimeNow() - sessionStartTime >= unlockSec` itself. Every claim answers `NotifyPlaytimeRewardResult(index, isSuccess)`; a claim or dev reset also sends the whole set in `NotifyPlaytimeRewards`. Items go through `tryDeliverPurchasedItemToPlayer`.
+- **Dev tools** (client section "Playtime Rewards"): `fastForwardPlaytime(seconds)`, `resetPlaytimeRewards`.
+- **Studio prerequisites:** RemoteEvents `TryClaimPlaytimeReward`, `NotifyPlaytimeRewards`, `NotifyPlaytimeRewardResult`; the config module. A missing GUI only warns.
+- **GUI notes:** HUD `PlaytimeRewardsFrame > PlaytimeRewardsButton` (no UIListLayout around it or the twitch is invisible); ScreenGui `PlaytimeRewards`. Templates `TileTemplate`, `TileTemplateReady` (with a `Claim` button) and `TileTemplateClaimed` are cloned from `Dialog > TileGrid`. `Icon` attributes (`rbxassetid://` strings): `CoinImage`, `ClockImage`, `MysteryImage`, `DiamondImage` (falls back to `CoinImage`). Item pictures come from `ItemIcons` by object name; an item missing there keeps the authored `Icon`. The claim sound is a constant in `ClientPlaytimeRewardManager` and respects the sound-effects option.
+- **Tuning:** keep reward value per wall-second non-decreasing and avoid long reward-free gaps (otherwise quitting and rejoining pays better than staying); keep `skipSec` in whole minutes.
 
 ## Daily Login Rewards
 
-One reward per day, claim-driven: 8 tiles, Day 1 to Day 7 and a last tile ("Day 8+") that repeats for every later day. Progress
-never resets: day N stays claimable until it is claimed, claiming starts a 24 h timer (`DailyLoginMath.DAY_SEC`), and day N+1
-opens when it ends; missing days costs nothing. Saved per player as `PlayerData.dailyLogin = { lastClaimedDay, nextClaimTime }`
-(server time, whole seconds; invalid saved data falls back to day 1 claimable). Files: `server/DailyLoginManager.luau`,
-`server/RewardGranter.luau` (shared with playtime rewards), `shared/DailyLoginMath.luau`, `client/ClientDailyLoginManager.luau`,
-`client/ClaimFeedback.luau` (claim sound + confetti, shared with playtime), `client/RewardTileUi.luau`.
+One reward per day, claim-driven: 8 tiles, Day 1–7 and a last "Day 8+" tile that repeats. Progress never resets: day N stays claimable until claimed, a claim starts a 24 h timer (`DailyLoginMath.DAY_SEC`), and day N+1 opens when it ends. Saved as `PlayerData.dailyLogin = { lastClaimedDay, nextClaimTime }` (server time; invalid data falls back to day 1 claimable). Files: `server/DailyLoginManager.luau`, `server/RewardGranter.luau` (shared with playtime), `shared/DailyLoginMath.luau`, `client/ClientDailyLoginManager.luau`, `client/ClaimFeedback.luau` (claim sound and confetti, shared with playtime), `client/RewardTileUi.luau`.
 
-- **Config** is the Studio-only `GameData.Control.DailyLogin`: `rewards`, exactly 8 entries, only fixed rewards: `COINS` with
-  `minCoins == maxCoins` (the fixed amount), `TIME_SKIP` with `skipSec` and `minCoins`, `FIXED_ITEM` with `itemName` (an object's
-  `name`). `GameDataVerifier.verifyDailyLogin` warns at startup; the server will not boot without the table. There are no random
-  or loot-table kinds on purpose: a tile must show what the claim grants, and an entry that cannot be granted would leave a
-  player stuck on that day. A bad `itemName` is the one way to get stuck, so watch the verifier output.
-- **Time skip** pays `max(income per second x skipSec, minCoins)` at claim time, so a player with no income yet still gets the
-  floor and never burns a day on a zero payout. Day 8+ repeats forever, so it is the long-run value of the feature: choose its
-  reward with a permanent daily supply in mind.
-- **Flow:** `initData.dailyLogin` carries the state and tile list at join; `NotifyDailyLogin` resends it after a claim or dev
-  change. The server runs no timers: the client works out claimability from `nextClaimTime` on a 1 s `ClientTicker`. `TryClaimDailyReward(tileIndex)`
-  is validated as a positive integer, and the server accepts only the tile that is claimable right now. A failed grant leaves the
-  day claimable. Every claim, refusals included, answers `NotifyDailyRewardResult(tileIndex, isSuccess)`.
-- **Dev tools:** `advanceDailyLoginDay` (opens the next day now) and `resetDailyLogin` (also part of `resetFullPlayerState`).
-- **Studio prerequisites:** RemoteEvents `TryClaimDailyReward`, `NotifyDailyLogin`, `NotifyDailyRewardResult`; the config module.
-  A missing GUI only logs a warning and disables that part.
-- **GUI names the client finds:** HUD ScreenGui `DailyRewardsFrame` > `Daily` and `DailyAlert` (two buttons, only one visible; the
-  alert one twitches, so keep a UIListLayout out of its container); ScreenGui `DailyRewards` > `Dialog` > `Title` > `Exit`,
-  `Dialog` > `NextReward` (footer label), `Dialog` > `TileGrid` holding the hidden templates `TileTemplate` (locked),
-  `TileTemplateReady` (with a `Claim` TextButton) and `TileTemplateClaimed` (its `DayLabel` keeps authored "Claimed" text), each with
-  optional `DayLabel`, `Title`, `Preview`, `Icon`. Tiles get `LayoutOrder` 1 to 8, so lay the grid out with a Studio layout object.
-  `Icon` attributes `CoinImage` and `ClockImage` give coin and time-skip tiles their picture; item pictures come from `ItemIcons`.
+- **Config:** Studio-only `GameData.Control.DailyLogin`: `rewards`, exactly 8 fixed entries: `COINS` with `minCoins == maxCoins`, `TIME_SKIP` with `skipSec` and `minCoins`, `FIXED_ITEM` with `itemName`, `DIAMONDS` with `diamondAmount`. `GameDataVerifier.verifyDailyLogin` warns; the server will not boot without the table. There are no random or loot-table kinds on purpose (a tile must show what the claim grants). A bad `itemName` is the one way to get a player stuck on a day, so watch the verifier.
+- **Time skip** pays `max(income per second x skipSec, minCoins)` at claim time. Day 8+ repeats forever, so choose its reward with a permanent daily supply in mind.
+- **Flow:** `initData.dailyLogin` carries the state and tiles; `NotifyDailyLogin` resends it after a claim or dev change. The server runs no timers: the client works out claimability from `nextClaimTime` on a 1 s `ClientTicker`. `TryClaimDailyReward(tileIndex)` is validated as a positive integer and the server accepts only the tile claimable now. A failed grant leaves the day claimable. Every claim answers `NotifyDailyRewardResult(tileIndex, isSuccess)`.
+- **Dev tools:** `advanceDailyLoginDay`, `resetDailyLogin` (also part of `resetFullPlayerState`).
+- **Studio prerequisites:** RemoteEvents `TryClaimDailyReward`, `NotifyDailyLogin`, `NotifyDailyRewardResult`; the config module. A missing GUI only warns.
+- **GUI notes:** HUD `DailyRewardsFrame` has two buttons, `Daily` and `DailyAlert` (one visible; the alert one twitches, so keep a UIListLayout out of its container); ScreenGui `DailyRewards` with the templates `TileTemplate`, `TileTemplateReady` (with a `Claim` button) and `TileTemplateClaimed` (its `DayLabel` keeps authored "Claimed" text). Tiles get `LayoutOrder` 1–8. `Icon` attributes `CoinImage`, `ClockImage`, `DiamondImage` give the pictures; item pictures come from `ItemIcons`.
 
 ## Spin Wheel
 
-A HUD-only prize wheel (no world presence): one free spin per calendar UTC day, Robux-bought "2x luck" spins, a daily-discounted
-first purchase. Files: `server/SpinWheelManager.luau`, `shared/SpinWheelMath.luau` (pure math: epoch days, accrual, rarity ranking,
-best-of-N odds), `client/ClientSpinWheelManager.luau`, `client/ClientUiStyle.luau` (disabled-button colours). Ported from an imported
-package, keeping its module split and flow; only the seams to the host differ.
+A HUD-only prize wheel: one free spin per UTC day, Robux-bought "2x luck" spins, a daily-discounted first purchase. Files: `server/SpinWheelManager.luau`, `shared/SpinWheelMath.luau` (epoch days, accrual, rarity ranking, best-of-N odds), `client/ClientSpinWheelManager.luau`, `client/ClientUiStyle.luau`.
 
-- **Free spins** accrue one per UTC day even while offline, up to `maxAccruedFreeSpins`; a brand-new player (`lastGrantDay = 0`) gets
-  exactly one. One server-wide timer (`scheduleNextBoundary`) refreshes everyone at the day boundary; join and every spin refresh too.
-  Saved as `PlayerData.spinWheel = { freeSpins, paidSpins, lastGrantDay, lastDiscountDay }` (epoch days; invalid data falls back to
-  the defaults). Free spins are used before paid ones.
-- **A paid spin** rolls the loot table `paidLuckMultiplier` times and keeps the rarest result (lower weight ranks better, ties go to
-  the earlier row). `LootTableManager.calculateBestLootResults` does the rolling.
-- **Config** is the Studio-only `GameData.Control.SpinWheel`: `lootTableName`, `maxAccruedFreeSpins`, `paidLuckMultiplier`,
-  `prizeClaimTimeoutSec` (must exceed the 4 s spin animation) and `robuxProductIds = { single, singleDiscount, five }` (0 = not
-  created yet: that Robux button stays inactive). Ids live here, not in a central dev-product table (this project has none). The loot
-  table `GameData.LootTables.<lootTableName>` is one row per wheel segment in wheel order (the position is the segment, so no
-  `requiredConfig` or nested tables; a Folder of the same name is fine, only ModuleScripts count). Weights
-  are rates (the reference uses a total of 200). Prize results, all camelCase: `COINS` `minCoins == maxCoins`; `TIME_SKIP` `skipSec`
-  and `minCoins` (a floor, so the prize never pays 0); `FIXED_ITEM` `itemName`; `LOOT_TABLE` `lootTableName` (a table of
-  `{ itemName }` results), `displayName`, `rarity`, `itemType`, optional `iconAssetId`. The segment's `rarity` is display only: it
-  colours the text and picks the face and does not affect which item is rolled, so keep each `LOOT_TABLE`'s dragons at that rarity.
-  `GameDataVerifier.verifySpinWheel` warns about all of this at startup; the server will not boot without `Control/SpinWheel`.
-- **The prize is decided at spin time and delivered after the animation.** `TrySpinWheel` consumes a spin, rolls, resolves a
-  `LOOT_TABLE` result to a concrete item, holds it as the pending prize and replies `NotifySpinWheelResult(segmentIndex, wasPaid)`
-  (the client never learns a rolled item). The client animates, then `TryClaimSpinWheelPrize` releases it. If the client never
-  claims, the prize is delivered on `prizeClaimTimeoutSec`, on the next spin, or on leave (`processPlayerRemove` delivers it before
-  the player data is removed so it lands in the save). A prize that cannot be delivered (backpack full) gives the spin back.
-  Prizes go through `RewardGranter.grant` (source `spinWheel`).
-- **State and catalog:** `initData.spinWheel` carries `freeSpins`, `paidSpins`, `isDiscountAvailable`, the segment catalog (with 1x
-  and 2x odds) and `robuxProductIds`; `NotifySpinWheelState` resends the three state fields after any change.
-- **Robux:** the three ids are handled in `GameController.tryGrantPlayerRobuxProductId` and `isProductIdReserved` via
-  `SpinWheelManager:isProductId` / `tryDeliverToPlayer`. A receipt only adds paid spins; spinning is a separate action. The
-  discounted product stamps `lastDiscountDay` and cannot be rejected, so a stale client that buys it twice in a day still gets the spin.
-- **Dev tools:** `giveFreeSpin`, `givePaidSpin`, `advanceSpinWheelDay`, `resetSpinWheel` (also part of `resetFullPlayerState`); client section
-  "Spin Wheel".
-- **Studio prerequisites:** RemoteEvents `TrySpinWheel`, `TryClaimSpinWheelPrize`, `NotifySpinWheelResult`, `NotifySpinWheelState`; the
-  config module and loot table; optionally three consumable dev products. A missing GUI only logs a warning and disables that part.
-- **GUI names the client finds:** HUD `ScreenGui` > `LuckySpinFrame` (hidden during the FTUE) > `LuckySpin` (a button, with an optional
-  `Alert` label); ScreenGui `SpinWheel` > `Dialog` with `Wheel` > `Face` (its GuiObject children are destroyed and rebuilt),
-  `PrizeTemplate` (plain face, child `PetTitle`), optional `TimeSkipPrizeTemplate` (`Time`), `PetPrizeRareTemplate` and
-  `PetPrizeEpicTemplate` (`PetTitle`, `Icon`; used for dragon prizes by rarity), `BoxPetPrizeTemplate` (`BoxTitle`, `Icon`; used for
-  egg prizes); `OddsList` > `RowTemplate` > `Label`; `Result`; `Exit` (or `Title` > `Exit`); `OddsToggle`; `FastToggle`; `Buttons` >
-  `Spin` (with a `Spin` label), `Buy1` (optional `FullPrice`, `Price`, `DiscountLabel`), `Buy5` (optional `Price`). Other authored faces
-  from the source (legendary, worker box, unknown prizes) are hidden and unused. Segment 1 is drawn at the top, clockwise; the code
-  draws only the segment labels, so painted wedges must match the loot table length.
-- **Sound:** the 4 s spin loops `rbxassetid://1846470940` (a constant in `ClientSpinWheelManager`), honouring the main sound-effects option.
-  Item pictures come from `ItemIcons` by object name, or the segment's `iconAssetId` for a `LOOT_TABLE` prize.
+- **Free spins** accrue one per UTC day, also offline, up to `maxAccruedFreeSpins`; a brand-new player (`lastGrantDay = 0`) gets one. One server-wide timer (`scheduleNextBoundary`) refreshes everyone at the day boundary; join and every spin refresh too. Saved as `PlayerData.spinWheel = { freeSpins, paidSpins, lastGrantDay, lastDiscountDay }`. Free spins are used before paid ones.
+- **A paid spin** rolls the loot table `paidLuckMultiplier` times and keeps the rarest result (lower weight ranks better, ties go to the earlier row) via `LootTableManager.calculateBestLootResults`.
+- **Config:** Studio-only `GameData.Control.SpinWheel`: `lootTableName`, `maxAccruedFreeSpins`, `paidLuckMultiplier`, `prizeClaimTimeoutSec` (must exceed the 4 s animation), `robuxProductIds = { single, singleDiscount, five }` (0 = not created: that button stays inactive). The loot table `GameData.LootTables.<lootTableName>` has one row per wheel segment in wheel order (no `requiredConfig` or nested tables; only ModuleScripts count). Weights are rates. Prize results (camelCase): `COINS` `minCoins == maxCoins`; `TIME_SKIP` `skipSec` and `minCoins` (a floor); `FIXED_ITEM` `itemName`; `DIAMONDS` `diamondAmount`; `LOOT_TABLE` `lootTableName` (a table of `{ itemName }`), `displayName`, `rarity`, `itemType`, optional `iconAssetId`. The segment's `rarity` is display only (colour and face), so keep each `LOOT_TABLE`'s dragons at that rarity. `GameDataVerifier.verifySpinWheel` warns about all of this; the server will not boot without the config.
+- **Decided at spin time, delivered after the animation:** `TrySpinWheel` consumes a spin, rolls, resolves a `LOOT_TABLE` result to a concrete item, holds it as the pending prize and replies `NotifySpinWheelResult(segmentIndex, wasPaid)` (the client never learns the item). The client animates, then `TryClaimSpinWheelPrize` releases it. If it never claims, the prize is delivered on `prizeClaimTimeoutSec`, on the next spin, or on leave (`processPlayerRemove` delivers it first so it lands in the save). A prize that cannot be delivered (backpack full) gives the spin back. Prizes go through `RewardGranter.grant` (source `spinWheel`).
+- **State to the client:** `initData.spinWheel` carries `freeSpins`, `paidSpins`, `isDiscountAvailable`, the segment catalog (1x and 2x odds) and `robuxProductIds`; `NotifySpinWheelState` resends the three state fields.
+- **Robux:** the ids are handled in `GameController.tryGrantPlayerRobuxProductId` and `isProductIdReserved` via `SpinWheelManager:isProductId`/`tryDeliverToPlayer`. A receipt only adds paid spins. The discounted product stamps `lastDiscountDay` and cannot be rejected, so a stale client that buys it twice in a day still gets the spin.
+- **Dev tools** (client section "Spin Wheel"): `giveFreeSpin`, `givePaidSpin`, `advanceSpinWheelDay`, `resetSpinWheel` (also part of `resetFullPlayerState`).
+- **Studio prerequisites:** RemoteEvents `TrySpinWheel`, `TryClaimSpinWheelPrize`, `NotifySpinWheelResult`, `NotifySpinWheelState`; the config module and loot table; optionally three consumable dev products. A missing GUI only warns.
+- **GUI notes:** HUD `LuckySpinFrame > LuckySpin` (hidden in the FTUE); ScreenGui `SpinWheel`. The children of `Wheel > Face` are destroyed and rebuilt. Prize templates: `PrizeTemplate` (plain face), `TimeSkipPrizeTemplate`, `PetPrizeRareTemplate`/`PetPrizeEpicTemplate` (dragon prizes by rarity), `BoxPetPrizeTemplate` (egg prizes). Segment 1 is drawn at the top, clockwise; the code draws only the labels, so painted wedges must match the loot table length. The 4 s spin loops `rbxassetid://1846470940` (a constant in `ClientSpinWheelManager`), honouring the sound-effects option. Item pictures come from `ItemIcons` by object name, or the segment's `iconAssetId`.
 
 ## Index (IndexV2)
 
-The Index is a collection book with four categories (`Enums.IndexCategory`: DRAGON, EGG, MUTATION, TRAIT). The reworked **IndexV2** is the live
-one; the original Index (`IndexManager`, `ClientIndexManager`, `IndexFrame`) is kept but off unless `Control/IndexRewards.useLegacyIndex = true`
-(read at join; off means its handlers return, its remotes are not fired and its HUD button stays hidden). Files: `server/IndexV2Manager.luau`,
-`shared/IndexRewardMath.luau` (pure milestone math, used by the server and the client so both agree on what is claimable),
-`client/ClientIndexV2Data.luau` (data path), `client/ClientIndexV2Manager.luau` (the dialog).
+A collection book with four categories (`Enums.IndexCategory`: DRAGON, EGG, MUTATION, TRAIT). IndexV2 is the live one; the original Index (`IndexManager`, `ClientIndexManager`, `IndexFrame`) is kept but off unless `Control/IndexRewards.useLegacyIndex = true` (read at join; off means its handlers return, its remotes are not fired and its HUD button stays hidden). Files: `server/IndexV2Manager.luau`, `shared/IndexRewardMath.luau` (pure milestone math shared by server and client), `client/ClientIndexV2Data.luau` (data path), `client/ClientIndexV2Manager.luau` (the dialog).
 
-- **Discovery** goes through `IndexV2Manager` (`notifyItemDiscoveredIfNew`, `notifyMutationDiscoveredIfNew`, `notifyTraitDiscoveredIfNew`), the single entry
-  point called by `Item`, `RideMixin`, `MItem`, `PlayerData` and `DevTools`. It records the discovery once and tells the old manager only when the old
-  Index is on. The two managers reference each other through `initClass` (`indexManager`, `indexV2Manager`); `Types.IndexV2Manager` is a small
-  hand-written interface because `generate_types.py` cannot emit its milestone signatures. `PlayerData.loadSaveData` loads the Index state BEFORE the
-  items, otherwise every loaded item looks newly discovered (and the entry prize pays on every boot).
-- **Rewards:** category TIER rewards (claimed in order), each with an income-percent, crate, stat/mutation or Diamonds reward. ROW rewards (Dragon and Egg: every
-  entry of a rarity discovered) are supported but no longer authored (design change 2026-10-27: no reward per rarity row): with no `rowRewards` data the rarity
-  headers show only their progress bar and the claim popup never opens. Studio-only `GameData.Control.IndexRewards`: `rowRewards[category][rarity]`, `categoryTiers[category] = { { requiredPercent,
-  displayText, reward }, ... }` (add tiers at the end only: the position is saved in claims), `entryRewards`, `useLegacyIndex`, `singleTierBar`. A reward
-  may carry `icon = "rbxassetid://..."` inside its `reward` table. The server rebuilds and validates every claim (`TryClaimIndexV2Tier`).
-- **Per-entry coin prize:** `entryRewards = { isEnabled = false|true, coins = { [category] = number | { [rarity] = number } } }`, off unless
-  `isEnabled == true`; Dragon and Egg take a rarity table, Mutation and Trait a flat number. It pays once per new entry and warns when an enabled prize
-  pays nothing for an entry.
-- **Tier bar:** `singleTierBar = false` shows every tier button on `BottomBar > Milestones` and `ProgressBar`. `true` shows ONE button for the first
-  unclaimed tier on `MilestonesSingle` and `ProgressBarLong` (bar = collected / that tier's threshold, label `25/27`; all claimed shows the last tier
-  collected) and hides the other two; `BottomBar > ProgressLabel` moves to `UDim2.new(0.215, 0, 1, 0)` (else `0, 0, 1, 0`). Missing duplicates warn and fall
-  back to every tier.
-- **Reward icons:** the client sets `reward.icon` on `PercentLabel > RewardIcon` of the Collect and Locked buttons only; a missing icon keeps the
-  authored picture.
-- **Data to the client:** `initData.indexV2` at join (data sent before `NotifyInit` is lost), later `NotifyIndexV2Data`; remotes `TryClaimIndexV2Tier`,
-  `NotifyIndexV2Data`, `NotifyIndexV2Discovery`, `NotifyIndexV2TierResult`. `ScreenGuiManager.hideAllOtherGuis` disables unlisted ScreenGuis, so the
-  dialog enables its own `PetIndex` gui when opened. HUD: `IndexV2Frame` > `Index` / `IndexAlert`.
-- **Per-dragon mutations (dormant data, 2026-10-27):** `PlayerData.indexDiscoveredDragonMutations = { [dragonItemName] = { [mutationTier] = true } }` (saved with string
-  keys, loaded before the items, cleared by the Index resets, kept through Rebirth) records which of the 8 mutations each dragon entry has shown. `IndexV2Manager:notifyDragonMutationIfNew`
-  writes it, from the same two places as the global mutation discovery (`Item.putInBackpack`, `RideMixin.canRideItem`); NORMAL never counts and only `shadowDragon` items do.
-  Helpers: `hasDiscoveredDragonMutation`, `markDragonMutationDiscovered`, `getDragonMutationCount`, `getDragonMutations`, `getAllDragonMutationCounts`. Nothing reads it and nothing is
-  sent to the client: no UI, rewards or remotes until the design is set. Dev tool `dumpDragonMutations` (client section "Index V2"). A dragon hatched onto the plot is not recorded
-  until it is picked up or ridden (same gap as the global mutation discovery).
-- **Sort order of tiles in a rarity row:** primary element's `sortIndex` (`shared/Elements.luau`, Nature 1, Water 2, Fire 3; no element counts as 1),
-  then display name.
+- **Discovery** goes through `IndexV2Manager` (`notifyItemDiscoveredIfNew`, `notifyMutationDiscoveredIfNew`, `notifyTraitDiscoveredIfNew`), called by `Item`, `RideMixin`, `MItem`, `PlayerData` and `DevTools`. It records the discovery once and tells the old manager only when the old Index is on. The two managers reference each other through `initClass` (`indexManager`, `indexV2Manager`); `Types.IndexV2Manager` is hand-written because `generate_types.py` cannot emit its milestone signatures. `PlayerData.loadSaveData` loads the Index state before the items, otherwise every loaded item looks new (and the entry prize pays on every boot).
+- **Rewards:** category TIER rewards (claimed in order), each an income percent, crate, stat/mutation or Diamonds reward. ROW rewards (Dragon and Egg: every entry of a rarity discovered) are supported but not authored; with no `rowRewards` the rarity headers show only progress and the popup never opens. Studio-only `GameData.Control.IndexRewards`: `rowRewards[category][rarity]`, `categoryTiers[category] = { { requiredPercent, displayText, reward }, ... }` (add tiers at the end only: the position is saved in claims), `entryRewards`, `useLegacyIndex`, `singleTierBar`. A reward may carry `icon = "rbxassetid://..."` inside its `reward` table. The server rebuilds and validates every claim (`TryClaimIndexV2Tier`).
+- **Per-entry prize:** `entryRewards = { isEnabled = false|true, coins = { [category] = number | { [rarity] = number } }, diamonds = <same shape> }`; off unless `isEnabled == true`. Dragon and Egg take a rarity table, Mutation and Trait a flat number. It pays once per new entry and warns when an enabled prize pays nothing for an entry.
+- **Tier bar:** `singleTierBar = false` shows every tier button on `BottomBar > Milestones` and `ProgressBar`. `true` shows one button for the first unclaimed tier on `MilestonesSingle` and `ProgressBarLong` (bar = collected / that tier's threshold; once all are claimed it shows the last tier collected) and hides the other two; `BottomBar > ProgressLabel` moves to `UDim2.new(0.215, 0, 1, 0)` (else `0, 0, 1, 0`). Missing duplicates warn and fall back to every tier. The client sets `reward.icon` on `PercentLabel > RewardIcon` of the Collect and Locked buttons only; a missing icon keeps the authored picture.
+- **To the client:** `initData.indexV2` at join (data sent before `NotifyInit` is lost), later `NotifyIndexV2Data`; remotes `TryClaimIndexV2Tier`, `NotifyIndexV2Data`, `NotifyIndexV2Discovery`, `NotifyIndexV2TierResult`. `ScreenGuiManager.hideAllOtherGuis` disables unlisted ScreenGuis, so the dialog enables its own `PetIndex` gui when opened. HUD: `IndexV2Frame > Index / IndexAlert`.
+- **Per-dragon mutations (dormant data):** `PlayerData.indexDiscoveredDragonMutations = { [dragonItemName] = { [mutationTier] = true } }` (saved with string keys, loaded before the items, cleared by the Index resets, kept through Rebirth) records which of the 8 mutations each dragon entry has shown. `IndexV2Manager:notifyDragonMutationIfNew` writes it from the same two places as the global mutation discovery (`Item.putInBackpack`, `RideMixin.canRideItem`); NORMAL never counts and only `shadowDragon` items do. Nothing reads it and nothing is sent to the client. Helpers: `hasDiscoveredDragonMutation`, `markDragonMutationDiscovered`, `getDragonMutationCount`, `getDragonMutations`, `getAllDragonMutationCounts`; dev tool `dumpDragonMutations`.
+- **Tile order in a rarity row:** the primary element's `sortIndex` (`shared/Elements.luau`; no element counts as 1), then display name.
 - **Dev tools** (client section "Index V2"): `discoverIndexV2Items`, `dumpIndexV2`, `claimNextIndexV2Tier`, `sendIndexV2Data`.
-- **Known gaps:** 120 dragon entries vs the spec's 126; no Parts category; no Pure/Chimera
-  tiers; prizes are coins only (no Diamonds or Style Tokens yet).
 
 ## Diamonds (hard currency)
 
-Diamonds are a player attribute (`PlayerAttributeKeys.DIAMONDS`), so they are saved, replicated and reset to 0 with the other attributes; Rebirth zeroes
-only coins, so they survive it. All currency changes go through the leaf module `server/CurrencyGranter.luau` (`grantCoins`, `grantDiamonds`,
-`getDiamonds`, `trySpendDiamonds`, which checks funds): it requires only `AnalyticsManager` and `PlayerAttributesManager`, so any module can require it
-without a cycle (`RewardGranter` cannot be required from the Index because it pulls in `IncomeManager`). The reward paths, the Index, the Deal Shop and the
-dragon sell-all payout (source `sellDragons`) all pay coins through it. Analytics log Diamonds under the currency
-name "Diamonds" (`logGainCurrency` / `logSpendCurrency` take an optional `currencyName`).
+Diamonds are a player attribute (`PlayerAttributeKeys.DIAMONDS`), so they are saved, replicated and reset to 0 with the other attributes; Rebirth zeroes only coins, so they survive it. All currency changes go through the leaf module `server/CurrencyGranter.luau` (`grantCoins`, `grantDiamonds`, `getDiamonds`, `trySpendDiamonds`, which checks funds). It requires only `AnalyticsManager` and `PlayerAttributesManager`, so any module can require it without a cycle (`RewardGranter` cannot be required from the Index because it pulls in `IncomeManager`). Reward paths, the Index, the Deal Shop and the dragon sell-all payout (source `sellDragons`) pay through it. Analytics log Diamonds under the currency name "Diamonds" (`logGainCurrency`/`logSpendCurrency` take an optional `currencyName`).
 
-- **HUD:** `ScreenGui > DiamondsFrame > Diamonds` (a label; a missing frame only warns), animated like coins, hidden in the FTUE, slides out with the
-  coins during overlays. Set up in `ScreenGuiManager.init` (not `new`: the FTUE manager is injected later).
-- **Earning (all Studio-authored):** `{ kind = Enums.PlaytimeRewardKind.DIAMONDS, diamondAmount = N }` in `Control/Playtime`, `Control/DailyLogin` and a
-  `Control/SpinWheel` loot-table result; an Index reward `{ rewardType = "Diamonds", amount = N }`; `entryRewards.diamonds` in `Control/IndexRewards`
-  (same shape as `coins`, behind the same `isEnabled`); a Deal Shop content `{ kind = ShopContentKind.DIAMONDS, amount = N }`. The tile picture for
-  Playtime and Daily is the `DiamondImage` attribute on the tile's `Icon` (falls back to `CoinImage`).
-- **Not built (deferred by the user, 2026-10-26):** Robux Diamond packs (no dev products yet), and the other sinks: premium eggs (Luck 25 and 150,
-  instant hatch), premium radar, plot luck x100 levels, Style Tokens. "Premium gear" is undefined in the spec.
-- **Dev tools** (client section "Currency"): `getDiamonds`, `spendDiamonds`, `dumpDiamonds`.
-- **Hatch skip (first sink):** a slotted, still-incubating egg can be made ready to hatch for `max(1, ceil(secondsLeft / skipSecPerDiamond))` Diamonds
-  (`shared/HatchSkipMath.luau`; `Control/Hatching.skipSecPerDiamond`, default 600 as in the spec; the hatch prompt's hold time is `Control/Hatching.hatchHoldSec`, default 1;
-  both reach the client in `initData.hatching`). The button is the optional `SpeedUpButton` inside the egg's `CountdownBillboard`
-  (`ClientDragonEggManager`; hidden unless the egg is slotted): the first tap shows "Confirm: N Diamonds" for 3 s, the second fires
-  `TrySkipHatch(eggItemId, expectedCost)`. `GameController.trySkipHatch` validates, recomputes the cost, refuses if it grew past `expectedCost`
-  ("The skip price changed"), spends through `CurrencyGranter.trySpendDiamonds` (source `hatchSkip`) and calls `DragonEgg:skipHatch` (ready, not
-  opened: the player still holds E). Studio: RemoteEvent `TrySkipHatch` (a missing one stops boot).
+- **HUD:** `ScreenGui > DiamondsFrame > Diamonds` (a label; a missing frame only warns), animated like coins, hidden in the FTUE, slides out with the coins during overlays. Set up in `ScreenGuiManager.init` (not `new`: the FTUE manager is injected later).
+- **Earning (Studio-authored):** `{ kind = Enums.PlaytimeRewardKind.DIAMONDS, diamondAmount = N }` in `Control/Playtime`, `Control/DailyLogin` and a `Control/SpinWheel` loot-table result; an Index reward `{ rewardType = "Diamonds", amount = N }`; `entryRewards.diamonds` in `Control/IndexRewards`; a Deal Shop content `{ kind = ShopContentKind.DIAMONDS, amount = N }`.
+- **Spending:** a Deal Shop tier priced with `diamondCost`, and the hatch skip below.
+- **Not built:** Robux Diamond packs (no dev products yet), premium eggs (Luck 25 and 150, instant hatch), premium radar, plot luck x100 levels, Style Tokens.
+- **Dev tools** (client section "Currency"): `getDiamonds`, `spendDiamonds`, `dumpDiamonds`, `resetDiamonds` (also part of `resetFullPlayerState`).
+- **Hatch skip:** a slotted, still-incubating egg can be made ready to hatch for `max(1, ceil(secondsLeft / skipSecPerDiamond))` Diamonds (`shared/HatchSkipMath.luau`). `Control/Hatching.skipSecPerDiamond` defaults to 600; the hatch prompt's hold time is `Control/Hatching.hatchHoldSec`, default 1; both reach the client in `initData.hatching`. The button is the optional `SpeedUpButton` inside the egg's `CountdownBillboard` (`ClientDragonEggManager`; hidden unless the egg is slotted): the first tap shows "Confirm: N Diamonds" for 3 s, the second fires `TrySkipHatch(eggItemId, expectedCost)`. `GameController.trySkipHatch` validates, recomputes the cost, refuses if it grew past `expectedCost`, spends through `CurrencyGranter.trySpendDiamonds` (source `hatchSkip`) and calls `DragonEgg:skipHatch` (ready, not opened: the player still holds E). Studio: RemoteEvent `TrySkipHatch` (missing stops boot).
 
 ## Design Notes in the Repo
 
