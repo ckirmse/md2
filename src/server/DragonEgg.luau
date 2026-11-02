@@ -13,6 +13,7 @@ local players = game:GetService("Players")
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local analyticsManager = require("./AnalyticsManager")
 local eggSlotManager = require("./EggSlotManager")
 local lootTableManager = require("./LootTableManager")
 local objectDataStore = require("./ObjectDataStore")
@@ -75,6 +76,11 @@ end
 
 function DragonEgg.refreshLuckDisplay(self: DragonEgg)
 	local itemData = self:getItemData()
+	if itemData.vanityLootTableName then
+		self:getObj():SetAttribute(Attributes.NAME_PLATE_EXTRA_TEXT, nil)
+		return
+	end
+
 	self:getObj():SetAttribute(
 		Attributes.NAME_PLATE_EXTRA_TEXT,
 		string.format("Luck: %g", DragonEgg.computeLuckMultiplier(itemData.eggBaseLuck, self:getUserId()))
@@ -348,9 +354,56 @@ function DragonEgg.forceHatchNow(self: DragonEgg)
 	self:finishHatching()
 end
 
+function DragonEgg.finishVanityHatching(self: DragonEgg, vanityLootTableName: string)
+	local userId = self:getUserId()
+	local player = players:GetPlayerByUserId(userId)
+	if not player then
+		warn("vanity egg hatched without its owner in the game", self:getItemName())
+		return
+	end
+
+	local lootEntries = lootTableManager:calculateLootResultsWithRandom(vanityLootTableName, self.random)
+	local itemCreationData = lootTableManager:getItemCreationDataFromItemLootResults(lootEntries)
+	if not next(itemCreationData) then
+		warn("vanity egg has no loot table results, cannot hatch", self:getItemName(), vanityLootTableName)
+		return
+	end
+
+	local position = self:getObj():GetPivot().Position
+	local eggName = self:getItemName()
+	itemManager:destroyItem(self)
+
+	local items = gameController:createItemsFromItemCreationDataForPlayer(itemCreationData, player)
+	for _, item in items do
+		item:setPreventSettling()
+	end
+
+	for _, item in items do
+		gameController:getPlayerData(player):notifyItemReceived(item)
+	end
+
+	for _, item in items do
+		analyticsManager:logEvent(player, analyticsManager.Events.GainItem, {
+			objectName = item:getItemName(),
+			primaryElement = enums.getPublicName(enums.PrimaryElements, item:getItemData().primaryElement),
+			rarity = enums.getPublicName(enums.Rarity, item:getItemData().rarity),
+			itemType = item:getType(),
+			acquisitionSource = eggName,
+		})
+	end
+
+	gameController:spawnItemsAtPositionAndGoToPlayerBackpack(items, position + Vector3.new(0, 3, 0), player)
+end
+
 function DragonEgg.finishHatching(self: DragonEgg)
 	self.hatchTimer = nil
 	self:getObj():SetAttribute(Attributes.HATCH_COMPLETE_TIME, nil)
+
+	local vanityLootTableName = self:getItemData().vanityLootTableName
+	if vanityLootTableName then
+		self:finishVanityHatching(vanityLootTableName)
+		return
+	end
 
 	local mutation = rollMutation(self.random)
 

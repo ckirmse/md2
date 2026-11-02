@@ -10,6 +10,7 @@ local Critter = require("./Critter")
 local EraManager = require("./EraManager")
 local Types = require("./Types")
 local gameController: Types.GameController -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local itemManager: Types.ItemManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local objectDataStore = require("./ObjectDataStore")
 local plotsManager = require("./PlotsManager")
 local scatterZoneManager = require("./ScatterZoneManager")
@@ -21,6 +22,8 @@ local IslandsParent = Level:WaitForChild("Islands")
 local GameAssets = ReplicatedStorage:WaitForChild("GameAssets")
 local Islands = GameAssets:WaitForChild("Islands")
 
+local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local lootTableManager = require("./LootTableManager")
@@ -100,6 +103,33 @@ function IslandManager.createNodesOnIsland(self: IslandManager, islandData: any,
 
 			local obj = node:getObj()
 			obj.Parent = workspace
+		end
+	end
+end
+
+function IslandManager.createVanityEggsOnIsland(self: IslandManager, islandData: any, vanityEggTypeLootName: string?, random: Random)
+	if not gameController:areIslandVanityEggsEnabled() or not vanityEggTypeLootName then
+		return
+	end
+
+	for _, attachment in utils.getAllDescendantsByName(islandData.island, "ChestSpawn") do
+		local eggLootEntries = lootTableManager:calculateLootResultsWithRandom(vanityEggTypeLootName, random)
+
+		for _, eggLootEntry in eggLootEntries do
+			local item = itemManager:createItem(eggLootEntry.result, Constants.UNOWNED_USER_ID)
+			if not item then
+				warn("should make vanity egg", eggLootEntry.result, "but could not create it")
+				continue
+			end
+
+			local groundPosition = (attachment :: any).WorldPosition + Vector3.new(0, item:getPart().Size.Y / 2, 0)
+			item:getObj():PivotTo(CFrame.new(groundPosition))
+			item:setPreventSettling()
+			item:getObj().Parent = workspace
+			item:getObj():SetAttribute(Attributes.SOURCE_POSITION, groundPosition)
+			item:getObj():SetAttribute(Attributes.SOURCE_ISLAND_EGG, true)
+
+			table.insert(islandData.vanityEggItemIds, item:getItemId())
 		end
 	end
 end
@@ -248,6 +278,7 @@ function IslandManager.createIslandDataFromIsland(self: IslandManager, island: a
 		nodeObjectIds = {},
 		chestObjectIds = {},
 		critterObjectIds = {},
+		vanityEggItemIds = {},
 		eggZoneMarkers = {},
 	}
 
@@ -305,6 +336,7 @@ function IslandManager.tryCreateIsland(self: IslandManager, lootTableName: strin
 				nodeObjectIds = {},
 				chestObjectIds = {},
 				critterObjectIds = {},
+				vanityEggItemIds = {},
 			}
 
 			self:configureIslandAsCritter(islandData, objectName, position)
@@ -358,6 +390,7 @@ function IslandManager.tryCreateIsland(self: IslandManager, lootTableName: strin
 		if not lootEntry.result.critterTypeLootName then
 			self:createNodesOnIsland(islandData, lootEntry.result.nodeTypeLootName, random)
 			self:createChestsOnIsland(islandData, lootEntry.result.chestTypeLootName, random)
+			self:createVanityEggsOnIsland(islandData, lootEntry.result.vanityEggTypeLootName, random)
 			self:collectEggZones(islandData, lootEntry.result.locationName)
 		end
 
@@ -630,6 +663,13 @@ function IslandManager.destroyPendingIslandsBatch(self: IslandManager, batchSize
 			self.chestMap[objectId] = nil
 		end
 
+		for _, itemId in islandData.vanityEggItemIds do
+			local egg = itemManager:getItemById(itemId)
+			if egg and egg:getUserId() == Constants.UNOWNED_USER_ID and not egg:getObj():GetAttribute(Attributes.CARRY_EXPIRES_TIME) then
+				itemManager:destroyItem(egg)
+			end
+		end
+
 		for _, objectId in islandData.critterObjectIds do
 			local critter = self:getCritterByObjectId(objectId)
 			if not critter then
@@ -793,6 +833,7 @@ end
 
 function IslandManager.initClass(deps: any)
 	gameController = deps.gameController
+	itemManager = deps.itemManager
 end
 
 local singleton = IslandManager.new()

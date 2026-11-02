@@ -59,6 +59,10 @@ function RadarManager.findNearestAvailableEgg(
 			continue
 		end
 
+		if egg:getItemData().vanityLootTableName then
+			continue
+		end
+
 		if (egg:getItemData().isCosmic == true) ~= targetsCosmic then
 			continue
 		end

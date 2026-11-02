@@ -134,6 +134,7 @@ local defaultGameConfigSnapshot = {
 	crystalNodesEnabled = false,
 	crittersEnabled = false,
 	islandChestsEnabled = false,
+	islandVanityEggsEnabled = true,
 }
 
 -- keys missing from the snapshot; GetValue logs every call, so skip it once we know. cleared on (re)load/refresh.
@@ -452,7 +453,12 @@ end
 
 -- grants coins directly for a gem-equivalent value, in place of the legacy physical gem spawn
 -- above; coinAmount = gemCount * (that element's current gem sell value in coins) * 10.
-function GameController.grantCoinsForGemValue(self: GameController, player: Player?, primaryElement: number, gemCount: number): ()
+function GameController.grantCoinsForGemValue(
+	self: GameController,
+	player: Player?,
+	primaryElement: number,
+	gemCount: number
+): ()
 	if not player or gemCount <= 0 then
 		return
 	end
@@ -528,7 +534,13 @@ function GameController.notifyCrystalNoLongerAvailable(self: GameController, cry
 	end
 end
 
-function GameController.notifyCropFullyEaten(self: GameController, crop: any, dragon: any, xp: number, gemCount: number): ()
+function GameController.notifyCropFullyEaten(
+	self: GameController,
+	crop: any,
+	dragon: any,
+	xp: number,
+	gemCount: number
+): ()
 	local player = crop:getPlayer()
 	analyticsManager:logEvent(player, analyticsManager.Events.Harvest, {
 		objectName = crop:getItemName(),
@@ -710,10 +722,12 @@ function GameController.getBestDragonToEatForPlayer(self: GameController, player
 		end
 
 		-- last choice: closest
-		local dragonDistance =
-			utils.getMagnitudeXZ((player.Character :: any).HumanoidRootPart.Position - dragon:getObj():GetPivot().Position)
-		local bestDragonDistance =
-			utils.getMagnitudeXZ((player.Character :: any).HumanoidRootPart.Position - bestDragon:getObj():GetPivot().Position)
+		local dragonDistance = utils.getMagnitudeXZ(
+			(player.Character :: any).HumanoidRootPart.Position - dragon:getObj():GetPivot().Position
+		)
+		local bestDragonDistance = utils.getMagnitudeXZ(
+			(player.Character :: any).HumanoidRootPart.Position - bestDragon:getObj():GetPivot().Position
+		)
 		if dragonDistance < bestDragonDistance then
 			bestDragon = dragon
 			continue
@@ -785,10 +799,12 @@ function GameController.getBestDragonToOpenForPlayer(self: GameController, playe
 		end
 
 		-- last choice: closest
-		local dragonDistance =
-			utils.getMagnitudeXZ((player.Character :: any).HumanoidRootPart.Position - dragon:getObj():GetPivot().Position)
-		local bestDragonDistance =
-			utils.getMagnitudeXZ((player.Character :: any).HumanoidRootPart.Position - bestDragon:getObj():GetPivot().Position)
+		local dragonDistance = utils.getMagnitudeXZ(
+			(player.Character :: any).HumanoidRootPart.Position - dragon:getObj():GetPivot().Position
+		)
+		local bestDragonDistance = utils.getMagnitudeXZ(
+			(player.Character :: any).HumanoidRootPart.Position - bestDragon:getObj():GetPivot().Position
+		)
 		if dragonDistance < bestDragonDistance then
 			bestDragon = dragon
 			continue
@@ -854,7 +870,11 @@ function GameController.getBestDragonToMineForPlayer(self: GameController, playe
 end
 
 -- takes a standard itemCreationData object (map from itemName to count)
-function GameController.createItemsFromItemCreationDataForPlayer(self: GameController, itemCreationData: { [string]: number }, player: Player?): { any }
+function GameController.createItemsFromItemCreationDataForPlayer(
+	self: GameController,
+	itemCreationData: { [string]: number },
+	player: Player?
+): { any }
 	if not player then
 		return {}
 	end
@@ -925,7 +945,12 @@ function GameController.spawnItemsInBackpack(self: GameController, items: { any 
 	end
 end
 
-function GameController.spawnItemsAtPositionAndGoToPlayerBackpack(self: GameController, items: { any }, position: Vector3, player: Player?): ()
+function GameController.spawnItemsAtPositionAndGoToPlayerBackpack(
+	self: GameController,
+	items: { any },
+	position: Vector3,
+	player: Player?
+): ()
 	if not player then
 		return
 	end
@@ -1119,7 +1144,13 @@ function GameController.calculateGemsForHarvest(self: GameController, dragon: an
 end
 
 -- part is something the xp display should draw near
-function GameController.addPrimaryElementXpToPlayer(self: GameController, player: Player?, primaryElement: number, xpDiff: number, part: any): ()
+function GameController.addPrimaryElementXpToPlayer(
+	self: GameController,
+	player: Player?,
+	primaryElement: number,
+	xpDiff: number,
+	part: any
+): ()
 	if not player then
 		return
 	end
@@ -1223,7 +1254,12 @@ function GameController.getAllPlayerUserIds(self: GameController): { number }
 end
 
 -- purchased means acquired via coins or robux
-function GameController.tryDeliverPurchasedItemToPlayer(self: GameController, player: Player, itemName: string, count: number): boolean
+function GameController.tryDeliverPurchasedItemToPlayer(
+	self: GameController,
+	player: Player,
+	itemName: string,
+	count: number
+): boolean
 	local itemData = objectDataStore:getObjectDataByName(itemName)
 
 	for i = 1, count do
@@ -1894,7 +1930,13 @@ function GameController.tryClaimPlaytimeReward(self: GameController, player: Pla
 	playtimeRewardManager:tryClaim(player, rewardIndex)
 end
 
-function GameController.tryMergeItemsWithHeldItem(self: GameController, player: Player, heldItemId: any, itemIds: any, isMergeAll: any): ()
+function GameController.tryMergeItemsWithHeldItem(
+	self: GameController,
+	player: Player,
+	heldItemId: any,
+	itemIds: any,
+	isMergeAll: any
+): ()
 	--print("got try merge with held item for player", player, "held item", heldItemId, "of items", itemIds)
 
 	if not Validate.isItemIdForPlayer(player, heldItemId) then
@@ -1960,7 +2002,13 @@ function GameController.tryMergeItemsWithHeldItem(self: GameController, player: 
 	mergeMixin:notifyMergeItemsWithHeldItem(player, heldItemId, itemIds, isMergeAll)
 end
 
-function GameController.tryMergeItemsWithRidingItem(self: GameController, player: Player, ridingItemId: any, itemIds: any, isMergeAll: any): ()
+function GameController.tryMergeItemsWithRidingItem(
+	self: GameController,
+	player: Player,
+	ridingItemId: any,
+	itemIds: any,
+	isMergeAll: any
+): ()
 	--print("got try merge with riding item for player", player, "riding item", ridingItemId, "of items", itemIds)
 
 	if not Validate.isItemIdForPlayer(player, ridingItemId) then
@@ -2290,7 +2338,12 @@ function GameController.tryClaimCrystal(self: GameController, player: Player, cr
 	crystal:notifyClaim()
 end
 
-function GameController.tryBeginRideDragon(self: GameController, player: Player, itemId: any, playerRelativeToDragonCFrame: any): ()
+function GameController.tryBeginRideDragon(
+	self: GameController,
+	player: Player,
+	itemId: any,
+	playerRelativeToDragonCFrame: any
+): ()
 	--print("got try ride dragon for player", player, "dragon item", itemId)
 
 	if not Validate.isItemId(itemId) then
@@ -2580,7 +2633,14 @@ function GameController.tryOpenCrate(self: GameController, player: Player, crate
 	crate:notifyShouldOpen()
 end
 
-function GameController.trySetRidingItemCFrame(self: GameController, player: Player, itemId: any, time: any, cframe: any, playerRelativeToDragonCFrame: any): ()
+function GameController.trySetRidingItemCFrame(
+	self: GameController,
+	player: Player,
+	itemId: any,
+	time: any,
+	cframe: any,
+	playerRelativeToDragonCFrame: any
+): ()
 	if not Validate.isItemIdForPlayer(player, itemId) then
 		--print("invalid riding item by", player, "item id", itemId)
 		return
@@ -2673,8 +2733,8 @@ function GameController.tryPickupScatteredEgg(self: GameController, player: Play
 
 	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, true)
 	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, itemId)
-
-	;(item :: Types.DragonEgg):beginCarrying(dragon)
+;
+	(item :: Types.DragonEgg):beginCarrying(dragon)
 end
 
 -- releases the carried egg where the dragon currently is, as a free unowned world item; the
@@ -2706,8 +2766,8 @@ function GameController.tryDropEggFromBasket(self: GameController, player: Playe
 	dragon:getObj():SetAttribute(Attributes.IS_CARRYING, false)
 	dragon:getObj():SetAttribute(Attributes.CARRIED_EGG_ITEM_ID, nil)
 
-	item:setUserId(Constants.UNOWNED_USER_ID)
-	;(item :: Types.DragonEgg):pauseCarrying()
+	item:setUserId(Constants.UNOWNED_USER_ID);
+	(item :: Types.DragonEgg):pauseCarrying()
 
 	item:getObj():SetAttribute(Attributes.FREE_FOR_PICKUP, true)
 	utils.setPropertyTreeBaseParts(item:getObj(), "CanCollide", true)
@@ -2806,7 +2866,12 @@ end
 -- moves the egg the dragon carries into the backpack. An egg whose break timer is still running can only be stored inside
 -- the player's own plot, otherwise the player gets refusalMessage; an egg that already reached the plot (no timer left,
 -- the same test the client uses) can be stored anywhere. True when the dragon carries no egg or the egg was stored
-local function storeCarriedEgg(self: GameController, player: Player, dragon: Types.ShadowDragon, refusalMessage: string): boolean
+local function storeCarriedEgg(
+	self: GameController,
+	player: Player,
+	dragon: Types.ShadowDragon,
+	refusalMessage: string
+): boolean
 	local eggItemId = dragon:getObj():GetAttribute(Attributes.CARRIED_EGG_ITEM_ID) :: number?
 	local egg = eggItemId and itemManager:getItemById(eggItemId)
 	if not egg then
@@ -2830,7 +2895,11 @@ local function storeCarriedEgg(self: GameController, player: Player, dragon: Typ
 	return true
 end
 
-function GameController.tryDeliverCarriedEggBeforeDismount(self: GameController, player: Player, dragon: Types.ShadowDragon): boolean
+function GameController.tryDeliverCarriedEggBeforeDismount(
+	self: GameController,
+	player: Player,
+	dragon: Types.ShadowDragon
+): boolean
 	return storeCarriedEgg(self, player, dragon, "You can't dismount while carrying an egg")
 end
 
@@ -3086,7 +3155,12 @@ function GameController.tryRequestBeginTrade(self: GameController, player: Playe
 	analyticsManager:logEvent(player, analyticsManager.Events.SendTradeRequest, {})
 end
 
-function GameController.tryRespondBeginTrade(self: GameController, player: Player, partnerPlayerName: any, doesAccept: any): ()
+function GameController.tryRespondBeginTrade(
+	self: GameController,
+	player: Player,
+	partnerPlayerName: any,
+	doesAccept: any
+): ()
 	--print("got respond begin trade", player, partnerPlayerName, doesAccept)
 
 	if not Validate.isPlayerNameOnServer(partnerPlayerName) then
@@ -3128,7 +3202,12 @@ function GameController.tryRespondBeginTrade(self: GameController, player: Playe
 	end
 end
 
-function GameController.tryLockTradeOffer(self: GameController, player: Player, partnerPlayerName: any, playerOffer: any): ()
+function GameController.tryLockTradeOffer(
+	self: GameController,
+	player: Player,
+	partnerPlayerName: any,
+	playerOffer: any
+): ()
 	if not Validate.isPlayerNameOnServer(partnerPlayerName) then
 		return
 	end
@@ -3393,7 +3472,12 @@ function GameController.tryOpenChest(self: GameController, player: Player, objec
 	chest:notifyShouldOpen(item)
 end
 
-function GameController.tryUnlockVanityComponent(self: GameController, player: Player, vanityPlacement: any, vanityComponentName: any): ()
+function GameController.tryUnlockVanityComponent(
+	self: GameController,
+	player: Player,
+	vanityPlacement: any,
+	vanityComponentName: any
+): ()
 	--print("player trying to unlock vanity component", player, vanityPlacement, vanityComponentName)
 
 	if not plotsManager:validateVanityPlacement(vanityPlacement) then
@@ -3430,7 +3514,12 @@ function GameController.tryUnlockVanityComponent(self: GameController, player: P
 	playerData:equipVanityComponentAtPlacement(vanityPlacement, vanityComponentName)
 end
 
-function GameController.tryEquipVanityComponent(self: GameController, player: Player, vanityPlacement: any, vanityComponentName: any): ()
+function GameController.tryEquipVanityComponent(
+	self: GameController,
+	player: Player,
+	vanityPlacement: any,
+	vanityComponentName: any
+): ()
 	--print("player trying to equip vanity component", player, vanityPlacement, vanityComponentName)
 
 	if not plotsManager:validateVanityPlacement(vanityPlacement) then
@@ -3664,7 +3753,10 @@ function GameController.tryRebirth(self: GameController, player: Player): ()
 	if not itemManager:hasDragonWithRarity(player, requiredRarity) then
 		self:sendSystemMessageToPlayer(
 			player,
-			string.format("You need a %s dragon to rebirth", enums.getPublicName(enums.Rarity, requiredRarity) :: string)
+			string.format(
+				"You need a %s dragon to rebirth",
+				enums.getPublicName(enums.Rarity, requiredRarity) :: string
+			)
 		)
 		return
 	end
@@ -3701,7 +3793,10 @@ function GameController.tryRebirthBypass(self: GameController, player: Player): 
 	end
 
 	if playerAttributesManager:get(player, PlayerAttributeKeys.COINS) < bypassCoinCost then
-		self:sendSystemMessageToPlayer(player, string.format("You need %d coins to skip the rebirth requirements", bypassCoinCost))
+		self:sendSystemMessageToPlayer(
+			player,
+			string.format("You need %d coins to skip the rebirth requirements", bypassCoinCost)
+		)
 		return
 	end
 
@@ -3718,7 +3813,14 @@ function GameController.tryClaimWelcomeBackGift(self: GameController, player: Pl
 	playerData:tryClaimWelcomeBackGift()
 end
 
-function GameController.tryClaimIndexReward(self: GameController, player: Player, category: any, scope: any, chainKey: any, tierIndex: any): ()
+function GameController.tryClaimIndexReward(
+	self: GameController,
+	player: Player,
+	category: any,
+	scope: any,
+	chainKey: any,
+	tierIndex: any
+): ()
 	if not indexManager:isLegacyEnabled() then
 		return
 	end
@@ -4071,6 +4173,11 @@ function GameController.areIslandChestsEnabled(self: GameController): boolean
 	return defaultGameConfigSnapshot[GameConfigKeys.islandChestsEnabled]
 end
 
+function GameController.areIslandVanityEggsEnabled(self: GameController): boolean
+	-- not yet registered in the remote ConfigService, so read the code-side default directly
+	return defaultGameConfigSnapshot[GameConfigKeys.islandVanityEggsEnabled]
+end
+
 function GameController.init(self: GameController): ()
 	self.playerStore = ProfileStore.New(storageManager:getProfileDataStoreName(), PlayerData.getDefaultSaveData())
 
@@ -4085,6 +4192,8 @@ function GameController.init(self: GameController): ()
 	gameDataVerifier:verifyAll()
 
 	lootTableManager:init()
+
+	gameDataVerifier:verifyVanityEggs()
 
 	self:initCollision()
 
@@ -4131,21 +4240,24 @@ function GameController.init(self: GameController): ()
 end
 
 function GameController.new(): GameController
-	local self: GameController = setmetatable({
-		random = Random.new(),
+	local self: GameController = setmetatable(
+		{
+			random = Random.new(),
 
-		gameConfig = nil,
+			gameConfig = nil,
 
-		pollTimer = nil,
-		latestPollTime = workspace:GetServerTimeNow(),
-		pollCount = 0,
+			pollTimer = nil,
+			latestPollTime = workspace:GetServerTimeNow(),
+			pollCount = 0,
 
-		playerDatas = {},
+			playerDatas = {},
 
-		waitExitCount = 0,
+			waitExitCount = 0,
 
-		remoteEventMetrics = {},
-	} :: GameControllerFields, GameController)
+			remoteEventMetrics = {},
+		} :: GameControllerFields,
+		GameController
+	)
 
 	playersService.CharacterAutoLoads = false
 

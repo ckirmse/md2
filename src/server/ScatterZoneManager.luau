@@ -275,6 +275,10 @@ function ScatterZoneManager.getEggWorldCounts(self: ScatterZoneManager): { any }
 			continue
 		end
 
+		if item:getItemData().vanityLootTableName then
+			continue
+		end
+
 		local itemName = item:getItemName()
 		counts[itemName] = (counts[itemName] or 0) + 1
 	end

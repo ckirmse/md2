@@ -23,6 +23,7 @@ local indexRewardsData = require("@game/ServerScriptService/GameData/Control/Ind
 local rebirthData = require("@game/ServerScriptService/GameData/Control/Rebirth")
 local spinWheelData = require("@game/ServerScriptService/GameData/Control/SpinWheel")
 
+local lootTableManager = require("./LootTableManager")
 local objectDataStore = require("./ObjectDataStore")
 local Validate = require("./Validate")
 
@@ -276,6 +277,24 @@ function GameDataVerifier.verifyEggSizes(self: GameDataVerifier)
 			)
 		elseif low ~= nil and (low > high or high > 100) then
 			warn("GameDataVerifier: egg size percentile range must satisfy min <= max <= 100", eggName, low, high)
+		end
+	end
+end
+
+function GameDataVerifier.verifyVanityEggs(self: GameDataVerifier)
+	for _, eggName in objectDataStore:getAllObjectNamesByDataKeyValue("type", "dragonEgg") do
+		local itemData = objectDataStore:getObjectDataByName(eggName)
+		if not itemData.vanityLootTableName then
+			continue
+		end
+
+		if itemData.hatchLootTableName then
+			warn("GameDataVerifier: vanity egg must not also set hatchLootTableName", eggName)
+		end
+
+		local lootTable = lootTableManager:getLootTable(itemData.vanityLootTableName)
+		if not lootTable or #lootTable == 0 then
+			warn("GameDataVerifier: vanity egg has an empty or missing vanityLootTableName", eggName, itemData.vanityLootTableName)
 		end
 	end
 end

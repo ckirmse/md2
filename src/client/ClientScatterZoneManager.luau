@@ -32,6 +32,7 @@ function ClientScatterZoneManager.configurePrompt(self: ClientScatterZoneManager
 	-- scatter-zone-sourced eggs are always eligible; any other egg only once it's been dropped
 	-- from a basket mid-carry (FREE_FOR_PICKUP) -- a fresh, untaken nest egg is neither
 	local isEligibleSource = egg:GetAttribute(Attributes.SOURCE_SCATTER_ZONE_ID) ~= nil
+		or egg:GetAttribute(Attributes.SOURCE_ISLAND_EGG) == true
 		or egg:GetAttribute(Attributes.FREE_FOR_PICKUP) == true
 
 	-- ownership stays unowned for the whole carry now, so CARRY_EXPIRES_TIME (only set while

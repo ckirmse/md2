@@ -63,6 +63,7 @@ module = {
 	MIN_EGG_SPACING = "MinEggSpacing",
 	LOOT_TABLE_NAME = "LootTableName",
 	SOURCE_SCATTER_ZONE_ID = "SourceScatterZoneId",
+	SOURCE_ISLAND_EGG = "SourceIslandEgg",
 	CARRY_EXPIRES_TIME = "CarryExpiresTime",
 	CARRY_TOTAL_SEC = "CarryTotalSec",
 	FREE_FOR_PICKUP = "FreeForPickup",

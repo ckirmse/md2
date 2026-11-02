@@ -153,7 +153,7 @@ end
 
 function IndexV2Manager.getCategoryForItemName(self: IndexV2Manager, itemName: string): number?
 	local itemData = objectDataStore:getObjectDataByName(itemName)
-	if not itemData then
+	if not itemData or itemData.vanityLootTableName then
 		return nil
 	end
 
@@ -174,6 +174,9 @@ function IndexV2Manager.getEntries(self: IndexV2Manager, category: number): { In
 	if itemType then
 		for _, itemName in objectDataStore:getAllObjectNamesByDataKeyValue("type", itemType) do
 			local itemData = objectDataStore:getObjectDataByName(itemName)
+			if itemData.vanityLootTableName then
+				continue
+			end
 			table.insert(entries, {
 				key = itemName,
 				displayName = itemData.displayName or itemName,

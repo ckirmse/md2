@@ -8,6 +8,7 @@ local GameConfigKeys = {
 	crystalNodesEnabled = "crystalNodesEnabled",
 	crittersEnabled = "crittersEnabled",
 	islandChestsEnabled = "islandChestsEnabled",
+	islandVanityEggsEnabled = "islandVanityEggsEnabled",
 }
 
 return GameConfigKeys

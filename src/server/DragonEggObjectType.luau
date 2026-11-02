@@ -97,6 +97,11 @@ function DragonEggObjectType.new(): DragonEggObjectType
 			optional = true,
 		},
 
+		vanityLootTableName = {
+			type = "string",
+			optional = true,
+		},
+
 		-- hatches the moment it is placed, with no incubation time (premium gacha eggs)
 		instantHatch = {
 			type = "boolean",
