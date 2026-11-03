@@ -27,6 +27,7 @@ local FLAPPED_PART_NAMES: { [string]: boolean } = { Wing_Left = true, Wing_Right
 
 local MIN_LINK_DISTANCE = 0.01
 local LIFT_FOLLOW_RATE = 8 -- per second
+local MAX_HEAD_LAG_STUDS = 1
 
 type Node = {
 	part: BasePart,
@@ -42,6 +43,11 @@ type Node = {
 	restRelRotation: CFrame,
 }
 
+type Wing = {
+	part: BasePart,
+	anchor: BasePart, -- the part carrying the attachment the flapping code places this wing from
+}
+
 type Rig = {
 	head: BasePart,
 	nodes: { Node },
@@ -49,6 +55,7 @@ type Rig = {
 	baseScale: number,
 	headGroup: { [BasePart]: boolean }, -- the head and everything welded to it
 	drivenParts: { [BasePart]: boolean }, -- the parts whose CFrame the trail sets every frame
+	wings: { Wing }, -- the wings, which ClientDragonManager places each physics step from attachments on a body part (the head or a spine part)
 	seatPart: BasePart?, -- the part the rider sits on; it trails with the body part it belongs to
 }
 
@@ -60,6 +67,7 @@ type DragonState = {
 	positions: { Vector3 },
 	cframes: { CFrame },
 	renderOffsets: { Vector3 }, -- drawn-only offsets per node (the hover sway), kept out of the chain
+	anchorBefore: { [BasePart]: CFrame }, -- each wing anchor's pose at the start of the step
 	bobTime: number,
 	lastHeadPosition: Vector3,
 	smoothPosition: Vector3, -- the head position the body is built from (see smoothPoint)
@@ -351,10 +359,26 @@ local function buildRig(caster: Model): (Rig?, string?)
 		end
 	end
 
+	-- ClientDragonManager places each wing from the attachment of the same name on a body part; remember which part that is
+	local wings: { Wing } = {}
+	for partName in FLAPPED_PART_NAMES do
+		local wingPart = caster:FindFirstChild(partName)
+		if wingPart and wingPart:IsA("BasePart") then
+			for _, descendant in caster:GetDescendants() do
+				local anchorPart = descendant.Parent
+				if descendant:IsA("Attachment") and descendant.Name == partName and anchorPart and anchorPart ~= wingPart and anchorPart:IsA("BasePart") then
+					table.insert(wings, { part = wingPart, anchor = anchorPart })
+					break
+				end
+			end
+		end
+	end
+
 	local rig: Rig = {
 		head = head,
 		nodes = nodes,
 		spineCount = spineCount,
+		wings = wings,
 		baseScale = caster:GetScale(),
 		headGroup = headGroup,
 		drivenParts = drivenParts,
@@ -448,6 +472,12 @@ function ClientDragonBodyTrail.stepDragon(self: ClientDragonBodyTrail, state: Dr
 	local actualHeadCFrame = rig.head.CFrame
 	local scaleRatio = state.caster:GetScale() / rig.baseScale
 
+	-- where each wing's anchor part is before this step moves anything (the flapping code placed the wings from these poses)
+	local anchorBefore = state.anchorBefore
+	for _, wing in rig.wings do
+		anchorBefore[wing.anchor] = wing.anchor.CFrame
+	end
+
 	-- The idle hover pulse moves the whole dragon up and down. The follow-the-leader body would stay behind a slow move like that
 	-- (it only drags along its own length), so the trail works without the pulse and the pulse is added to every part afterwards.
 	state.lift += (state.targetLift - state.lift) * math.min(1, dt * LIFT_FOLLOW_RATE)
@@ -477,9 +507,34 @@ function ClientDragonBodyTrail.stepDragon(self: ClientDragonBodyTrail, state: Dr
 	else
 		-- The head's position read once a frame is a little uneven (some frames the physics step has landed earlier or later). The engine
 		-- hides that for the head it draws, but a body placed by script copies it, and the rider sits on the body, so the camera follows it
-		-- too. Build the body from a smoothed head position instead.
-		state.smoothPosition, state.smoothVelocity =
-			DragonTrailMath.smoothPoint(state.smoothPosition, state.smoothVelocity, rawHeadPosition, dt, trail.headSmoothingSec)
+		-- too. Build the body from a smoothed head position instead. A flown (unanchored) head reports its real velocity, which follows a
+		-- sudden turn at once; estimating it from positions made the smoothed head trail the real one and the neck stretched.
+		local knownVelocity = if rig.head.Anchored then nil else rig.head.AssemblyLinearVelocity
+		state.smoothPosition, state.smoothVelocity = DragonTrailMath.smoothPoint(
+			state.smoothPosition,
+			state.smoothVelocity,
+			rawHeadPosition,
+			dt,
+			trail.headSmoothingSec,
+			knownVelocity
+		)
+
+		-- never let the smoothed head lag the real one by more than the unevenness it exists to remove
+		local lag = state.smoothPosition - rawHeadPosition
+		if lag.Magnitude > MAX_HEAD_LAG_STUDS then
+			state.smoothPosition = rawHeadPosition + lag.Unit * MAX_HEAD_LAG_STUDS
+		end
+
+		-- A flown head is drawn from the physics body, whose position is uneven frame to frame (the physics runs in sub-steps and the number
+		-- that land in a frame varies), while the body and the rider are now steady: the head seemed to lunge ahead of the body and drift
+		-- back several times a second. Put the head on the same smoothed track. The next physics step starts from here, which is what keeps
+		-- it steady. (The wings are carried along with their anchor part at the end of the step.)
+		if not rig.head.Anchored then
+			local nudge = state.smoothPosition + liftVector - actualHeadCFrame.Position
+			if nudge.Magnitude > 0 then
+				rig.head.CFrame = actualHeadCFrame + nudge
+			end
+		end
 	end
 	local headCFrame = CFrame.new(state.smoothPosition) * rawHeadCFrame.Rotation
 
@@ -544,6 +599,13 @@ function ClientDragonBodyTrail.stepDragon(self: ClientDragonBodyTrail, state: Dr
 
 		cframes[index] = cframe
 		node.part.CFrame = cframe + liftVector + renderOffsets[index]
+	end
+
+	-- ClientDragonManager places the wings (PostSimulation, before this step) from their anchor part's pose of the step before, so they would
+	-- sit one frame behind the body. Carry each wing by however far its anchor part just moved.
+	for _, wing in rig.wings do
+		local before = anchorBefore[wing.anchor]
+		wing.part.CFrame = wing.anchor.CFrame * before:ToObjectSpace(wing.part.CFrame)
 	end
 end
 
@@ -639,6 +701,7 @@ function ClientDragonBodyTrail.tryAttach(self: ClientDragonBodyTrail, itemId: nu
 		positions = {},
 		cframes = {},
 		renderOffsets = {},
+		anchorBefore = {},
 		bobTime = math.random() * 100,
 		lastHeadPosition = rig.head.Position,
 		smoothPosition = rig.head.Position,

@@ -54,12 +54,15 @@ end
 -- Smooths a position that arrives unevenly (a physics body read once per frame: some frames it has moved a little more than others, because
 -- of when the physics step fell). A critically damped tracker with a velocity estimate, so a steady fly-by has no lag at all and only the
 -- frame-to-frame unevenness is removed. Returns the new estimate and velocity. `timeConstantSec` 0 passes the measurement straight through.
+-- When the body's real velocity is known (a physics body: AssemblyLinearVelocity) it is used instead of the estimate, because an estimate
+-- takes several frames to follow a sudden change of direction and the smoothed point would trail the real one in the old direction.
 function DragonTrailMath.smoothPoint(
 	estimate: Vector3,
 	velocity: Vector3,
 	measured: Vector3,
 	dt: number,
-	timeConstantSec: number
+	timeConstantSec: number,
+	knownVelocity: Vector3?
 ): (Vector3, Vector3)
 	if dt <= 0 then
 		return estimate, velocity
@@ -69,6 +72,11 @@ function DragonTrailMath.smoothPoint(
 	end
 
 	local alpha = 1 - math.exp(-dt / timeConstantSec)
+	if knownVelocity then
+		local predictedFromKnown = estimate + knownVelocity * dt
+		return predictedFromKnown + (measured - predictedFromKnown) * alpha, knownVelocity
+	end
+
 	local beta = alpha * alpha / (2 - alpha)
 	local predicted = estimate + velocity * dt
 	local residual = measured - predicted
