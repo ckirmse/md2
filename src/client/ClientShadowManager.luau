@@ -12,6 +12,7 @@ local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local clientAnalyticsManager = require("./ClientAnalyticsManager")
+local clientDragonBodyTrail = require("./ClientDragonBodyTrail")
 local clientRideController = require("./ClientRideController")
 local Types = require("./Types")
 
@@ -32,6 +33,7 @@ type IndicatorData = {
 	cframeChangedConnect: RBXScriptConnection?,
 	clientControlChangedConnect: RBXScriptConnection?,
 	dragonSizeChangedConnect: RBXScriptConnection?,
+	isProceduralTrail: boolean?, -- the body is placed by ClientDragonBodyTrail instead of simulated
 }
 
 type ClientShadowManagerFields = {
@@ -177,7 +179,8 @@ function ClientShadowManager.testCasterIntegrityLoop(self: ClientShadowManager)
 		-- need to do a wait here in case there is nothing in indicatorMap--can't hog the cpu
 		task.wait(0.05)
 		for itemId, indicatorData in self.indicatorMap do
-			if not self:testCasterIntegrity(indicatorData.caster) then
+			-- a procedural body is placed by code every frame, so its joints cannot stretch
+			if not indicatorData.isProceduralTrail and not self:testCasterIntegrity(indicatorData.caster) then
 				print("recreating caster for shadow", itemId, indicatorData.caster)
 				self:tryAutoRecreateCaster(itemId)
 				clientAnalyticsManager:logEvent(clientAnalyticsManager.Events.RecreateShadowCaster,
@@ -217,6 +220,7 @@ function ClientShadowManager.recreateCaster(self: ClientShadowManager, itemId: n
 		return
 	end
 
+	clientDragonBodyTrail:detach(itemId)
 	indicatorData.caster:Destroy()
 
 	self:createCaster(itemId)
@@ -251,9 +255,52 @@ function ClientShadowManager.createCaster(self: ClientShadowManager, itemId: num
 	caster:SetAttribute(Attributes.USER_ID, shadow:GetAttribute(Attributes.USER_ID))
 	caster:PivotTo(shadow:GetPivot())
 
+	-- with Control/DragonFlight.useLegacyFlight = false a dragon in the world gets a procedural body; held dragons stay rigid, and a model
+	-- the trail cannot read stays on the legacy physics
+	indicatorData.isProceduralTrail = false
+	if shadow:HasTag(Tags.SHADOW_DRAGON) and shadow.Parent == workspace and clientDragonBodyTrail:isEnabled() then
+		indicatorData.isProceduralTrail = clientDragonBodyTrail:tryAttach(itemId, caster, shadow)
+	end
+
 	caster.Parent = shadow.Parent
 
 	indicatorData.caster = caster
+end
+
+function ClientShadowManager.isProceduralTrail(self: ClientShadowManager, itemId: number): boolean
+	local indicatorData = self.indicatorMap[itemId]
+	return indicatorData ~= nil and indicatorData.isProceduralTrail == true
+end
+
+-- puts the caster where its shadow is. A procedural body moves only the head: a rigid move of the whole model would erase the trail.
+function ClientShadowManager.moveCasterToShadow(self: ClientShadowManager, itemId: number)
+	local indicatorData = self.indicatorMap[itemId]
+	if not indicatorData then
+		return
+	end
+
+	local pivot = indicatorData.shadow:GetPivot()
+	local caster = indicatorData.caster
+	if indicatorData.isProceduralTrail and caster.PrimaryPart then
+		caster.PrimaryPart:PivotTo(pivot)
+		return
+	end
+
+	caster:PivotTo(pivot)
+end
+
+-- rebuilds every dragon body in the current flight mode; a dragon being ridden is rebuilt when the ride ends
+function ClientShadowManager.recreateAllDragonCasters(self: ClientShadowManager)
+	local itemIds: { number } = {}
+	for itemId, indicatorData in self.indicatorMap do
+		if indicatorData.shadow:HasTag(Tags.SHADOW_DRAGON) then
+			table.insert(itemIds, itemId)
+		end
+	end
+
+	for _, itemId in itemIds do
+		self:tryAutoRecreateCaster(itemId)
+	end
 end
 
 -- resizes an existing caster in place instead of destroying/recreating it, and re-applies
@@ -345,6 +392,7 @@ function ClientShadowManager.removeIndicators(self: ClientShadowManager, itemId:
 		indicatorData.casterRecreatedEvent = nil
 	end
 
+	clientDragonBodyTrail:detach(itemId)
 	indicatorData.caster:Destroy()
 
 	self.indicatorMap[itemId] = nil
@@ -458,7 +506,6 @@ function ClientShadowManager.notifyNewInstance(self: ClientShadowManager, shadow
 			end
 
 			local currentShadow = currentIndicatorData.shadow
-			local currentCaster = currentIndicatorData.caster
 
 			-- ok, so... these attribute changes come down from the server in a separate "channel" compared to physics/position updates,
 			-- so there might be more position updates that the server already applied that we haven't received yet
@@ -472,7 +519,7 @@ function ClientShadowManager.notifyNewInstance(self: ClientShadowManager, shadow
 				return
 			end
 
-			currentCaster:PivotTo(currentShadow:GetPivot())
+			self:moveCasterToShadow(itemId)
 		end
 	)
 
@@ -563,6 +610,13 @@ function ClientShadowManager.getMapSize(self: ClientShadowManager): number
 end
 
 function ClientShadowManager.init(self: ClientShadowManager)
+
+	-- the flight mode can arrive (NotifyInit) or be switched (dev tool) after the dragons were built
+	clientDragonBodyTrail:getModeChangedEvent():Connect(
+		function()
+			self:recreateAllDragonCasters()
+		end
+	)
 
 	collectionService:GetInstanceAddedSignal(Tags.SHADOW):Connect(
 		function(inst)

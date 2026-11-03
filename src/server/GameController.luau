@@ -24,6 +24,7 @@ local customerTools = require("./CustomerTools")
 local dealShopManager = require("./DealShopManager")
 local devTools = require("./DevTools")
 local DragonEgg = require("./DragonEgg")
+local dragonFlightManager = require("./DragonFlightManager")
 local dragonFuseManager = require("./DragonFuseManager")
 local dragonSellManager = require("./DragonSellManager")
 local firstSessionOfferManager = require("./FirstSessionOfferManager")
@@ -1645,6 +1646,7 @@ function GameController.processPlayerAdd(self: GameController, player: Player): 
 		buyStoreData = buyStoreManager:getBuyStoreDataForPlayer(player),
 		clientWeatherDatas = weatherManager:getClientWeatherDatas(),
 		dayNight = dayNightManager:getClientConfig(),
+		dragonFlight = dragonFlightManager:getClientConfig(),
 		weather = weatherEventManager:getClientData(),
 		devToolSettings = devToolSettings,
 		options = playerData:getOptions(),
@@ -4222,6 +4224,7 @@ function GameController.init(self: GameController): ()
 	mutationStoreManager:init()
 	vanityStoreManager:init()
 	dayNightManager:init()
+	dragonFlightManager:init()
 	weatherEventManager:init()
 	dealShopManager:init()
 	spinWheelManager:init()

@@ -25,6 +25,7 @@ local Types = require("./Types")
 local clientDragonEggManager: Types.ClientDragonEggManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local clientDragonManager: Types.ClientDragonManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local clientPlayerAnimationManager: Types.ClientPlayerAnimationManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
+local clientDragonBodyTrail = require("./ClientDragonBodyTrail")
 local clientPlayerVariables = require("./ClientPlayerVariables")
 local Satchel = require("./Satchel")
 local screenGuiManager = require("./ScreenGuiManager")
@@ -37,6 +38,7 @@ local RIGHT_KEY = Enum.KeyCode.D
 local BACKWARD_KEY = Enum.KeyCode.S
 
 local RIDE_BEGIN_COOLDOWN_SEC = 2
+local PLAYER_SEND_INTERVAL_TRAIL_SEC = 0.1
 local DISMOUNT_LAUNCH_SPEED = 60
 
 -- rotation in radians per second
@@ -302,7 +304,9 @@ function ClientRideController.sendServerRidingItemCFrame(self: ClientRideControl
 			return
 		end
 
-		if lastSendPlayerTime - self.lastSendServer.lastSendPlayerTime < 1 then
+		-- the rider's spot on the dragon barely ever changes, except with the procedural trail: the seat moves with its body part
+		local playerSendIntervalSec = if clientDragonBodyTrail:isTrailCaster(self.caster) then PLAYER_SEND_INTERVAL_TRAIL_SEC else 1
+		if lastSendPlayerTime - self.lastSendServer.lastSendPlayerTime < playerSendIntervalSec then
 			-- don't bother sending these updates often; they barely ever change
 			-- maybe should do same test as above instead
 			playerRelativeToDragonCFrame = nil

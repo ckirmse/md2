@@ -13,6 +13,7 @@ local clientConsumableCropManager = require("./ClientConsumableCropManager")
 local clientCropManager = require("./ClientCropManager")
 local clientCrystalManager = require("./ClientCrystalManager")
 local clientCustomerTools = require("./ClientCustomerTools")
+local clientDragonBodyTrail = require("./ClientDragonBodyTrail")
 local Types = require("./Types")
 local clientDragonManager: Types.ClientDragonManager -- injected via initClass(deps); typed through Types.luau to avoid the require cycle
 local clientGemManager = require("./ClientGemManager")
@@ -368,6 +369,23 @@ function ClientDevTools.init(self: ClientDevTools, devToolSettings: any)
 			if Iris.Button({ "Remove All Eggs" }).clicked() then
 				RemoteEvents.TryDevTool:FireServer("removeAllEggs")
 			end
+
+			Iris.End()
+
+			-- local only: dragons are rebuilt in the chosen mode (a dragon being ridden when the ride ends)
+			Iris.CollapsingHeader({ "Dragon Flight" })
+			Iris.Text({ string.format("Body: %s", clientDragonBodyTrail:getModeName()) })
+			Iris.SameLine()
+			if Iris.Button({ "Legacy Physics Body" }).clicked() then
+				clientDragonBodyTrail:setModeOverride("legacy")
+			end
+			if Iris.Button({ "Procedural Trail" }).clicked() then
+				clientDragonBodyTrail:setModeOverride("new")
+			end
+			if Iris.Button({ "Follow Server Config" }).clicked() then
+				clientDragonBodyTrail:setModeOverride(nil)
+			end
+			Iris.End()
 
 			Iris.End()
 

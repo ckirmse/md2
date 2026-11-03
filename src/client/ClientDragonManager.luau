@@ -31,6 +31,7 @@ local PlayerOptionKeys = require("@game/ReplicatedStorage/Shared/PlayerOptionKey
 local Tags = require("@game/ReplicatedStorage/Shared/Tags")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
+local clientDragonBodyTrail = require("./ClientDragonBodyTrail")
 local clientEventHandlers = require("./ClientEventHandlers")
 local clientOptionsManager = require("./ClientOptionsManager")
 local clientRideController = require("./ClientRideController")
@@ -410,6 +411,8 @@ function ClientDragonManager.setupIdlePulsing(self: ClientDragonManager, itemId:
 
 				indicatorData.baseRotation = CFrame.identity
 
+				clientDragonBodyTrail:setLift(itemId, 0)
+
 				return
 			end
 
@@ -508,6 +511,9 @@ function ClientDragonManager.setupIdlePulsing(self: ClientDragonManager, itemId:
 
 			--print("sinInput", sinInput, "sinResult", sinResult, "pulseDiffY", pulseDiffY, "diffY", diffY, "mininumY", minimumY)
 
+			-- with the procedural body trail the whole dragon shares this lift, so it does not nod against a still body
+			clientDragonBodyTrail:setLift(itemId, diffY)
+
 			local diffPosition = Vector3.new(0, diffY, 0)
 			local newPosition = indicatorData.basePosition + diffPosition
 			local baseCFrame = CFrame.new(newPosition) * rotation
@@ -538,6 +544,11 @@ function ClientDragonManager.setupEnergyDecay(self: ClientDragonManager, itemId:
 	end
 
 	--print("starting client dragon energy decay")
+
+	-- a procedural body (Control/DragonFlight) has no joints to calm down: the trail places its parts by code
+	if clientShadowManager:isProceduralTrail(itemId) then
+		return
+	end
 
 	local caster = indicatorData.caster
 	local shadow = indicatorData.shadow
@@ -1004,18 +1015,26 @@ function ClientDragonManager.setupToAllowRiding(self: ClientDragonManager, itemI
 
 	indicatorData.seatLocation = seatLocation
 
-	local weldConstraint = Instance.new("WeldConstraint")
-	weldConstraint.Name = "SeatLocationToHeadWeld"
-	weldConstraint.Part0 = seatLocation
-	weldConstraint.Part1 = caster.PrimaryPart
-	weldConstraint.Enabled = not shadow:GetAttribute(Attributes.CLIENT_CONTROL)
-	--print("start weld head/body:", not shadow:GetAttribute(Attributes.CLIENT_CONTROL))
-	weldConstraint.Parent = caster
+	-- with the procedural trail the seat moves with its body part, which ClientDragonBodyTrail places each frame; a weld to the head
+	-- would pull that body part (and the head with it) out of the trail
+	local weldConstraint: WeldConstraint? = nil
+	if not clientShadowManager:isProceduralTrail(itemId) then
+		local seatWeld = Instance.new("WeldConstraint")
+		seatWeld.Name = "SeatLocationToHeadWeld"
+		seatWeld.Part0 = seatLocation
+		seatWeld.Part1 = caster.PrimaryPart
+		seatWeld.Enabled = not shadow:GetAttribute(Attributes.CLIENT_CONTROL)
+		--print("start weld head/body:", not shadow:GetAttribute(Attributes.CLIENT_CONTROL))
+		seatWeld.Parent = caster
+		weldConstraint = seatWeld
+	end
 
 	indicatorData.controlChangedConnect = shadow:GetAttributeChangedSignal(Attributes.CLIENT_CONTROL):Connect(
 		function()
 			--print("change weld head/body:", not shadow:GetAttribute(Attributes.CLIENT_CONTROL))
-			weldConstraint.Enabled = not shadow:GetAttribute(Attributes.CLIENT_CONTROL)
+			if weldConstraint then
+				weldConstraint.Enabled = not shadow:GetAttribute(Attributes.CLIENT_CONTROL)
+			end
 
 			if clientRideController:getRidingObj() == shadow then
 				local part = caster.primaryPart
