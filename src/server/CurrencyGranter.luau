@@ -1,5 +1,8 @@
 --!strict
 
+-- The one place currency changes. A leaf module on purpose: it requires only AnalyticsManager and PlayerAttributesManager, so any module
+-- can require it without a cycle (RewardGranter cannot be required from the Index because it pulls in IncomeManager). Diamonds are a
+-- player attribute (PlayerAttributeKeys.DIAMONDS), so they are saved and replicated with the other attributes, and Rebirth zeroes only coins.
 local CurrencyGranter = {}
 
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")

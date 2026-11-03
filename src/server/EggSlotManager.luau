@@ -1,5 +1,14 @@
 --!strict
 
+-- Eggs incubate only in egg slots on the player's plot; dragons roam the open plot. The counts come from Control/Rebirth per level
+-- (eggSlots and dragonLimit; a missing value falls back to the previous level's). Slot models are spawned per plot, up to the owner's
+-- count, from GameAssets.Land.EggSlotTemplate at the EggSlotMarker<N> parts in Level.PerPlotElements (plot 1's coordinates; read and
+-- destroyed at startup). syncEggSlotModels runs whenever the count is published, and PlayerData.loadSaveData calls it before items load.
+--
+-- The dragon limit counts dragons out of the backpack except the ridden one. Mounting is never blocked; the limit applies on dismount
+-- (RideMixin.notifyPlayerEndRideDragon) and on hatching, and a dragon that does not fit goes to the backpack. Income and passive XP skip
+-- the ridden dragon, so PlayerData.recomputeTotalDragonIncome must run when a dragon enters or leaves the world or starts or stops being
+-- ridden.
 local EggSlotManager = {}
 EggSlotManager.__index = EggSlotManager
 

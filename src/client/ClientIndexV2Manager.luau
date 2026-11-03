@@ -461,11 +461,7 @@ function ClientIndexV2Manager.addTierButton(
 	button.Parent = milestonesFrame
 end
 
-function ClientIndexV2Manager.renderBottomBar(
-	self: ClientIndexV2Manager,
-	category: number,
-	milestones: { Milestone }
-)
+function ClientIndexV2Manager.renderBottomBar(self: ClientIndexV2Manager, category: number, milestones: { Milestone })
 	local bottomBar = self.bottomBar
 	local templates = self.milestoneTemplates
 	local categoryData = clientIndexV2Data:getCategory(category)
@@ -481,7 +477,9 @@ function ClientIndexV2Manager.renderBottomBar(
 		and singleFrame ~= nil
 		and longBar ~= nil
 	if clientIndexV2Data:isSingleTierBar() and not isSingleTier then
-		warn("ClientIndexV2Manager: singleTierBar needs BottomBar/MilestonesSingle with its templates and ProgressBarLong; showing every tier")
+		warn(
+			"ClientIndexV2Manager: singleTierBar needs BottomBar/MilestonesSingle with its templates and ProgressBarLong; showing every tier"
+		)
 	end
 
 	if not normalFrame then
@@ -499,7 +497,9 @@ function ClientIndexV2Manager.renderBottomBar(
 	setShown(longBar, isSingleTier)
 
 	local milestonesFrame: any = if isSingleTier then singleFrame else normalFrame
-	local activeTemplates: StateTemplates = if isSingleTier then self.milestoneSingleTemplates :: StateTemplates else templates
+	local activeTemplates: StateTemplates = if isSingleTier
+		then self.milestoneSingleTemplates :: StateTemplates
+		else templates
 	for _, child in milestonesFrame:GetChildren() do
 		if child:IsA("TextButton") then
 			child:Destroy()
@@ -642,8 +642,7 @@ end
 
 function ClientIndexV2Manager.findMilestone(self: ClientIndexV2Manager, tierId: string): Milestone?
 	for _, categoryData in clientIndexV2Data:getCategories() do
-		local milestone =
-			IndexRewardMath.findMilestone(clientIndexV2Data:getMilestones(categoryData.category), tierId)
+		local milestone = IndexRewardMath.findMilestone(clientIndexV2Data:getMilestones(categoryData.category), tierId)
 		if milestone then
 			return milestone
 		end

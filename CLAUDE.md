@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-This file was copied from `md`, the parent game, and is being rewritten for the new game, **Dragon Riders 2** (spec v1.0). Sections for the systems built since the fork (Deal Shop, Day and Night, Weather, Playtime, Daily Login, Spin Wheel, Index, Diamonds, Egg Slots) are current; the object and item model sections still describe the parent game's crops and crystals.
+This file was copied from `md`, the parent game, and is being rewritten for the new game, **Dragon Riders 2** (spec v1.0). Sections for the systems built since the fork (Day and Night, Weather, Playtime, Daily Login, Spin Wheel, Index, Diamonds, Egg Slots) are current; the object and item model sections still describe the parent game's crops and crystals.
 
 ## Project Overview
 
@@ -326,6 +326,7 @@ migration path from the pre-ProfileStore format in `GameController` player-join.
   a per-player dev setting) shows it anyway and refreshes it at once; unchecking removes it.
 - `CustomerTools` / `ClientCustomerTools` — same shape over `TryCustomerTool`, for CS operations.
 - `ClientNetopsTools` — network metrics readout.
+- Singleton managers cannot be required from the command bar (it builds a second copy), so reach them through a dev tool.
 
 ## Client UI Conventions
 
@@ -363,34 +364,6 @@ to the client:
   overload pick).
 - `tools/convert_client_strict.py` was the mechanical first pass for this conversion and documents
   the transforms; new modules should just be written strict directly.
-
-## Deal Shop
-
-Config-driven shop of deals (bundles, single items, gacha packs) sold for coins, Diamonds or Robux, grouped into section tabs. Separate from the coin `BuyStore` and from `ClientPremiumStore`/`StarterOffer`. Files: `shared/DealShopCatalog.luau` (types, pure validation), `server/DealShopManager.luau`, `client/ClientDealShopManager.luau`, `client/ClientGiftingManager.luau`.
-
-- **Config:** Studio-only `GameData.Control.DealShop` (`SECTIONS → deals → tiers → contents`; the field reference is a comment block at its top). A deal has 1–2 tiers, each priced in exactly one of `coinCost`, `diamondCost` or `productId` (Robux). Contents: `ITEM` (`objectName`, `count`), `COINS` (`amount`), `DIAMONDS` (`amount`). Optional per deal: `giftable = false`, `oneTimeOnly = true` (saved in `PlayerData.purchasedDealKeys`, never giftable), `startDate`/`endDate` (ISO 8601 UTC), `stock`.
-- **Card styles** (`Enums.ShopCardStyle`): BUNDLE, SINGLE_ITEM, GACHA. A two-tier single item sells the same item in both tiers (the count may differ); a two-tier bundle has identical contents; a two-tier deal is one Robux tier plus one coin or Diamond tier. Bundles are Robux-only by convention (not enforced).
-- **Gacha:** 1–3 tiers, each a single `ITEM` of the same egg with a growing `count`, all in one currency. The egg object sets `instantHatch = true` (ready when placed) and a `hatchLootTableName`; the card lists every dragon in that table with its base odds (before plot and rebirth luck). Startup errors if the item is not a dragon egg with a non-empty hatch loot table.
-- **Startup:** `DealShopManager:init` validates the config and errors on a bad one: catalog rules, every `objectName` exists and is deliverable, no `productId` already delivered by another system (`GameController:isProductIdReserved` mirrors `tryGrantPlayerRobuxProductId` and must stay in sync). Unknown field names only warn (`DealShopCatalog.findUnknownFields`; add new fields to its `AUTHORED_*_FIELDS`). The client copy is sent in `NotifyInit` as `dealShopConfig` with `purchasedDealKeys`.
-- **Buying:** a coin or Diamond tier fires `TryBuyDeal(dealKey, tierIndex)`. The server checks availability and balance, spends (Diamonds through `CurrencyGranter.trySpendDiamonds`), grants, refunds on total failure and replies `NotifyDealPurchaseResult`. A Robux tier prompts the dev product and the receipt flows `ProcessReceipt → GameController:tryGrantPlayerRobuxProductId → DealShopManager:tryDeliverToPlayer`. A gift (Robux tiers only) is recorded by `TryBeginGift`, granted to the recipient by the receipt and cancelled by `TryClearGift`.
-- **Grant policy:** every content entry is attempted and one landing counts as granted (retrying a partial failure would duplicate items). Items go through `GameController:tryDeliverPurchasedItemToPlayer`. A Robux receipt for an unavailable or out-of-stock deal is still granted.
-- **Stock and restock:** `stock = { { count, percent }, ... }` is rolled at each restock (`count` rolls at `percent`%, seeded by the era and the deal key) into units each player can buy. Purchases are per player (`PlayerData.dealShopPurchases = { era, counts }`, discarded on a new era). The config root needs `RESTOCK_SEC` when any deal has stock. An out-of-stock coin purchase is refused, a gift is refused, a tier shows "Sold out". `initData.dealShopStock` and `NotifyDealShopStock` carry `{ stock, purchases, nextRestockTime }` (clients get only `hasStock`, never the list). Dev tool `restockDealShop`. Not allowed on featured deals.
-- **Adding something to sell** needs no code: a deal with `coinCost`, or a dev product and its `productId`. A new content kind means editing `Enums.ShopContentKind`, `DealShopCatalog.validateContent`, `DealShopManager.grantTier` (plus `validateTierContents`/`buildClientConfig` if it needs display data) and `ClientDealShopManager.fillContents`.
-- **Studio prerequisites:** RemoteEvents `TryBuyDeal`, `TryBeginGift`, `TryClearGift`, `NotifyDealPurchaseResult`, `NotifyGiftReceived` (and `NotifyDealShopStock` when a deal has stock); the config module; ScreenGuis `DealShop` and `Gifting`; HUD `DealShopFrame` → `DealShopButton` (hidden in the FTUE). A missing GUI only warns; a missing RemoteEvent or config stops boot.
-- **GUI notes:** the ScreenGui is `DealShop` and the card templates are `BundleDealCardTemplate`, `SingleItemDealCardTemplate` and `GachaDealCardTemplate` (`DealShop > Main > Scroll`); a failed lookup names the missing piece in the output. A Diamond tier without a `Diamond` icon reuses `Coin` with its `DiamondImage` attribute. The gacha card holds one `Frame` per rarity in `Contents` as prize tile templates (frames for rarities this project lacks are discarded).
-- **Two-tier cards** (non-gacha) author `BuyTier1` and `BuyTier2` at the same spot; the client slides `BuyTier1` left by its width plus `TIER_GAP` (`placeTiersSideBySide`) and warns above `MAX_CONTENTS_BESIDE_TIERS` (3) content tiles.
-- **Limits:** a purchased gacha egg is opened by placing and hatching it (no reveal screen); there is no play-time window.
-
-### Featured deal (HUD promo button)
-
-One Robux deal is promoted at a time on a HUD button, rotating. Files: `shared/FeaturedDealCatalog.luau` (validation, rotation math), `DealShopManager.validateFeaturedDeals`/`getFeaturedConfig`, `client/ClientFeaturedDealManager.luau`, `client/ClientProductInfo.luau` (cached Robux price lookup), `client/RainbowSweep.luau`.
-
-- **Config:** Studio-only `GameData.Control.FeaturedDeals`: `rotationSec` (> 0) and `deals`, an ordered array of `{ dealKey, title, icon, startDate?, endDate?, tier }`. `dealKey` is unique and differs from every shop `dealKey`; `icon` is non-empty; the tier is exactly one Robux tier `{ productId, contents }` (`ITEM` or `COINS`). A featured deal cannot set `oneTimeOnly`, `giftable`, `coinCost`, `cardStyle` or `stock`. `deals = {}` hides the button. A bad table or a product id of 0 stops boot.
-- **Rotation** is a pure function of server time: slot `floor(now / rotationSec) % #activeDeals` over the deals whose window is open, in list order. No server state, no per-player filter. The client re-evaluates every second.
-- **Delivery** reuses the shop's receipt path: each featured product id is registered in `tiersByProductId`. A featured deal may reuse a shop product id only with identical contents; featured-only products are non-giftable. The config travels in `initData.featuredDeals`. Tapping fires `TryClearGift` and prompts the product.
-- **Button:** icon (twitches every 2.5 s), title with a rainbow sweep, live Robux price ("..." while loading, "N/A" if not for sale; inactive until it resolves).
-- **GUI notes:** HUD `FeaturedDealFrame > FeaturedDeal` (a TextButton, hidden in the FTUE). Keep a UIListLayout out of the button's container or the twitch is invisible.
-- **Dev tool** `dumpFeaturedDeals` (client section "Featured Deals"). Singleton managers cannot be required from the command bar (it builds a second copy), so use dev tools.
 
 ## Egg Slots and the Dragon Limit
 

@@ -1,5 +1,11 @@
 --!strict
 
+-- The live collection book (Enums.IndexCategory: DRAGON, EGG, MUTATION, TRAIT). The original IndexManager is kept but only runs when
+-- Control/IndexRewards.useLegacyIndex is true (read at join); every discovery goes through this manager, which tells the old one only
+-- when it is on. Category tier rewards are claimed in order and the server rebuilds and validates every claim. Add tiers to
+-- categoryTiers at the END only: a claim is saved by the tier's position. The state reaches the client in initData.indexV2 at join
+-- (anything sent before NotifyInit is lost) and later in NotifyIndexV2Data.
+-- As of 2026-november-3 the per-dragon mutation record (indexDiscoveredDragonMutations) is written but nothing reads it.
 local IndexV2Manager = {}
 IndexV2Manager.__index = IndexV2Manager
 

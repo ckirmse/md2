@@ -1,6 +1,23 @@
 --!strict
 
 -- v1.0 weather: one at a time, planned per era from Control/Weather. Runs instead of WeatherManager unless useLegacyWeather is true.
+--
+-- Traits: MItem.traits is part of stack identity. At event start every dragon and egg in the world (placed, ridden, slotted, wild; not
+-- backpacks) rolls once at traitChance; wild eggs that spawn during the weather roll too (notifyEggSpawned, called by ScatterZone) and a
+-- hatched dragon inherits the egg's traits. Strike events (Thunderstorm, Starlight) delay the trait: each winner is struck at a random
+-- moment in the first strikeSpreadSec and gets the trait WeatherStrike.TRAIT_DELAY_SEC later, even if the target left the world but
+-- the item still exists.
+--
+-- Lighting: the client never sets lighting itself. The running weather's lighting is laid over the day/night look by
+-- ClientDayNightManager:setWeatherLighting, and lockNight (Starlight) holds the sky at night (DayNightManager:setNightLocked, so
+-- isNight() is true).
+--
+-- Cosmic eggs (Starlight only) are spawned with ScatterZone:spawnEggAt(isTracked = false) so the global egg refresh leaves them. Radar
+-- guidance is keyed by shared/RadarKind (the rarity, or COSMIC) on the server, in NotifyRadarTarget and on the client, and runs to its
+-- duration even if Starlight ends. scatterZoneManager arrives through initClass.
+--
+-- As of 2026-november-3 nothing reads traits, temporary luck is a named local fixed at 1 in DragonEgg.computeLuckMultiplier, and the Cosmic
+-- night speed bonus and the skybox swap are not built.
 local WeatherEventManager = {}
 WeatherEventManager.__index = WeatherEventManager
 

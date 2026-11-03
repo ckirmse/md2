@@ -93,6 +93,7 @@ function ClientDayNightManager.applyLook(self: ClientDayNightManager, look: DayN
 		return
 	end
 
+	-- ClockTime tweens the short numeric way (not around the clock), so choose day and night clockTime values that look right going that way
 	local tweenInfo = TweenInfo.new(config.fadeSec, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
 	local lightingGoal: { [string]: any } = {
 		ClockTime = look.clockTime,

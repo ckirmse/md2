@@ -1325,6 +1325,7 @@ function GameController.tryDeliverInstantOpenCrystal(self: GameController, playe
 	return true
 end
 
+-- every product id delivered here must also be checked in isProductIdReserved, or the Deal Shop could be given the same id at startup
 function GameController.tryGrantPlayerRobuxProductId(self: GameController, player: Player, productId: number): boolean
 	local playerData = self:getPlayerData(player)
 	if not playerData then
@@ -2568,6 +2569,8 @@ function GameController.tryHatchEgg(self: GameController, player: Player, eggIte
 	egg:finishHatching()
 end
 
+-- Makes a slotted, still-incubating egg ready to hatch (not opened: the player still holds the prompt) for Diamonds. The client sends the cost
+-- it showed; the cost is recomputed here (shared/HatchSkipMath) and refused if it grew past that.
 function GameController.trySkipHatch(self: GameController, player: Player, eggItemId: any, expectedCost: any): ()
 	if not Validate.isItemIdForPlayer(player, eggItemId) then
 		return
