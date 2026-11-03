@@ -8,6 +8,9 @@
 -- advance could be rerolled by relogging until the best item appeared; the client only learns what it got after
 -- the claim. A time skip is worth income x seconds, so it is also computed at claim, and a claim that would pay
 -- nothing is refused instead of burning the reward.
+--
+-- Tuning Control/Playtime: keep reward value per wall-second non-decreasing and avoid long reward-free gaps (otherwise quitting and
+-- rejoining pays better than staying), and keep skipSec in whole minutes.
 
 local PlaytimeRewardManager = {}
 PlaytimeRewardManager.__index = PlaytimeRewardManager

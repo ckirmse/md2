@@ -3,6 +3,8 @@
 -- The one place currency changes. A leaf module on purpose: it requires only AnalyticsManager and PlayerAttributesManager, so any module
 -- can require it without a cycle (RewardGranter cannot be required from the Index because it pulls in IncomeManager). Diamonds are a
 -- player attribute (PlayerAttributeKeys.DIAMONDS), so they are saved and replicated with the other attributes, and Rebirth zeroes only coins.
+-- As of 2026-november-3 not built: Robux Diamond packs (no dev products yet), premium eggs (Luck 25 and 150, instant hatch), premium radar,
+-- plot luck x100 levels and Style Tokens.
 local CurrencyGranter = {}
 
 local PlayerAttributeKeys = require("@game/ReplicatedStorage/Shared/PlayerAttributeKeys")

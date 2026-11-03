@@ -155,7 +155,8 @@ function SpinWheelManager.getCatalog(self: SpinWheelManager): { ClientSegment }
 					segment.rarity = itemData.rarity or Enums.Rarity.COMMON
 				end
 			elseif result.kind == kinds.LOOT_TABLE then
-				-- the item is rolled from the named table at spin time, so only the authored face is sent
+				-- the item is rolled from the named table at spin time, so only the authored face is sent; the rarity is display only
+				-- (colour and face), so keep the dragons in that table at this rarity
 				segment.itemType = result.itemType
 				segment.displayName = result.displayName
 				segment.rarity = result.rarity

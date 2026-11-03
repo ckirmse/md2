@@ -5,7 +5,8 @@
 -- Progress is claim-driven and never resets: a day stays claimable until it is claimed, and the next opens DAY_SEC
 -- later. The server runs no timers: the client works out claimability from nextClaimTime on its own clock, and the
 -- server re-checks on every claim and accepts only the tile that is claimable right now. Every reward is fixed
--- (coins, time skip, fixed item), so what a tile shows is what the claim grants.
+-- (coins, time skip, fixed item), so what a tile shows is what the claim grants. The last tile repeats forever, so choose its reward with a
+-- permanent daily supply in mind. A bad itemName is the one way to leave a player stuck on a day (GameDataVerifier.verifyDailyLogin warns).
 local DailyLoginManager = {}
 DailyLoginManager.__index = DailyLoginManager
 
