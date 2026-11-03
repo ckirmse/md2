@@ -560,6 +560,10 @@ end
 
 -- returns true iff anything changed
 function PlayerData.unlockProperAbilitiesForPrimaryElement(self: PlayerData, primaryElement: any)
+	if not Constants.ABILITIES_ENABLED then
+		return false
+	end
+
 	local anyAbilitiesUnlocked = false
 
 	local playerAttributeKeyLevel = Elements.getLevelKeyForPrimaryElement(primaryElement)
@@ -1289,7 +1293,7 @@ function PlayerData.updatePlayerVariablesFromAbilities(self: PlayerData)
 		end
 
 		for _, ability in Abilities.getAbilitiesForAttributeName(attributeName) do
-			if self.abilityStatuses[ability] ~= enums.AbilityStatus.EQUIPPED then
+			if not Constants.ABILITIES_ENABLED or self.abilityStatuses[ability] ~= enums.AbilityStatus.EQUIPPED then
 				continue
 			end
 

@@ -18,6 +18,7 @@ local UnlockedIndicator = UX:WaitForChild("UnlockedIndicator")
 
 local Abilities = require("@game/ReplicatedStorage/Shared/Abilities")
 local Attributes = require("@game/ReplicatedStorage/Shared/Attributes")
+local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local Elements = require("@game/ReplicatedStorage/Shared/Elements")
 local enums = require("@game/ReplicatedStorage/Shared/Enums")
 local PivotToTween = require("@game/ReplicatedStorage/Shared/PivotToTween")
@@ -767,7 +768,7 @@ end
 function ClientAbilityStore.notifyAbilityStatuses(self: ClientAbilityStore, abilityStatuses: any)
 	self:setPlayerAbilityStatuses(abilityStatuses)
 
-	if not GuiRoot.Enabled then
+	if Constants.ABILITIES_ENABLED and not GuiRoot.Enabled then
 		local areAnyUnlocked = false
 		for abilityStr, abilityStatus in abilityStatuses do
 			if abilityStatus ~= enums.AbilityStatus.UNLOCKED then
@@ -787,6 +788,10 @@ function ClientAbilityStore.notifyAbilityStatuses(self: ClientAbilityStore, abil
 end
 
 function ClientAbilityStore.notifyEquipAbilityStatus(self: ClientAbilityStore, isSuccess: any)
+	if not Constants.ABILITIES_ENABLED then
+		return
+	end
+
 	local rig = self.dragonMasterFolder:WaitForChild("DragonMaster")
 
 	if isSuccess then
@@ -976,6 +981,10 @@ function ClientAbilityStore.initWorldInterface(self: ClientAbilityStore)
 end
 
 function ClientAbilityStore.init(self: ClientAbilityStore)
+	if not Constants.ABILITIES_ENABLED then
+		return
+	end
+
 	self:initWorldInterface()
 
 	local primaryElements = Elements.getPrimaryElementsSorted()

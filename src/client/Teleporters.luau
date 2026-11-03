@@ -11,6 +11,7 @@ local Effects = GameAssets:WaitForChild("Effects")
 -- the audio template's shape only exists in Studio, so it is untyped here
 local TeleportAudioParent: any = Effects:WaitForChild("TeleportAudioParent")
 
+local Constants = require("@game/ReplicatedStorage/Shared/Constants")
 local utils = require("@game/ReplicatedStorage/Shared/utils")
 
 local cameraManager = require("./CameraManager")
@@ -178,7 +179,12 @@ function Teleporters.initWorldInterface(self: Teleporters)
 	-- 	end
 	-- )
 
+	abilitiesButton.Visible = Constants.ABILITIES_ENABLED
 	abilitiesButton.Activated:Connect(function()
+		if not Constants.ABILITIES_ENABLED then
+			return
+		end
+
 		local character: any = player.Character
 		if not character or not character.HumanoidRootPart then
 			return

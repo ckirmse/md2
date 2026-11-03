@@ -2942,6 +2942,10 @@ end
 function GameController.tryEquipAbility(self: GameController, player: Player, ability: any): ()
 	--print("got try equip ability for player", player, ability)
 
+	if not Constants.ABILITIES_ENABLED then
+		return
+	end
+
 	if not Abilities.validateAbility(ability) then
 		print("invalid ability", player, ability)
 		return

@@ -41,6 +41,9 @@ module = {
 	SPLENDID_DATA_NAME = "SplendidData",
 	PLAYER_VARIABLES_NAME = "PlayerVariables",
 
+	-- as of 2026-november-3 the abilities system inherited from Fuse Dragons is off: nothing unlocks or
+	-- equips, no ability changes a player variable, and the client builds no Dragon Master store
+	ABILITIES_ENABLED = false,
 	BASE_ABILITY_SLOTS = 2,
 	LEVEL_TO_UNLOCK_ABILITY_SLOT = 50,
 
